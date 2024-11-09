@@ -1,0 +1,110 @@
+.navbar {
+  background-color: rgb(12, 8, 8);
+  gap: 2px;
+}
+
+.nav-item {
+  color: white;
+  cursor: pointer;
+  position: relative;
+  font-size: 18px;
+}
+
+.submenu, .submenu1 {
+  position: absolute;
+  background-color: black;
+  display: block;
+  padding: 0px;
+  left: 0;
+  top: 100%;
+  width: 200%;
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+}
+
+.submenu-item, .submenu-item1 {
+  padding: 0px;
+  color: white;
+  text-decoration: none;
+  display: block;
+  border-bottom: 1px solid #444;
+}
+
+.submenu1 {
+  position: absolute;
+  background-color: black;
+  display: block;
+  padding: 10px;
+  left: 105%;
+  top: 0;
+  width: 100%;
+}
+
+.submenu-item a , .submenu-item1 a{
+  color: white;
+  display: block;
+  padding: 5px;
+  text-decoration: none;
+  top: 100%;
+  width: 100%;
+}
+
+.submenu-item1 a {
+  color: white;
+  display: block;
+  padding: 5px;
+  text-decoration: none;
+}
+
+.submenu-item:last-child {
+  border-bottom: none;
+}
+
+.submenu-item:hover {
+  background-color: #777;
+}
+
+.submenu-item a:hover {
+  background-color: #777;
+}
+
+.submenu-item a {
+  color: white;
+  display: block;
+  padding: 5px;
+  text-decoration: none; 
+}
+
+.nav-item:hover > .submenu,
+.submenu-item:hover > .submenu1 {
+  display: block;
+}
+
+.submenu-item1:hover{
+  background-color: #555;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .nav-item, .submenu, .submenu1 {
+    width: 100%;
+  }
+
+  .submenu, .submenu1 {
+    display: block;
+    padding-left: 20px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .navbar {
+    grid-template-columns: repeat(12, 1fr);
+    gap: 15px;
+  }
+
+  .nav-item {
+    padding: 10px 15px;
+  }
+}

@@ -8,6 +8,7 @@ from flask_cors import CORS
 import socketio
 from app.utils.CommonGLedgerFunctions import get_accoid
 from app.models.BusinessReleted.TenderPurchase.TenderPurchaseModels import TenderHead, TenderDetails 
+from app.models.Outword.CommissionBill.CommissionBillModel import CommissionBill
 from sqlalchemy import func, text
 from sqlalchemy.exc import SQLAlchemyError 
 import os
@@ -488,13 +489,23 @@ def update_tender_purchase():
                 "BANK_COMMISSION":0.0
             }
 
-            commission_response = requests.put(
+            commission_bill_exists = db.session.query(CommissionBill).filter_by(
+                Company_Code=headData['Company_Code'],
+                Tran_Type=headData['Voucher_Type'],
+                Year_Code=headData['Year_Code'],
+                doc_no=updated_tender_head.Voucher_No
+                ).first()
+
+# If commission_bill exists, then proceed with the API call
+            if commission_bill_exists:
+                commission_response = requests.put(
                 f"http://localhost:8080/api/sugarian/update-CommissionBill?Company_Code={headData['Company_Code']}&Tran_Type={headData['Voucher_Type']}&Year_Code={headData['Year_Code']}&doc_no={updated_tender_head.Voucher_No}",
                 json=commission_data
             )
 
-            if commission_response.status_code != 200:
-                return jsonify({"error": "Failed to update Commission Bill", "message": commission_response.json()}), 500
+
+                if commission_response.status_code != 200:
+                    return jsonify({"error": "Failed to update Commission Bill", "message": commission_response.json()}), 500
 
             db.session.commit()
             serialized_created_details = createdDetails 

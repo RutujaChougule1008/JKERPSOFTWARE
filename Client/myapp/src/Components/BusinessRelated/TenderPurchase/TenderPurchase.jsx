@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
 import "./TenderPurchase.css";
+import { HashLoader } from "react-spinners";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -643,10 +644,13 @@ const TenderPurchase = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    
+
     setFormData((prevFormData) => {
       const updatedFormData = {
         ...prevFormData,
         [name]: value,
+        Party_Bill_Rate: name === "Purc_Rate" && (prevFormData.Party_Bill_Rate === prevFormData.Purc_Rate || !prevFormData.Party_Bill_Rate) ? value : prevFormData.Party_Bill_Rate,
       };
 
       try {
@@ -1264,7 +1268,7 @@ const TenderPurchase = () => {
     gstAmtDetail: 0,
     exciseAmount: 0,
     lblValue: 0,
-    TCSAmt: 0,
+    TCSAmt: 0.0,
     lblNetAmount: 0,
     bags: 0,
     gstAmt: 0,
@@ -1388,8 +1392,7 @@ const TenderPurchase = () => {
       setBackButtonEnabled(true);
       setSaveButtonEnabled(false);
       setCancelButtonEnabled(false);
-      setIsEditing(false);
-      setIsLoading(false);
+      setIsEditing(true);
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -2169,6 +2172,7 @@ const TenderPurchase = () => {
           tcs_rate: parseFloat(formData.TCS_Rate),
           Delivery_Type: dispatchType,
           ID: 1,
+          
         },
         ...prevUsers,
       ]);
@@ -2573,7 +2577,7 @@ const TenderPurchase = () => {
               className={`SugarTenderPurchase-form-control ${
                 errors.type ? "error-border" : ""
               }`}
-              value={formData.Purc_Rate || formData.Party_Bill_Rate}
+              value={formData.Party_Bill_Rate}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={19}
@@ -2916,6 +2920,14 @@ const TenderPurchase = () => {
             />
           </div>
         </div>
+
+        {isLoading && (
+          <div className="loading-overlay">
+            <div className="spinner-container">
+              <HashLoader color="#007bff" loading={isLoading} size={80} />
+            </div>
+          </div>
+        )}
 
         {/*detail part popup functionality and Validation part Grid view */}
         <div className="">
@@ -3295,7 +3307,7 @@ const TenderPurchase = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {users.map((user, index) => (
                   <tr key={user.id}>
                     <td>
                       {user.rowaction === "add" ||
@@ -3305,7 +3317,7 @@ const TenderPurchase = () => {
                           <button
                             className="btn btn-warning"
                             onClick={() => editUser(user)}
-                            disabled={!isEditing || user.id === 1}
+                            disabled={!isEditing || index===0}
                             onKeyDown={(event) => {
                               if (event.key === "Enter") {
                                 editUser(user);
@@ -3323,7 +3335,7 @@ const TenderPurchase = () => {
                                 deleteModeHandler(user);
                               }
                             }}
-                            disabled={!isEditing || user.id === 1}
+                            disabled={!isEditing || index===0}
                             tabIndex="19"
                           >
                             Delete

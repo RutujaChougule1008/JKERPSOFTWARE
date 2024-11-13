@@ -832,7 +832,6 @@ const SugarSaleReturnPurchase = () => {
       );
       setGstNo(data.GST);
     } catch (error) {
-      toast.error("Error while fetching company GST No.");
       console.error("Error:", error);
       setGstNo("");
     }

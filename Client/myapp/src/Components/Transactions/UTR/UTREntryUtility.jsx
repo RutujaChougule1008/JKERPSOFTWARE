@@ -100,7 +100,7 @@ function UTREntryUtility() {
     };
 
     return (
-        <div className="App container">
+        <div>
             <Grid container spacing={3}>
                 <Grid item xs={12}>
                     <Button variant="contained" style={{ marginTop: "20px" }} onClick={handleClick}>
@@ -123,7 +123,7 @@ function UTREntryUtility() {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Paper elevation={3}>
+                    <Paper elevation={20}>
                         <TableContainer>
                             <Table>
                                 <TableHead>

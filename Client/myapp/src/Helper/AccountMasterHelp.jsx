@@ -6,10 +6,13 @@ import DataTableSearch from "../Common/HelpCommon/DataTableSearch";
 import DataTablePagination from "../Common/HelpCommon/DataTablePagination";
 
 
-const CompanyCode = sessionStorage.getItem("Company_Code");
+
 var lActiveInputFeild = "";
 
 const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, tabIndexHelp, disabledFeild }) => {
+
+    const CompanyCode = sessionStorage.getItem("Company_Code");
+    
     const [showModal, setShowModal] = useState(false);
     const [popupContent, setPopupContent] = useState([]);
     const [enteredAcCode, setEnteredAcCode] = useState("");

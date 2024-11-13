@@ -352,6 +352,7 @@ const routes = [
   element: UTREntry
 }
 ,
+
 //ReceiptPaymeny
 {
   path:'/receipt-payment',

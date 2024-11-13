@@ -91,6 +91,7 @@ from app.Helpers.CarporateHelp import *
 from app.Helpers.purcnohelp import *
 from app.Helpers.PurcNoFromReturnPurchaseHelp import *
 from app.Helpers.PurcNoFromReturnSale import *
+from app.Helpers.UTRLotnoHelp import *
 
 #common API Routes
 from app.Common.CommonSugarPurchaseStatusCheck import *

@@ -4,11 +4,13 @@ from app.models.Transactions.UTR.UTREntryModels import UTRHead, UTRDetail
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
-from app.utils.CommonGLedgerFunctions import fetch_company_parameters, get_accoid
+from app.utils.CommonGLedgerFunctions import fetch_company_parameters, get_accoid, create_gledger_entry,send_gledger_entries
 import os
 import requests
 import traceback
 import logging
+
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
@@ -39,6 +41,40 @@ def format_dates(task):
     return {
         "doc_date": task.doc_date.strftime('%Y-%m-%d') if task.doc_date else None,
     }
+
+#Add GLedger Enteries
+trans_typeNew  = "UT"
+ac_code=0
+ordercode=0
+new_doc_no=0
+narration=''
+
+def add_gledger_entry(entries,data, amount, drcr, ac_code, accoid, ac_code2, ordercode):
+    if amount > 0:
+        entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid,ordercode,trans_typeNew,new_doc_no,narration))
+
+#Create GLedger Enteries
+def create_gledger_entries(headData, detailData, doc_no):
+    gledger_entries = []
+    ordercode = 0
+
+    amount = float(headData.get('amount', 0) or 0)
+           
+    bankAcCode = headData.get('bank_ac')
+    millCode = headData.get('mill_code')
+
+    if amount>0:
+        ordercode += 1
+        accoid = get_accoid(bankAcCode,headData['Company_Code'])
+        add_gledger_entry(gledger_entries,headData, amount, "C", bankAcCode, accoid , millCode, ordercode)
+
+        ordercode += 1
+        accoid = get_accoid(millCode,headData['Company_Code'])
+        add_gledger_entry(gledger_entries,headData, amount, "D", millCode, accoid , bankAcCode, ordercode)
+
+
+    return gledger_entries
+
 
 # Get data from both tables UTRHead and UTRDetail
 @app.route(API_URL + "/getdata-utr", methods=["GET"])
@@ -122,39 +158,6 @@ def getutrByid():
 # Insert record for UTRHead and UTRDetail
 @app.route(API_URL + "/insert-utr", methods=["POST"])
 def insert_utr():
-    tran_type = 'UT'
-    def create_gledger_entry(data, amount, drcr, ac_code, accoid, drcrhead):
-        return {
-            "TRAN_TYPE": tran_type,
-            "DOC_NO": new_doc_no,
-            "DOC_DATE": data['doc_date'],
-            "AC_CODE": ac_code,
-            "AMOUNT": amount,
-            "COMPANY_CODE": data['Company_Code'],
-            "YEAR_CODE": data['Year_Code'],
-            "ORDER_CODE": 1,
-            "DRCR": drcr,
-            "UNIT_Code": 0,
-            "NARRATION": data['narration_header']+data['narration_footer'],
-            "TENDER_ID": 0,
-            "TENDER_ID_DETAIL": 0,
-            "VOUCHER_ID": 0,
-            "DRCR_HEAD": drcrhead,
-            "ADJUSTED_AMOUNT": 0,
-            "Branch_Code": 1,
-            "SORT_TYPE": tran_type,
-            "SORT_NO": new_doc_no,
-            "vc": 0,
-            "progid": 0,
-            "tranid": 0,
-            "saleid": 0,
-            "ac": accoid
-        }
-    
-    def add_gledger_entry(entries,data, amount, drcr, ac_code, accoid, drcrhead):
-        if amount > 0:
-            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid, drcrhead))
-
     try:
         data = request.get_json()
         head_data = data['head_data']
@@ -163,15 +166,12 @@ def insert_utr():
         print('headata',head_data)
         max_doc_no = db.session.query(func.max(UTRHead.doc_no)).scalar() or 0
 
-
-        # Increment the doc_no for the new entry
         new_doc_no = max_doc_no + 1
         head_data['doc_no'] = new_doc_no 
         
         new_head = UTRHead(**head_data)
         db.session.add(new_head)
 
-        
         createdDetails = []
         updatedDetails = []
         deletedDetailIds = []
@@ -201,38 +201,11 @@ def insert_utr():
                         db.session.delete(detail_to_delete)
                         deletedDetailIds.append(utrdetailid)
 
-    
-
             db.session.commit()
 
-            amount = float(head_data.get('amount', 0) or 0)
-           
-            bankAcCode = head_data.get('bank_ac')
-            millCode = head_data.get('mill_code')
+        gledger_entries = create_gledger_entries(head_data, detail_data, new_doc_no)
 
-            
-
-            gledger_entries = []
-
-            
-            if amount>0:
-                
-                accoid = get_accoid(bankAcCode,head_data['Company_Code'])
-                add_gledger_entry(gledger_entries,head_data, amount, "C", bankAcCode, accoid , millCode)
-
-                
-                accoid = get_accoid(millCode,head_data['Company_Code'])
-                add_gledger_entry(gledger_entries,head_data, amount, "D", millCode, accoid , bankAcCode)
-
-            
-            query_params = {
-            'Company_Code': head_data['Company_Code'],
-            'DOC_NO': new_doc_no,
-            'Year_Code': head_data['Year_Code'],
-            'TRAN_TYPE': tran_type,
-        }
-
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = send_gledger_entries(head_data, gledger_entries,trans_typeNew)
 
         if response.status_code == 201:
             db.session.commit()
@@ -260,39 +233,6 @@ def insert_utr():
 # Update record for UTRHead and UTRDetail
 @app.route(API_URL + "/update-utr", methods=["PUT"])
 def update_utr():
-    
-    tran_type = 'UT'
-    def create_gledger_entry(data, amount, drcr, ac_code, accoid, drcrhead):
-        return {
-            "TRAN_TYPE": tran_type,
-            "DOC_NO": updated_head_doc_no,
-            "DOC_DATE": data['doc_date'],
-            "AC_CODE": ac_code,
-            "AMOUNT": amount,
-            "COMPANY_CODE": data['Company_Code'],
-            "YEAR_CODE": data['Year_Code'],
-            "ORDER_CODE": 1,
-            "DRCR": drcr,
-            "UNIT_Code": 0,
-            "NARRATION": data['narration_header']+data['narration_footer'],
-            "TENDER_ID": 0,
-            "TENDER_ID_DETAIL": 0,
-            "VOUCHER_ID": 0,
-            "DRCR_HEAD": drcrhead,
-            "ADJUSTED_AMOUNT": 0,
-            "Branch_Code": 1,
-            "SORT_TYPE": tran_type,
-            "SORT_NO": updated_head_doc_no,
-            "vc": 0,
-            "progid": 0,
-            "tranid": 0,
-            "saleid": 0,
-            "ac": accoid
-        }
-    
-    def add_gledger_entry(entries,data, amount, drcr, ac_code, accoid, drcrhead):
-        if amount > 0:
-            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid, drcrhead))
     try:
         utrid = request.args.get('utrid')
         
@@ -304,7 +244,6 @@ def update_utr():
         head_data = data['head_data']
         detail_data = data['detail_data']
 
-        # Update the head data
         updatedHeadCount=db.session.query(UTRHead).filter(UTRHead.utrid == utrid).update(head_data)
         updated_head = UTRHead.query.filter_by(utrid=utrid).first()
         updated_head_doc_no = updated_head.doc_no
@@ -321,7 +260,6 @@ def update_utr():
             if 'rowaction' in item:
                 if item['rowaction'] == "add":
                     del item['rowaction']
-                    # del item['utrdetailid']
                     item['doc_no'] = updated_head_doc_no
                     new_detail = UTRDetail(**item)
                     db.session.add(new_detail)
@@ -341,42 +279,16 @@ def update_utr():
                         deleted_detail_ids.append(utrdetailid)
 
         db.session.commit()
-        amount = float(head_data.get('amount', 0) or 0)
 
-        bankAcCode = head_data.get('bank_ac')
-        millCode = head_data.get('mill_code')
+        gledger_entries = create_gledger_entries(head_data, detail_data, updated_head_doc_no)
 
-            
-
-        gledger_entries = []
-
-
-        if amount>0:
-                
-            accoid = get_accoid(bankAcCode,head_data['Company_Code'])
-            add_gledger_entry(gledger_entries,head_data, amount, "C", bankAcCode, accoid , millCode)
-
-                
-            accoid = get_accoid(millCode,head_data['Company_Code'])
-            add_gledger_entry(gledger_entries,head_data, amount, "D", millCode, accoid , bankAcCode)
-
-            
-        query_params = {
-            'Company_Code': head_data['Company_Code'],
-            'DOC_NO': updated_head_doc_no,
-            'Year_Code': head_data['Year_Code'],
-            'TRAN_TYPE': tran_type,
-        }
-
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = send_gledger_entries(head_data, gledger_entries,trans_typeNew)
 
         if response.status_code == 201:
             db.session.commit()
         else:
             db.session.rollback()
             return jsonify({"error": "Failed to create gLedger record", "details": response.json()}), response.status_code
-
-
 
         return jsonify({
             "message": "Data updated successfully",
@@ -403,12 +315,9 @@ def delete_data_by_utrid():
         if not all([utrid, Company_Code, doc_no, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Start a transaction
         with db.session.begin():
-            # Delete records from UTRDetail table
             deleted_detail_rows = UTRDetail.query.filter_by(utrid=utrid,Company_Code=Company_Code,doc_no=doc_no,Year_Code=Year_Code).delete()
 
-            # Delete record from UTRHead table
             deleted_head_rows = UTRHead.query.filter_by(utrid=utrid,Company_Code=Company_Code,doc_no=doc_no,Year_Code=Year_Code).delete()
 
             if deleted_detail_rows > 0 and deleted_head_rows > 0:
@@ -419,8 +328,7 @@ def delete_data_by_utrid():
                     'TRAN_TYPE': "UT",
             }
 
-            # Make the external request
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")
@@ -585,4 +493,41 @@ def get_nextutr_navigation():
         return jsonify(response), 200
 
     except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+#UTR Report
+@app.route(API_URL+"/getUTRReport", methods=["GET"])
+def getUTRReport():
+    try:
+        company_code = request.args.get('Company_Code')
+        year_code = request.args.get('Year_Code')
+        doc_no = request.args.get('doc_no')
+
+        if not company_code or not year_code or not doc_no:
+            return jsonify({"error": "Missing 'Company_Code' or 'Year_Code' parameter"}), 400
+
+        query = ('''SELECT        dbo.nt_1_utr.doc_no, dbo.nt_1_utr.doc_date, mill.Ac_Name_E, mill.Address_E, mill.Pincode, dbo.nt_1_utr.mill_code, dbo.nt_1_citymaster.city_name_e, dbo.nt_1_citymaster.state, dbo.nt_1_utr.amount, dbo.nt_1_utr.utr_no
+FROM            dbo.nt_1_citymaster LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS mill ON dbo.nt_1_citymaster.cityid = mill.cityid RIGHT OUTER JOIN
+                         dbo.nt_1_utr ON mill.accoid = dbo.nt_1_utr.mc
+                 where dbo.nt_1_utr.Company_Code = :company_code and dbo.nt_1_utr.Year_Code = :year_code and dbo.nt_1_utr.doc_no = :doc_no
+                                 '''
+            )
+        additional_data = db.session.execute(text(query), {"company_code": company_code, "year_code": year_code, "doc_no": doc_no})
+
+        additional_data_rows = additional_data.fetchall()
+        
+        all_data = [dict(row._mapping) for row in additional_data_rows]
+
+        for data in all_data:
+            if 'doc_date' in data:
+                data['doc_date'] = data['doc_date'].strftime('%Y-%m-%d') if data['doc_date'] else None
+
+        response = {
+            "all_data": all_data
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500

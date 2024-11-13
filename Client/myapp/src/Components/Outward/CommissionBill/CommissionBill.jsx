@@ -63,11 +63,11 @@ const CommissionBill = () => {
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
 
+  const selectedfilter = location.state?.tranType;
+  const [tranType, setTranType] = useState(selectedfilter);
+
   const selectedVoucherNo = location.state?.selectedVoucherNo;
   const selectedVoucherType = location.state?.selectedVoucherType;
-
-  const selectedfilter = location.state?.selectedfilter;
-  const [tranType, setTranType] = useState(selectedfilter);
 
   const TranTypeInputRef = useRef(null);
   const isTDSRef = useRef(null);
@@ -202,7 +202,6 @@ const CommissionBill = () => {
     }));
   };
 
-
   const checkMatchStatus = async (ac_code, company_code, year_code) => {
     try {
       const { data } = await axios.get(
@@ -224,54 +223,54 @@ const CommissionBill = () => {
   };
 
   const handleAcCode = async (code, accoid) => {
-    debugger
+    debugger;
     setSupplier(code);
     try {
-        // Fetch the match status from the API
-        const matchStatus = await checkMatchStatus(code, companyCode, Year_Code);
-        const match = matchStatus === "TRUE";
+      // Fetch the match status from the API
+      const matchStatus = await checkMatchStatus(code, companyCode, Year_Code);
+      const match = matchStatus === "TRUE";
 
-        // Log the match status and any change in the GST rate
-        console.log("Match Status:", match, "Current GST Rate:", GstRate);
+      // Log the match status and any change in the GST rate
+      console.log("Match Status:", match, "Current GST Rate:", GstRate);
 
-        // Calculate new GST rates based on the match status
-        const rate = parseFloat(GstRate) || 0;
-        let newFormData = {
-            ...formData,
-            ac_code: code,
-            ac: accoid,
-            gst_code: formData.gst_code, // Assuming gst_code is being managed separately
-            cgst_rate: match ? rate / 2 : 0,
-            sgst_rate: match ? rate / 2 : 0,
-            igst_rate: match ? 0 : rate,
-        };
+      // Calculate new GST rates based on the match status
+      const rate = parseFloat(GstRate) || 0;
+      let newFormData = {
+        ...formData,
+        ac_code: code,
+        ac: accoid,
+        gst_code: formData.gst_code, // Assuming gst_code is being managed separately
+        cgst_rate: match ? rate / 2 : 0,
+        sgst_rate: match ? rate / 2 : 0,
+        igst_rate: match ? 0 : rate,
+      };
 
-        // Update match status and recalculate dependent GST amounts
-        setMatchStatus(match);
-        setFormData(newFormData);
-        calculateAndSetGSTAmounts(newFormData);
+      // Update match status and recalculate dependent GST amounts
+      setMatchStatus(match);
+      setFormData(newFormData);
+      calculateAndSetGSTAmounts(newFormData);
     } catch (error) {
-        console.error("Error in handleAcCode:", error);
-        toast.error("Failed to update account code details.");
+      console.error("Error in handleAcCode:", error);
+      toast.error("Failed to update account code details.");
     }
-};
-const calculateAndSetGSTAmounts = async (formData) => {
-  // Assuming `calculateGSTAmounts` needs to use the new rates to update other values
-  const taxableAmount = parseFloat(formData.texable_amount) || 0;
-  const cgstAmount = (taxableAmount * formData.cgst_rate) / 100;
-  const sgstAmount = (taxableAmount * formData.sgst_rate) / 100;
-  const igstAmount = (taxableAmount * formData.igst_rate) / 100;
-
-  const updatedFormData = {
-    ...formData,
-    cgst_amount: cgstAmount,
-    sgst_amount: sgstAmount,
-    igst_amount: igstAmount
   };
+  const calculateAndSetGSTAmounts = async (formData) => {
+    // Assuming `calculateGSTAmounts` needs to use the new rates to update other values
+    const taxableAmount = parseFloat(formData.texable_amount) || 0;
+    const cgstAmount = (taxableAmount * formData.cgst_rate) / 100;
+    const sgstAmount = (taxableAmount * formData.sgst_rate) / 100;
+    const igstAmount = (taxableAmount * formData.igst_rate) / 100;
 
-  // Now updating the formData state with the new calculated values
-  setFormData(updatedFormData);
-};
+    const updatedFormData = {
+      ...formData,
+      cgst_amount: cgstAmount,
+      sgst_amount: sgstAmount,
+      igst_amount: igstAmount,
+    };
+
+    // Now updating the formData state with the new calculated values
+    setFormData(updatedFormData);
+  };
 
   const handleUnitCode = (code, accoid) => {
     setUnit(code);
@@ -301,34 +300,37 @@ const calculateAndSetGSTAmounts = async (formData) => {
   };
 
   const handleGSTCode = async (code, Rate) => {
-    const rate = parseFloat(Rate) || 0;  // Simplified since both conditions were identical
+    const rate = parseFloat(Rate) || 0; // Simplified since both conditions were identical
 
     try {
-        // Check if the GST state codes match and then calculate the tax rates accordingly
-        const sameState = await checkMatchStatus(formData.ac_code, companyCode, Year_Code);
-        console.log("GST State Match:", sameState);
+      // Check if the GST state codes match and then calculate the tax rates accordingly
+      const sameState = await checkMatchStatus(
+        formData.ac_code,
+        companyCode,
+        Year_Code
+      );
+      console.log("GST State Match:", sameState);
 
-        const newFormData = {
-            ...formData,
-            gst_code: code,
-            cgst_rate: sameState ? rate / 2 : 0,
-            sgst_rate: sameState ? rate / 2 : 0,
-            igst_rate: sameState ? 0 : rate,
-        };
+      const newFormData = {
+        ...formData,
+        gst_code: code,
+        cgst_rate: sameState ? rate / 2 : 0,
+        sgst_rate: sameState ? rate / 2 : 0,
+        igst_rate: sameState ? 0 : rate,
+      };
 
-        setGstRateCode(code);
-        setGstRate(rate);
-        setFormData(newFormData);
+      setGstRateCode(code);
+      setGstRate(rate);
+      setFormData(newFormData);
 
-        // Re-calculate dependent GST amounts using the updated rates
-        calculateAndSetGSTAmounts(newFormData);
+      // Re-calculate dependent GST amounts using the updated rates
+      calculateAndSetGSTAmounts(newFormData);
     } catch (error) {
-        // Log and display an error message
-        console.error("Error handling GST Code change:", error);
-        toast.error("Failed to update GST details. Please try again.");
+      // Log and display an error message
+      console.error("Error handling GST Code change:", error);
+      toast.error("Failed to update GST details. Please try again.");
     }
-};
-
+  };
 
   const handleMillCode = (code, accoid) => {
     setFormData((prevState) => ({
@@ -388,14 +390,9 @@ const calculateAndSetGSTAmounts = async (formData) => {
     return saleRate - millRate;
   };
 
- 
-  const calculateTenderDiffRateAmount = (
-    rDiffTenderRate,
-    qntl
-  ) => {
+  const calculateTenderDiffRateAmount = (rDiffTenderRate, qntl) => {
     return rDiffTenderRate * qntl;
   };
-
 
   const calculateResaleRate = (resale_commission, qntl) => {
     return resale_commission * qntl;
@@ -444,22 +441,17 @@ const calculateAndSetGSTAmounts = async (formData) => {
   };
 
   const calculateTDSAmount = (taxable, tdsRate) => {
-    debugger
+    debugger;
     return (taxable * tdsRate) / 100;
   };
 
-  const calculateNetPayable = (
-    billAmount,
-    tcsAmount,
-    hasTCS,
-  ) => {
+  const calculateNetPayable = (billAmount, tcsAmount, hasTCS) => {
     if (hasTCS) {
       return billAmount + tcsAmount;
     }
     return billAmount;
   };
 
- 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prevState) => ({
@@ -467,19 +459,19 @@ const calculateAndSetGSTAmounts = async (formData) => {
       [name]: value,
     }));
   };
-  
+
   const handleKeyDownCalculations = async (event) => {
     if (event.key === "Tab") {
       const { name, value } = event.target;
       let newFormData = { ...formData };
-  
+
       const sameState = await checkMatchStatus(
         formData.ac_code,
         companyCode,
         Year_Code
       );
       console.log("Same state GST:", sameState);
-  
+
       if (
         [
           "Frieght_Rate",
@@ -503,24 +495,37 @@ const calculateAndSetGSTAmounts = async (formData) => {
         const misc_Amount = parseFloat(formData.misc_amount) || 0;
         const purc_rate = parseFloat(formData.purc_rate) || 0;
         const TDS = parseFloat(formData.TDS) || 0;
-  
-        const rDiffTenderRate = calculateRDiffTenderRate(saleRate, millRate, purc_rate);
-        const tenderDiffRate = calculateTenderDiffRateAmount(rDiffTenderRate, qntl);
+
+        const rDiffTenderRate = calculateRDiffTenderRate(
+          saleRate,
+          millRate,
+          purc_rate
+        );
+        const tenderDiffRate = calculateTenderDiffRateAmount(
+          rDiffTenderRate,
+          qntl
+        );
         const packing = parseInt(formData.packing) || 0;
         const bag = calculateBags(qntl, packing);
         const freightAmt = calculateFreight(freightRate, qntl);
         const resale_rate = calculateResaleRate(resale_commission, qntl);
         const subtotal = calculateSubtotal(rDiffTenderRate, qntl, resale_rate);
         const taxable = calculateTaxable(subtotal, freightAmt);
-        
+
         const cgstRate = parseFloat(formData.cgst_rate) || 0;
         const sgstRate = parseFloat(formData.sgst_rate) || 0;
         const igstRate = parseFloat(formData.igst_rate) || 0;
-  
-        const cgstAmount = sameState ? calculateCGSTAmount(taxable, cgstRate) : 0;
-        const sgstAmount = sameState ? calculateSGSTAmount(taxable, sgstRate) : 0;
-        const igstAmount = !sameState ? calculateIGSTAmount(taxable, igstRate) : 0;
-  
+
+        const cgstAmount = sameState
+          ? calculateCGSTAmount(taxable, cgstRate)
+          : 0;
+        const sgstAmount = sameState
+          ? calculateSGSTAmount(taxable, sgstRate)
+          : 0;
+        const igstAmount = !sameState
+          ? calculateIGSTAmount(taxable, igstRate)
+          : 0;
+
         const billAmount = calculateBillAmount(
           taxable,
           cgstAmount,
@@ -529,18 +534,24 @@ const calculateAndSetGSTAmounts = async (formData) => {
           bankCommission,
           misc_Amount
         );
-  
-        const tcsRate = formData.IsTDS === "N" ? parseFloat(formData.TCS_Rate) : 0;
-        const tcsAmount = formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+
+        const tcsRate =
+          formData.IsTDS === "N" ? parseFloat(formData.TCS_Rate) : 0;
+        const tcsAmount =
+          formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
         const tdsBaseAmount = formData.TDS > 0 ? formData.TDS : taxable;
-        const tdsRate = formData.IsTDS === "Y" ? parseFloat(formData.TDS_Per) : 0;
-        const tdsAmount = formData.IsTDS === "Y" ? calculateTDSAmount(tdsBaseAmount, tdsRate) : 0;
+        const tdsRate =
+          formData.IsTDS === "Y" ? parseFloat(formData.TDS_Per) : 0;
+        const tdsAmount =
+          formData.IsTDS === "Y"
+            ? calculateTDSAmount(tdsBaseAmount, tdsRate)
+            : 0;
         // const tdsApplicableAmount = formData.IsTDS === "Y" ? calculateTDSApplicableAmount(TDS, tdsRate) : 0;
-  
+
         const hasTCS = tcsAmount > 0;
         const hasTDS = tdsAmount > 0;
         const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-  
+
         newFormData = {
           ...newFormData,
           bags: bag,
@@ -554,13 +565,13 @@ const calculateAndSetGSTAmounts = async (formData) => {
           igst_amount: igstAmount,
           bill_amount: billAmount,
           TCS_Amt: tcsAmount,
-          TDSAmount:tdsAmount,
+          TDSAmount: tdsAmount,
           TCS_Net_Payable: netPayable,
           TDS: TDS ? TDS : taxable,
           sale_rate: purc_rate > 0 ? 0 : saleRate,
         };
       }
-  
+
       if (
         [
           "cgst_rate",
@@ -581,14 +592,20 @@ const calculateAndSetGSTAmounts = async (formData) => {
         const igstRate = parseFloat(formData.igst_rate) || 0;
         const taxable = parseFloat(formData.texable_amount) || 0;
         const TDS = parseFloat(formData.TDS) || 0;
-  
-        const cgstAmount = sameState ? calculateCGSTAmount(taxable, cgstRate) : 0;
-        const sgstAmount = sameState ? calculateSGSTAmount(taxable, sgstRate) : 0;
-        const igstAmount = !sameState ? calculateIGSTAmount(taxable, igstRate) : 0;
-  
+
+        const cgstAmount = sameState
+          ? calculateCGSTAmount(taxable, cgstRate)
+          : 0;
+        const sgstAmount = sameState
+          ? calculateSGSTAmount(taxable, sgstRate)
+          : 0;
+        const igstAmount = !sameState
+          ? calculateIGSTAmount(taxable, igstRate)
+          : 0;
+
         const bankCommission = parseFloat(formData.BANK_COMMISSION) || 0;
         const misc_Amount = parseFloat(formData.misc_amount) || 0;
-  
+
         const billAmount = calculateBillAmount(
           taxable,
           cgstAmount,
@@ -597,18 +614,24 @@ const calculateAndSetGSTAmounts = async (formData) => {
           bankCommission,
           misc_Amount
         );
-  
-        const tcsRate = formData.IsTDS === "N" ? parseFloat(formData.TCS_Rate) : 0;
-        const tcsAmount = formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+
+        const tcsRate =
+          formData.IsTDS === "N" ? parseFloat(formData.TCS_Rate) : 0;
+        const tcsAmount =
+          formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
         const tdsBaseAmount = formData.TDS > 0 ? formData.TDS : taxable;
-        const tdsRate = formData.IsTDS === "Y" ? parseFloat(formData.TDS_Per) : 0;
-        const tdsAmount = formData.IsTDS === "Y" ? calculateTDSAmount(tdsBaseAmount, tdsRate) : 0;
+        const tdsRate =
+          formData.IsTDS === "Y" ? parseFloat(formData.TDS_Per) : 0;
+        const tdsAmount =
+          formData.IsTDS === "Y"
+            ? calculateTDSAmount(tdsBaseAmount, tdsRate)
+            : 0;
         // const tdsApplicableAmount = formData.IsTDS === "Y" ? calculateTDSApplicableAmount(TDS, tdsRate) : 0;
-  
+
         const hasTCS = tcsAmount > 0;
         const hasTDS = tdsAmount > 0;
         const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-  
+
         newFormData = {
           ...newFormData,
           cgst_rate: cgstRate,
@@ -623,18 +646,17 @@ const calculateAndSetGSTAmounts = async (formData) => {
           TDSAmount: tdsAmount,
           TDS: TDS ? TDS : taxable,
         };
-  
+
         await calculateAndSetGSTAmounts(newFormData);
       }
-  
+
       setFormData(newFormData);
     }
   };
-  
 
   const fetchLastRecord = (tranType) => {
     fetch(
-      `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
+      `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
     )
       .then((response) => {
         if (!response.ok) {
@@ -691,18 +713,18 @@ const calculateAndSetGSTAmounts = async (formData) => {
   };
 
   const fetchGSTRateCode = async () => {
-    debugger
+    debugger;
     try {
       const response = await axios.get(
         `http://localhost:8080/api/sugarian/gst_rate_master?Company_Code=${companyCode}`
       );
       const data = response.data;
       const item = data.find((item) => item.Doc_no === 1);
-  
+
       if (item) {
-        const rateWithoutPercent = parseFloat(item.Rate.replace('%', '')); // Remove % and convert to a number
+        const rateWithoutPercent = parseFloat(item.Rate.replace("%", "")); // Remove % and convert to a number
         setGstRate(rateWithoutPercent); // Set the numeric value (e.g., 5) to GstRate
-  
+
         return {
           code: item.Doc_no,
           accoid: item.gstid,
@@ -717,8 +739,6 @@ const calculateAndSetGSTAmounts = async (formData) => {
       return { code: null, accoid: null, label: null };
     }
   };
-  
-
 
   const handleAddOne = async () => {
     setAddOneButtonEnabled(false);
@@ -727,7 +747,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
     setEditButtonEnabled(false);
     setDeleteButtonEnabled(false);
     setIsEditing(true);
-    fetchLastRecord(tranType || selectedVoucherType);
+    fetchLastRecord(tranType);
     const itemCode = await fetchItemCode();
     const brokerCode = await fetchBrokerCode();
     const gstRateCode = await fetchGSTRateCode();
@@ -778,7 +798,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
     if (isEditMode) {
       axios
         .put(
-          `${API_URL}/update-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType|| selectedVoucherType}`,
+          `${API_URL}/update-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`,
           preparedData
         )
         .then((response) => {
@@ -835,7 +855,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
   const handleCancel = () => {
     axios
       .get(
-        `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType|| selectedVoucherType}`
+        `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
       )
       .then((response) => {
         const data = response.data;
@@ -883,12 +903,13 @@ const calculateAndSetGSTAmounts = async (formData) => {
     if (changeNoInputRef.current) {
       changeNoInputRef.current.focus();
     }
-    
   };
 
   const handleDelete = async () => {
     if (formData.link_no && formData.link_no !== "" && formData.link_no !== 0) {
-      toast.error(`This record has a reference in Tender No. ${formData.link_no}. Deletion not allowed.`);
+      toast.error(
+        `This record has a reference in Tender No. ${formData.link_no}. Deletion not allowed.`
+      );
       return;
     }
     const isConfirmed = window.confirm(
@@ -922,83 +943,13 @@ const calculateAndSetGSTAmounts = async (formData) => {
     navigate("/CommissionBill-utility");
   };
 
-
-  const getCommissionBillByDocNoAndType = async (doc_no, tranType) => {
+  const handlerecordDoubleClicked = async () => {
+    const voucherNo = selectedVoucherNo ? selectedVoucherNo:selectedRecord.doc_no;
     try {
       const response = await axios.get(
-        `${API_URL}/get-CommissionBillSelectedRecord`, {
-          params: {
-            Company_Code: companyCode,
-            doc_no: doc_no,
-            Year_Code: Year_Code,
-            Tran_Type: tranType,
-          }
-        }
+        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${voucherNo}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
       );
-      return response.data; // Return the data to use elsewhere
-    } catch (error) {
-      console.error("Error fetching Commission Bill data:", error);
-      throw error; // Propagate the error for further handling if needed
-    }
-  };
-  
-
-  // const handlerecordDoubleClicked = async () => {
-
-  //   const voucherNo = selectedVoucherNo || selectedRecord.doc_no;
-  //   try {
-  //     const response = await axios.get(
-  //       `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${voucherNo}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
-  //     );
-  //     const data = response.data;
-  //     newac_code = data.PartyCode;
-  //     SupplierName = data.PartyName;
-  //     newunit_code = data.Unitcode;
-  //     UnitName = data.UnitName;
-  //     BrokerName = data.brokername;
-  //     newbroker_code = data.broker_code;
-  //     TransportName = data.transportname;
-  //     newtransport_code = data.transportcode;
-  //     GstRateName = data.gstratename;
-  //     newgst_code = data.gstratecode;
-  //     MillName = data.millname;
-  //     newmill_code = data.millcode;
-  //     newnarration1 = data.narration1;
-  //     newnarration2 = data.narration2;
-  //     TdsName = data.tdsacname;
-  //     newTDS_Ac = data.tdsac;
-  //     ItemName = data.Itemname;
-  //     newitem_code = data.Itemcode;
-
-  //     setFormData({
-  //       ...formData,
-  //       ...data,
-  //       doc_date: formatDate(data.doc_date),
-  //     });
-
-  //     setIsEditing(false);
-  //   } catch (error) {
-  //     console.error("Error fetching data:", error);
-  //   }
-
-  //   setIsEditMode(false);
-  //   setAddOneButtonEnabled(true);
-  //   setEditButtonEnabled(true);
-  //   setDeleteButtonEnabled(true);
-  //   setBackButtonEnabled(true);
-  //   setSaveButtonEnabled(false);
-  //   setCancelButtonEnabled(false);
-  //   setUpdateButtonClicked(true);
-  //   setIsEditing(false);
-  // };
-
-  const handlerecordDoubleClicked = async () => {
-    const voucherNo = selectedVoucherNo || selectedRecord.doc_no;
-  
-    try {
-      const data = await getCommissionBillByDocNoAndType(voucherNo, tranType || selectedVoucherType);
-  
-      // Update your local variables or state based on the fetched data
+      const data = response.data;
       newac_code = data.PartyCode;
       SupplierName = data.PartyName;
       newunit_code = data.Unitcode;
@@ -1017,18 +968,18 @@ const calculateAndSetGSTAmounts = async (formData) => {
       newTDS_Ac = data.tdsac;
       ItemName = data.Itemname;
       newitem_code = data.Itemcode;
-  
+
       setFormData({
         ...formData,
         ...data,
         doc_date: formatDate(data.doc_date),
       });
-  
+
       setIsEditing(false);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
-  
+
     setIsEditMode(false);
     setAddOneButtonEnabled(true);
     setEditButtonEnabled(true);
@@ -1039,7 +990,6 @@ const calculateAndSetGSTAmounts = async (formData) => {
     setUpdateButtonClicked(true);
     setIsEditing(false);
   };
-  
   useEffect(() => {
     if (selectedRecord || selectedVoucherNo) {
       handlerecordDoubleClicked();
@@ -1047,14 +997,13 @@ const calculateAndSetGSTAmounts = async (formData) => {
       handleAddOne(); // If no record or voucher is selected, add a new one
     }
   }, [selectedRecord, selectedVoucherNo]);
-  
 
   const handleKeyDown = async (event) => {
     if (event.key === "Tab") {
       const changeNoValue = event.target.value;
       try {
         const response = await axios.get(
-          `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${changeNoValue}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
+          `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${changeNoValue}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
         );
         const data = response.data;
         if (data.doc_date) {
@@ -1090,7 +1039,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
   const handleFirstButtonClick = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/get-first-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
+        `${API_URL}/get-first-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -1136,7 +1085,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
   const handlePreviousButtonClick = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/get-previous-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType|| selectedVoucherType}`
+        `${API_URL}/get-previous-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
       );
 
       if (response.ok) {
@@ -1183,7 +1132,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
   const handleNextButtonClick = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/get-next-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType|| selectedVoucherType}`
+        `${API_URL}/get-next-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
       );
 
       if (response.ok) {
@@ -1230,7 +1179,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
   const handleLastButtonClick = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/get-last-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType|| selectedVoucherType}`
+        `${API_URL}/get-last-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -1274,7 +1223,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
   };
   const handleTenderNo = () => {
     // When Voucher_No is clicked, navigate to CommissionBill and pass formData (or other data)
-    navigate('/tender_head', {
+    navigate("/tender_head", {
       state: {
         selectedTenderNo: formData.link_no,
       },
@@ -1357,17 +1306,17 @@ const calculateAndSetGSTAmounts = async (formData) => {
               tabIndex={3}
             />
             <div onClick={handleTenderNo}>
-            <label htmlFor="link_no">Tender No.:</label>
-            <input
-              type="text"
-              id="link_no"
-              Name="link_no"
-              value={formData.link_no}
-              onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
-              tabIndex={4}
-            />
-            <lable>{formData.link_type}</lable>
+              <label htmlFor="link_no">Tender No.:</label>
+              <input
+                type="text"
+                id="link_no"
+                Name="link_no"
+                value={formData.link_no}
+                onChange={handleChange}
+                disabled={!isEditing && addOneButtonEnabled}
+                tabIndex={4}
+              />
+              <lable>{formData.link_type}</lable>
             </div>
             <label htmlFor="doc_date">Date:</label>
             <input
@@ -1437,7 +1386,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
               type="text"
               id="packing"
               Name="packing"
-              value={formData.packing }
+              value={formData.packing}
               onKeyDown={handleKeyDownCalculations}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
@@ -1558,7 +1507,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
               tabIndex={21}
             />
             <input
-             type="text"
+              type="text"
               id="commission_amount"
               Name="commission_amount"
               value={formData.commission_amount}
@@ -1712,10 +1661,7 @@ const calculateAndSetGSTAmounts = async (formData) => {
               value={formData.igst_rate}
               onChange={handleGSTCode}
               onKeyDown={handleKeyDownCalculations}
-              disabled={
-          
-                !isEditing && addOneButtonEnabled
-              }
+              disabled={!isEditing && addOneButtonEnabled}
               tabIndex={36}
             />
             <input
@@ -1789,7 +1735,6 @@ const calculateAndSetGSTAmounts = async (formData) => {
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={41}
             />
-            
           </div>
           <div className="form-group">
             <label htmlFor="IsTDS">Is TDS:</label>
@@ -1855,7 +1800,6 @@ const calculateAndSetGSTAmounts = async (formData) => {
               }
               tabIndex={46}
             />
-            
           </div>
           <div className="form-group">
             <label htmlFor="einvoiceno">Einvoice No:</label>

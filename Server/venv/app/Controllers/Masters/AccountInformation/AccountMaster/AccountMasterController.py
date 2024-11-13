@@ -59,7 +59,8 @@ def getdata_accountmaster():
                   dbo.nt_1_accountmaster.accoid
 FROM     dbo.nt_1_accountmaster LEFT OUTER JOIN
                   dbo.nt_1_citymaster ON dbo.nt_1_accountmaster.cityid = dbo.nt_1_citymaster.cityid
-                 where dbo.nt_1_accountmaster.Company_Code = :company_code 
+                 where dbo.nt_1_accountmaster.Company_Code = :company_code
+                 order by  dbo.nt_1_accountmaster.Ac_Code desc
                                  '''
             )
         additional_data = db.session.execute(text(query), {"company_code": company_code})

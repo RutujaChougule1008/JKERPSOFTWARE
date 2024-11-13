@@ -119,7 +119,7 @@ function CommissionBillUtility() {
       navigate("/commission-bill", {
         state: {
           selectedRecord,
-          tranType: selectedRecord.Tran_Type || tranType,
+          tranType,
         },
       });
     } else {
@@ -204,7 +204,7 @@ function CommissionBillUtility() {
                       key={post.doc_no}
                       className="row-item"
                       style={{ cursor: "pointer" }}
-                      onDoubleClick={() => handleRowClick(post.doc_no)}
+                      onDoubleClick={() => handleRowClick(post.doc_no, tranType)}
                     >
                       <TableCell>{post.doc_no}</TableCell>
                       <TableCell>{formatDate(post.doc_date)}</TableCell>

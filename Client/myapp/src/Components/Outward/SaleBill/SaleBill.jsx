@@ -815,11 +815,10 @@ const SaleBill = () => {
   const fetchCompanyGSTCode = async (company_code) => {
     try {
       const { data } = await axios.get(
-        `http://localhost:8080/get_company_by_code?company_code=${company_code}`
+        `${API_URL}/get_company_by_code?company_code=${company_code}`
       );
       setGstNo(data.GST);
     } catch (error) {
-      toast.error("Error while fetching company GST No.");
       console.error("Error:", error);
       setGstNo("");
     }

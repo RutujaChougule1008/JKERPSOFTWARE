@@ -5,12 +5,16 @@ import DataTableSearch from "../Common/HelpCommon/DataTableSearch";
 import DataTablePagination from "../Common/HelpCommon/DataTablePagination";
 import "../App.css";
 
-const CompanyCode = sessionStorage.getItem("Company_Code");
-const YearCode = sessionStorage.getItem("Year_Code");
+
 
 var lActiveInputFeild = "";
 
 const UTRLotnoHelp = ({ onAcCodeClick, name, Tenderno, tabIndexHelp, disabledFeild, Millcode, onTenderDetailsFetched}) => {
+
+    const API_URL = process.env.REACT_APP_API;
+    const CompanyCode = sessionStorage.getItem("Company_Code");
+    const YearCode = sessionStorage.getItem("Year_Code");
+
     const [showModal, setShowModal] = useState(false);
     const [popupContent, setPopupContent] = useState([]);
     const [enteredTenderno, setenteredTenderno] = useState("");
@@ -23,7 +27,7 @@ const UTRLotnoHelp = ({ onAcCodeClick, name, Tenderno, tabIndexHelp, disabledFei
 
     const fetchData = useCallback(async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/UtrLotno?CompanyCode=${CompanyCode}&MillCode=${Millcode}`);
+            const response = await axios.get(`${API_URL}/UtrLotno?CompanyCode=${CompanyCode}&MillCode=${Millcode}`);
             const data = response.data;
             
             setPopupContent(data);
@@ -250,11 +254,11 @@ const UTRLotnoHelp = ({ onAcCodeClick, name, Tenderno, tabIndexHelp, disabledFei
                                             onDoubleClick={() => handleRecordDoubleClick(item)}
                                         >
                                             <td>{item.Tender_No}</td>
-                                            <td>{item.Tender_DateConverted}</td>
+                                            <td>{item.Tender_Date}</td>
                                             <td>{item.Quantal}</td>
                                             <td>{item.Party_Bill_Rate}</td>
                                             
-                                            <td>{item.millamt1}</td>
+                                            <td>{item.millamount}</td>
                                             <td>{item.paidamount}</td>
                                             <td>{item.payableamount}</td>
                                             <td>{item.Year_Code}</td>

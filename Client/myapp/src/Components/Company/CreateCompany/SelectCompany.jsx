@@ -2,9 +2,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = process.env.REACT_APP_API_URL;
+
 
 const SelectCompany = () => {
+
+    const API_URL = process.env.REACT_APP_API;
     const [companies, setCompanies] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState(null);

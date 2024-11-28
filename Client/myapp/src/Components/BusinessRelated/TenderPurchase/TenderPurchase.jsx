@@ -1,5 +1,5 @@
 import React from "react";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
@@ -13,7 +13,6 @@ import { z } from "zod";
 import GSTRateMasterHelp from "../../../Helper/GSTRateMasterHelp";
 import SystemHelpMaster from "../../../Helper/SystemmasterHelp";
 import GradeMasterHelp from "../../../Helper/GradeMasterHelp";
-
 
 // Validation Part Using Zod Library
 const stringToNumber = z
@@ -184,7 +183,7 @@ const TenderPurchase = () => {
   const Year_Code = sessionStorage.getItem("Year_Code");
   const API_URL = process.env.REACT_APP_API;
 
-  const type = useRef(null);
+  const drpType = useRef(null);
 
   const navigate = useNavigate();
   //In utility page record doubleClicked that recod show for edit functionality
@@ -249,7 +248,7 @@ const TenderPurchase = () => {
 
   const [formData, setFormData] = useState(initialFormData);
 
-  const setFocusTaskdate = useRef(null);
+  
   const [isHandleChange, setIsHandleChange] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -312,6 +311,7 @@ const TenderPurchase = () => {
     tdsApplicable,
     gstCode
   ) => {
+    debugger;
     const {
       Quantal = 0,
       Packing = 50,
@@ -320,6 +320,7 @@ const TenderPurchase = () => {
       Excise_Rate = 0,
       TCS_Rate = 0,
       TDS_Rate = 0,
+      type = "M",
     } = updatedFormData;
 
     const quantal = parseFloat(Quantal) || 0;
@@ -335,7 +336,7 @@ const TenderPurchase = () => {
     const exciseAmount = exciseRate;
     const gstAmt = exciseAmount + millRate;
     const amount =
-      quantal * (formData.type === "M" ? millRate + exciseAmount : diff);
+      quantal * (type === "M" ? millRate + exciseAmount : diff);
 
     console.log("Excise Rate", exciseAmount);
 
@@ -345,7 +346,7 @@ const TenderPurchase = () => {
     if (tdsApplicable === "Y") {
       tdsAmt = quantal * millRate * (tdsRate / 100);
     } else {
-      tcsAmt = amount * (tcsRate / 100);
+      tcsAmt = quantal * ((type === "M" ? millRate + exciseAmount : purchaseRate + exciseAmount) * (tcsRate / 100));
     }
 
     // Calculate both regardless of TDS applicability
@@ -395,7 +396,7 @@ const TenderPurchase = () => {
       gstCode,
       gstRateCode
     );
-    const effectiveGstCode = gstCode || gstRateCode; 
+    const effectiveGstCode = gstCode || gstRateCode;
     const calculated = calculateValues(
       formData,
       formDataDetail,
@@ -404,44 +405,6 @@ const TenderPurchase = () => {
     );
     setCalculatedValues(calculated);
   }, [formData, formDataDetail, tdsApplicable, gstCode, gstRateCode]);
-
-  const calculateNetQuantal = (users) => {
-    return users
-      .filter((user) => user.rowaction !== "delete" && user.rowaction !== "DNU")
-      .reduce((sum, user) => sum + parseFloat(user.Quantal || 0), 0);
-  };
-
-  const calculateDetails = (quantal, packing, rate) => {
-    const bags = packing !== 0 ? (quantal / packing) * 100 : 0;
-    const item_Amount = quantal * rate;
-    return { bags, item_Amount };
-  };
-
-  const checkMatchStatus = async (ac_code, company_code, year_code) => {
-    try {
-      const { data } = await axios.get(
-        `${process.env.REACT_APP_API}/get_match_status`,
-        {
-          params: {
-            Ac_Code: ac_code,
-            Company_Code: company_code,
-            Year_Code: year_code,
-          },
-        }
-      );
-      return data.match_status;
-    } catch (error) {
-      toast.error("Error checking GST State Code match.");
-      console.error("Couldn't able to match GST State Code:", error);
-      return error;
-    }
-  };
-
-  const calculateTotalItemAmount = (users) => {
-    return users
-      .filter((user) => user.rowaction !== "delete" && user.rowaction !== "DNU")
-      .reduce((sum, user) => sum + parseFloat(user.item_Amount || 0), 0);
-  };
 
   const handleMill_Code = (code, accoid) => {
     setMillCode(code);
@@ -466,11 +429,11 @@ const TenderPurchase = () => {
     gstNo,
     TdsApplicable
   ) => {
-    // Update the state for Payment_To and TdsApplicable
+    
     setPaymentTo(code);
-    setTenderFrName(name); // Update Tender_From name
-    setVoucherByName(name); // Update Voucher_By name
-    setTenderDOName(name); // Update Tender_DO name
+    setTenderFrName(name); 
+    setVoucherByName(name); 
+    setTenderDOName(name); 
 
     setFormData((prevFormData) => {
       const shouldUpdateTenderFrom =
@@ -479,8 +442,6 @@ const TenderPurchase = () => {
         prevFormData.Voucher_By === prevFormData.Payment_To;
       const shouldUpdateTenderDO =
         prevFormData.Tender_DO === prevFormData.Payment_To;
-
-  
 
       const updatedFormData = {
         ...prevFormData,
@@ -548,7 +509,7 @@ const TenderPurchase = () => {
       bk: accoid,
     });
   };
-  const handleitemcode = (code, accoid) => {
+  const handleitemcode = (code, accoid, HSN, CategoryName, gst_code) => {
     setItemCode(code);
     setFormData({
       ...formData,
@@ -644,14 +605,18 @@ const TenderPurchase = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    
-
     setFormData((prevFormData) => {
       const updatedFormData = {
         ...prevFormData,
         [name]: value,
-        Party_Bill_Rate: name === "Purc_Rate" && (prevFormData.Party_Bill_Rate === prevFormData.Purc_Rate || !prevFormData.Party_Bill_Rate) ? value : prevFormData.Party_Bill_Rate,
       };
+  
+      // Update Party_Bill_Rate based on type and source field changes
+      if (name === "Mill_Rate" && prevFormData.type === 'M') {
+        updatedFormData.Party_Bill_Rate = value;
+      } else if (name === "Purc_Rate" && prevFormData.type !== 'M') {
+        updatedFormData.Party_Bill_Rate = value;
+      }
 
       try {
         SugarTenderPurchaseSchema.shape[name].parse(value);
@@ -707,6 +672,13 @@ const TenderPurchase = () => {
     });
   };
 
+  const handleGradeUpdate = (grade) => {
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      Grade: grade, // Update the Grade field
+    }));
+  };
+
   const handleChangeDetail = (e) => {
     const { name, value } = e.target;
     setFormDataDetail((prevFormDataDetail) => {
@@ -757,6 +729,7 @@ const TenderPurchase = () => {
   };
 
   const addUser = async (e) => {
+    debugger
     e.preventDefault();
 
     // Create the new user object with the latest calculations
@@ -1198,6 +1171,8 @@ const TenderPurchase = () => {
     }
   }, [formData.Quantal, gstCode]);
 
+
+
   let isProcessing = false; // Module-level flag to track processing state
 
   const handleAddOne = async () => {
@@ -1246,6 +1221,9 @@ const TenderPurchase = () => {
     selfAccoid = "";
     buyerPartyCode = "";
     buyer_party_name = "";
+    setTimeout(() => {
+      drpType.current?.focus();
+    }, 0);
 
     if (isProcessing) return; // Prevent further execution if already processing
 
@@ -2172,7 +2150,6 @@ const TenderPurchase = () => {
           tcs_rate: parseFloat(formData.TCS_Rate),
           Delivery_Type: dispatchType,
           ID: 1,
-          
         },
         ...prevUsers,
       ]);
@@ -2277,33 +2254,12 @@ const TenderPurchase = () => {
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={3}
-              ref={type}
+              ref={drpType}
             >
               <option value="R">Resale</option>
               <option value="M">Mill</option>
               <option value="W">With Payment</option>
               <option value="P">Party Bill Rate</option>
-            </select>
-          </div>
-          <div className="SugarTenderPurchase-col">
-            <label
-              htmlFor="Temptender"
-              className="SugarTenderPurchase-form-label"
-            >
-              Temp Tender
-            </label>
-            <select
-              type="text"
-              id="Temptender"
-              name="Temptender"
-              className="SugarTenderPurchase-form-control"
-              value={formData.Temptender}
-              onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
-              tabIndex={4}
-            >
-              <option value="N">No</option>
-              <option value="Y">Yes</option>
             </select>
           </div>
           <div className="SugarTenderPurchase-col">
@@ -2419,6 +2375,7 @@ const TenderPurchase = () => {
               onAcCodeClick={handleMill_Code}
               CategoryName={millCodeName}
               CategoryCode={newMill_Code}
+              Ac_type="M"
               tabIndexHelp={10}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2464,9 +2421,10 @@ const TenderPurchase = () => {
             <GradeMasterHelp
               name="Grade"
               onAcCodeClick={handleGrade}
-              CategoryName={newGrade || formData.Grade}
+              CategoryName={formData.Grade || newGrade}
               tabIndexHelp={13}
               disabledField={!isEditing && addOneButtonEnabled}
+              onCategoryChange={handleGradeUpdate}
             />
           </div>
           <div className="SugarTenderPurchase-col">
@@ -2556,7 +2514,7 @@ const TenderPurchase = () => {
               }`}
               value={formData.Purc_Rate}
               onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
+              disabled={!isEditing && addOneButtonEnabled ||  formData.type === 'M'}
               tabIndex={18}
             />
             {errors.Purc_Rate && (
@@ -2601,6 +2559,7 @@ const TenderPurchase = () => {
               onAcCodeClick={handleBp_Account}
               CategoryName={bpAcName}
               CategoryCode={newBp_Account}
+              Ac_type=""
               tabIndexHelp={20}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2645,6 +2604,7 @@ const TenderPurchase = () => {
               onAcCodeClick={handlePayment_To}
               CategoryName={paymentToName}
               CategoryCode={newPayment_To}
+              Ac_type=""
               tabIndexHelp={22}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2663,6 +2623,7 @@ const TenderPurchase = () => {
               CategoryCode={
                 newTender_From || newPayment_To || formData.Tender_From
               }
+              Ac_type=""
               tabIndexHelp={23}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2681,6 +2642,7 @@ const TenderPurchase = () => {
               onAcCodeClick={handleTender_DO}
               CategoryName={tenderDOName !== "" ? tenderDOName : tenderDONm}
               CategoryCode={newTender_DO || formData.Tender_DO}
+              Ac_type=""
               tabIndexHelp={24}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2697,6 +2659,7 @@ const TenderPurchase = () => {
               onAcCodeClick={handleVoucher_By}
               CategoryName={voucherByName || voucherbyName}
               CategoryCode={newVoucher_By || formData.Voucher_By}
+              Ac_type=""
               tabIndexHelp={25}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2714,6 +2677,7 @@ const TenderPurchase = () => {
                 formData.Broker === self_ac_Code ? self_acName : brokerName
               }
               CategoryCode={newBroker || self_ac_Code}
+              Ac_type=""
               tabIndexHelp={26}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
@@ -2959,6 +2923,7 @@ const TenderPurchase = () => {
                             CategoryName={selfAcCode ? selfAcName : billtoName}
                             CategoryCode={billTo || selfAcCode}
                             name="Buyer"
+                            Ac_type=""
                             tabIndexHelp={38}
                             className="account-master-help"
                             disabledFeild={!isEditing && addOneButtonEnabled}
@@ -2973,6 +2938,7 @@ const TenderPurchase = () => {
                             CategoryCode={shipTo || selfAcCode}
                             name="ShipTo"
                             tabIndexHelp={39}
+                            Ac_type=""
                             className="account-master-help"
                             disabledFeild={!isEditing && addOneButtonEnabled}
                           />
@@ -3009,6 +2975,7 @@ const TenderPurchase = () => {
                             }
                             name="Buyer_Party"
                             tabIndexHelp={39}
+                            Ac_type=""
                             className="account-master-help"
                             disabledFeild={!isEditing && addOneButtonEnabled}
                           />
@@ -3042,6 +3009,7 @@ const TenderPurchase = () => {
                           }
                           name="sub_broker"
                           tabIndexHelp={42}
+                          Ac_type=""
                           className="account-master-help"
                           disabledFeild={!isEditing && addOneButtonEnabled}
                         />
@@ -3317,7 +3285,7 @@ const TenderPurchase = () => {
                           <button
                             className="btn btn-warning"
                             onClick={() => editUser(user)}
-                            disabled={!isEditing || index===0}
+                            disabled={!isEditing || index === 0}
                             onKeyDown={(event) => {
                               if (event.key === "Enter") {
                                 editUser(user);
@@ -3335,7 +3303,7 @@ const TenderPurchase = () => {
                                 deleteModeHandler(user);
                               }
                             }}
-                            disabled={!isEditing || index===0}
+                            disabled={!isEditing || index === 0}
                             tabIndex="19"
                           >
                             Delete

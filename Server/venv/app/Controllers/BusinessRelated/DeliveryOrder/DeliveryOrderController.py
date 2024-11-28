@@ -625,6 +625,7 @@ async def insert_DeliveryOrder():
                     print('salebill', create_SaleBill_entry)
                     if status_code == 201:
                         data = response
+                        print('saleBillData...', data)
                         added_detailssb = data.get('addedDetails')
                         doc_nos = next((detail.get('doc_no') for detail in added_detailssb if 'doc_no' in detail), None)
                         saleid=next((detail.get('Saleid') for detail in added_detailssb if 'Saleid' in detail), None)
@@ -876,7 +877,7 @@ async def update_DeliveryOrder():
         updatedHeadCount = db.session.query(DeliveryOrderHead).filter(DeliveryOrderHead.doid == doid).update(headData)
         updated_DO_head = db.session.query(DeliveryOrderHead).filter(DeliveryOrderHead.doid == doid).one()
         updateddoc_no = updated_DO_head.doc_no
-        #print("updated_DO_head",updated_DO_head)
+        print("updated_DO_head",updateddoc_no)
 
         createdDetails = []
         updatedDetails = []
@@ -884,11 +885,11 @@ async def update_DeliveryOrder():
         
         for item in detailData:
             item['doid'] = updated_DO_head.doid
+            item['doc_no'] = updateddoc_no
 
             if 'rowaction' in item:
                 if item['rowaction'] == "add":
                     del item['rowaction']
-                    item['doc_no'] = updateddoc_no
                     new_detail = DeliveryOrderDetail(**item)
                     updated_DO_head.details.append(new_detail)
                     createdDetails.append(new_detail)
@@ -1075,7 +1076,7 @@ async def update_DeliveryOrder():
             if status_code == 200:
                 data =response
                 print('data',response)
-                added_details = data.get('addedDetails')
+                added_details = data.get('createdDetails')
                 doc_nos = next((detail.get('doc_no') for detail in added_details if 'doc_no' in detail), None)
                 purchaseid=next((detail.get('purchase') for detail in added_details if 'purchase' in detail), None)
                 headData['voucher_no']=doc_nos
@@ -1141,6 +1142,7 @@ async def update_DeliveryOrder():
 
                     if status_code == 201:
                         data = response
+                        print('Saleill response ',response)
                         added_detailssb = data.get('addedDetails')
                         doc_nos = next((detail.get('doc_no') for detail in added_detailssb if 'doc_no' in detail), None)
                         saleid=next((detail.get('Saleid') for detail in added_detailssb if 'Saleid' in detail), None)
@@ -1179,15 +1181,23 @@ async def update_DeliveryOrder():
                             'Tran_Type': new_sale_data['voucher_type'],
                             'doc_no':headData['voucher_no']
                                         }
+            print('doc_no',headData['voucher_no'])
 
-           
-            response, status_code = await async_put("http://localhost:8080/api/sugarian/update-CommissionBill",params=query_params,json=update_CommisionBill_entry)
+            if update_CommisionBill_entry.get('doc_no') and update_CommisionBill_entry.get('doc_no') != 0:  # This checks if doc_no is not None or empty
+                response, status_code = await async_put(
+        "http://localhost:8080/api/sugarian/update-CommissionBill", 
+                params=query_params, 
+                json=update_CommisionBill_entry  # Ensure this is the correct format
+    )
 
-            if status_code == 201:
-                db.session.commit()
-            else:
-                db.session.rollback()
-                return jsonify({"error": "Failed to update CommisionBill record", "details": response}),status_code
+                if status_code == 201:
+                    db.session.commit()  # Commit the transaction if the update was successful
+                else:
+                    db.session.rollback()  # Rollback if the update fails
+                    return jsonify({
+            "error": "Failed to update CommissionBill record", 
+            "details": response
+        }), status_code
             
 
 
@@ -1430,7 +1440,7 @@ def get_lastDO_navigation():
             return jsonify({"error": "Missing required parameters"}), 400
 
         # Use SQLAlchemy to get the last record from the Task table
-        last_DO = DeliveryOrderHead.query.filter_by(company_code=Company_Code,Year_Code=Year_Code).order_by(DeliveryOrderHead.doid.desc()).first()
+        last_DO = DeliveryOrderHead.query.filter_by(company_code=Company_Code,Year_Code=Year_Code).order_by(DeliveryOrderHead.doc_no.desc()).first()
         
         if not last_DO:
             return jsonify({"error": "No records found in Task_Entry table"}), 404

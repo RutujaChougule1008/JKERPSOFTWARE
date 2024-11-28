@@ -1505,6 +1505,7 @@ const SaleBill = () => {
                 CategoryName={partyName}
                 CategoryCode={partyCode}
                 name="Ac_Code"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </FormControl>
@@ -1520,7 +1521,7 @@ const SaleBill = () => {
                 CategoryName={billToName}
                 CategoryCode={billToCode}
                 name="Bill_To"
-
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </FormControl>
@@ -1536,7 +1537,7 @@ const SaleBill = () => {
                 CategoryName={unitName}
                 CategoryCode={unitCode}
                 name="Unit_Code"
-
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </FormControl>
@@ -1556,7 +1557,7 @@ const SaleBill = () => {
                   CategoryName={millName}
                   CategoryCode={millCode}
                   name="mill_code"
-
+                  Ac_type=""
                   disabledFeild={!isEditing && addOneButtonEnabled}
                 />
               </div>
@@ -1632,7 +1633,7 @@ const SaleBill = () => {
                   CategoryName={brokerName}
                   CategoryCode={brokerCode}
                   name="BROKER"
-
+                  Ac_type=""
                   disabledFeild={!isEditing && addOneButtonEnabled}
                 />
               </div>
@@ -2020,6 +2021,7 @@ const SaleBill = () => {
                   CategoryName={transportName}
                   CategoryCode={transportCode}
                   name="Transport_Code"
+                  Ac_type=""
                   disabledFeild={!isEditing && addOneButtonEnabled}
                 />
               </div>

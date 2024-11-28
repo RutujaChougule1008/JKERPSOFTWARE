@@ -9,10 +9,9 @@ import DataTablePagination from "../Common/HelpCommon/DataTablePagination";
 
 var lActiveInputFeild = "";
 
-const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, tabIndexHelp, disabledFeild }) => {
+const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, tabIndexHelp, disabledFeild,Ac_type}) => {
 
     const CompanyCode = sessionStorage.getItem("Company_Code");
-    
     const [showModal, setShowModal] = useState(false);
     const [popupContent, setPopupContent] = useState([]);
     const [enteredAcCode, setEnteredAcCode] = useState("");
@@ -25,18 +24,6 @@ const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, ta
     const itemsPerPage = 10;
     const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
     const [apiDataFetched, setApiDataFetched] = useState(false);
-
-
-    // const fetchData = useCallback(async () => {
-    //     try {
-    //         const response = await axios.get(`http://localhost:8080/api/sugarian/account_master_all?Company_Code=${CompanyCode}`);
-    //         const data = response.data;
-    //         setPopupContent(data);
-    //         setApiDataFetched(true);
-    //     } catch (error) {
-    //         console.error("Error fetching data:", error);
-    //     }
-    // }, []);
 
     const fetchAndOpenPopup = async () => {
         if (!apiDataFetched) {
@@ -55,7 +42,7 @@ const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, ta
 
     const fetchData = useCallback(async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/account_master_all?Company_Code=${CompanyCode}`);
+            const response = await axios.get(`http://localhost:8080/api/sugarian/account_master_all?Company_Code=${CompanyCode}&Ac_type=${Ac_type}`);
             const data = response.data;
             setPopupContent(data);
             setApiDataFetched(true);
@@ -238,6 +225,7 @@ const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, ta
                                     <th style={{ border: "1px solid #dee2e6", padding: "8px" }}>City Name</th>
                                     <th style={{ border: "1px solid #dee2e6", padding: "8px" }}>Mobile No</th>
                                     <th style={{ border: "1px solid #dee2e6", padding: "8px" }}>GST No</th>
+                                    <th style={{ border: "1px solid #dee2e6", padding: "8px" }}>Ac Type</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -256,6 +244,7 @@ const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, ta
                                         <td style={{ border: "1px solid #dee2e6", padding: "8px" }}>{item.cityname}</td>
                                         <td style={{ border: "1px solid #dee2e6", padding: "8px" }}>{item.Mobile_No}</td>
                                         <td style={{ border: "1px solid #dee2e6", padding: "8px" }}>{item.Gst_No}</td>
+                                        <td style={{ border: "1px solid #dee2e6", padding: "8px" }}>{item.Ac_type}</td>
                                     </tr>
                                 ))}
                             </tbody>

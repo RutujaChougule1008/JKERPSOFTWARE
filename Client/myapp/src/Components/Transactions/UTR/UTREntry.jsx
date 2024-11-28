@@ -6,29 +6,18 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
-import SystemHelpMaster from "../../../Helper/SystemmasterHelp";
 import { ToastContainer, toast } from "react-toastify";
 import { TextField, Grid, Checkbox, Box, Container } from "@mui/material";
 import "react-toastify/dist/ReactToastify.css";
-import "./UTREntry.css";
 import { HashLoader } from "react-spinners";
-import { z } from "zod";
 import UTRReport from "./UTRReport";
-
-const stringToNumber = z
-  .string()
-  .refine((value) => !isNaN(Number(value)), {
-    message: "This field must be a number",
-  })
-  .transform((value) => Number(value));
+import {useRecordLocking} from "../../../hooks/useRecordLocking"
 
 var lblBankname;
 var newbank_ac;
 var lblmillname;
 var newmill_code;
 var newLot_no;
-var selectedfilter = "";
-var globalTotalAmount = 0.0;
 
 const API_URL = process.env.REACT_APP_API;
 
@@ -38,7 +27,6 @@ const UTREntry = () => {
   const companyCode = sessionStorage.getItem("Company_Code");
   const Year_Code = sessionStorage.getItem("Year_Code");
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
-  const [saveButtonClicked, setSaveButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
   const [saveButtonEnabled, setSaveButtonEnabled] = useState(true);
   const [cancelButtonEnabled, setCancelButtonEnabled] = useState(true);
@@ -56,38 +44,22 @@ const UTREntry = () => {
   const [tenderDetails, setTenderDetails] = useState({});
   const [deleteMode, setDeleteMode] = useState(false);
   const [Tenderno, setTenderno] = useState("");
-  const [bancode, setbankcode] = useState("");
-  const [bankid, setbankid] = useState("");
-  const [millcode, setmillcode] = useState("");
-  const [millid, setmillid] = useState("");
+  const [bancode, setBankCode] = useState("");
+  const [bankid, setBankId] = useState("");
+  const [millcode, setMillCode] = useState("");
+  const [millid, setMillId] = useState("");
   const [lastTenderDetails, setLastTenderDetails] = useState([]);
   const [lastTenderData, setLastTenderData] = useState({});
   const [globalTotalAmount, setGlobalTotalAmount] = useState(0.0);
   const [diff, setDiff] = useState(0.0);
+  const [popupMode, setPopupMode] = useState("add");
 
-  const [bankDetails, setBankDetails] = useState({
-    lblBankname: "",
-    newbank_ac: "",
-  });
-  const [millDetails, setMillDetails] = useState({
-    lblmillname: "",
-    newmill_code: "",
-  });
-
-  const [accountCode, setAccountCode] = useState("");
   const navigate = useNavigate();
-  const [formDataDetail, setFormDataDetail] = useState({
-    grade_no: "",
-    amount: 0.0,
-    lotCompany_Code: 0,
-    lotYear_Code: 0,
-    Adjusted_Amt: 0.0,
-    Detail_Id: 1,
-    ln: null,
-  });
+
   //In utility page record doubleClicked that recod show for edit functionality
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+
   const initialFormData = {
     doc_no: "",
     doc_date: new Date().toISOString().split("T")[0],
@@ -117,29 +89,21 @@ const UTREntry = () => {
     paymentData: "",
     IsDeleted: 0,
   };
-  const handlebank_ac = (code, accoid) => {
-    //    setbankcode(code);
-    //    setbankid(accoid);
 
-    setBankDetails({ lblBankname: code, newbank_ac: accoid });
+  const [formDataDetail, setFormDataDetail] = useState({
+    grade_no: "",
+    amount: 0.0,
+    lotCompany_Code: 0,
+    lotYear_Code: 0,
+    Adjusted_Amt: 0.0,
+    Detail_Id: 1,
+    ln: null,
+  });
 
-    setFormData({
-      ...formData,
-      bank_ac: code,
-      ba: accoid,
-    });
-  };
-  const handlemill_code = (code, accoid) => {
-    setmillcode(code);
-    setmillid(accoid);
-
-    setFormData({
-      ...formData,
-      mill_code: code,
-      mc: accoid,
-    });
-  };
   const [formData, setFormData] = useState(initialFormData);
+
+   // Manage the lock-unlock record at the same time multiple users edit the same record.
+   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -148,6 +112,31 @@ const UTREntry = () => {
       return updatedFormData;
     });
   };
+
+  //Handling Bank Code Help
+  const handleBankCode = (code, accoid) => {
+    setBankCode(code);
+    setBankId(accoid);
+
+    setFormData({
+      ...formData,
+      bank_ac: code,
+      ba: accoid,
+    });
+  };
+
+  //Handling MillCode Help
+  const handleMillCode = (code, accoid) => {
+    setMillCode(code);
+    setMillId(accoid);
+
+    setFormData({
+      ...formData,
+      mill_code: code,
+      mc: accoid,
+    });
+  };
+
   const fetchLastRecord = () => {
     fetch(
       `${API_URL}/get-lastutrdata?Company_Code=${companyCode}&Year_Code=${Year_Code}`
@@ -186,7 +175,6 @@ const UTREntry = () => {
     newbank_ac = "";
     lblmillname = "";
     newmill_code = "";
-    setBankDetails({ lblBankname: "", newbank_ac: "" });
     setTimeout(() => {
       docDateRef.current?.focus();
     }, 0);
@@ -219,12 +207,10 @@ const UTREntry = () => {
       return;
     }
 
-    // Define request data
     const requestData = { head_data, detail_data };
     delete head_data.lot_no;
     delete head_data.utrid;
 
-    // Choose the appropriate API endpoint and method
     const apiEndpoint = isEditMode
       ? `${API_URL}/update-utr?utrid=${formData.utrid}`
       : `${API_URL}/insert-utr`;
@@ -233,7 +219,7 @@ const UTREntry = () => {
     apiMethod(apiEndpoint, requestData)
       .then((response) => {
         const successMessage = isEditMode
-          ? "Record updated successfully!"
+          ?   unlockRecord() && "Record updated successfully!"
           : "Record created successfully!";
         console.log(successMessage, response.data);
         toast.success(successMessage);
@@ -260,18 +246,40 @@ const UTREntry = () => {
       });
   };
 
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
-  };
+    //handle Edit record functionality.
+    const handleEdit = async () => {
+      axios.get(`${API_URL}/getutrByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}`)
+        .then((response) => {
+          const data = response.data;
+          const isLockedNew = data.utr_head.LockedRecord;
+          const isLockedByUserNew = data.utr_head.LockedUser;
+  
+          if (isLockedNew) {
+            console.log("isLockedNew",isLockedNew)
+            window.alert(`This record is locked by ${isLockedByUserNew}`);
+            return;
+          } else {
+            lockRecord()
+          }
+          setFormData({
+            ...formData,
+            ...data.utr_head
+          });
+          setIsEditMode(true);
+          setAddOneButtonEnabled(false);
+          setSaveButtonEnabled(true);
+          setCancelButtonEnabled(true);
+          setEditButtonEnabled(false);
+          setDeleteButtonEnabled(false);
+          setBackButtonEnabled(true);
+          setIsEditing(true);
+        })
+        .catch((error) => {
+          window.alert("This record is already deleted! Showing the previous record.");
+        });
+    };
+
   const handleCancel = async () => {
-    debugger;
     const response = await axios.get(
       `${API_URL}/get-lastutrdata?Company_Code=${companyCode}&Year_Code=${Year_Code}`
     );
@@ -281,23 +289,18 @@ const UTREntry = () => {
       const detailsArray = Array.isArray(last_details_data)
         ? last_details_data
         : [];
-      console.log("detailsArray", detailsArray);
 
-      // lblBankname = data.labels.bankAcName;
+      lblBankname = data.labels.bankAcName;
       lblmillname = data.labels.millName;
-      // newbank_ac = data.last_head_data.bank_ac;
+      newbank_ac = data.last_head_data.bank_ac;
       newmill_code = data.last_head_data.mill_code;
       newLot_no = data.last_details_data.lot_no;
-
-      setBankDetails({
-        lblBankname: data.labels.bankAcName,
-        newbank_ac: data.last_head_data.bank_ac,
-      });
 
       setFormData((prevData) => ({
         ...prevData,
         ...data.last_head_data,
       }));
+      unlockRecord();
       setUsers([...users, data.last_details_data]);
       const totalItemAmount = detailsArray.reduce(
         (total, user) => total + parseFloat(user.amount),
@@ -309,7 +312,7 @@ const UTREntry = () => {
       setDiff(totalDiff.toFixed(2));
       setLastTenderData(data.last_head_data || {});
       setLastTenderDetails(detailsArray);
-      console.log("Tender Details", lastTenderDetails);
+      
     } else {
       toast.error(
         "Failed to fetch last data:",
@@ -317,7 +320,6 @@ const UTREntry = () => {
         response.statusText
       );
     }
-
     setIsEditing(false);
     setIsEditMode(false);
     setAddOneButtonEnabled(true);
@@ -330,37 +332,68 @@ const UTREntry = () => {
   };
 
   const handleDelete = async () => {
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete this UtrEntry ${formData.doc_no}?`
-    );
+    axios.get(`${API_URL}/getutrByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}`)
+        .then(async (response) => {
+            const data = response.data;
+            const isLockedNew = data.utr_head.LockedRecord;
+            const isLockedByUserNew = data.utr_head.LockedUser;
+  
+            if (isLockedNew) {
+                console.log("isLockedNew", isLockedNew);
+                window.alert(`This record is locked by ${isLockedByUserNew}`);
+                return;
+            }
 
-    if (isConfirmed) {
-      setIsEditMode(false);
-      setAddOneButtonEnabled(true);
-      setEditButtonEnabled(true);
-      setDeleteButtonEnabled(true);
-      setBackButtonEnabled(true);
-      setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
+            const isConfirmed = window.confirm(`Are you sure you want to delete this UtrEntry ${formData.doc_no}?`);
 
-      try {
-        const deleteApiUrl = `${API_URL}/delete_data_by_utrid?utrid=${formData.utrid}&Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${formData.doc_no}`;
-        const response = await axios.delete(deleteApiUrl);
-        toast.success("Record deleted successfully!");
-        handleCancel();
-      } catch (error) {
-        toast.error("Deletion cancelled");
-        console.error("Error during API call:", error);
-      }
-    } else {
-      console.log("Deletion cancelled");
-    }
-  };
+            if (isConfirmed) {
+                setIsEditMode(false);
+                setAddOneButtonEnabled(true);
+                setEditButtonEnabled(true);
+                setDeleteButtonEnabled(true);
+                setBackButtonEnabled(true);
+                setSaveButtonEnabled(false);
+                setCancelButtonEnabled(false);
+
+                try {
+                    const deleteApiUrl = `${API_URL}/delete_data_by_utrid?utrid=${formData.utrid}&Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${formData.doc_no}`;
+                    const response = await axios.delete(deleteApiUrl);
+                    toast.success("Record deleted successfully!");
+                    handleCancel();
+                } catch (error) {
+                    toast.error("Deletion failed");
+                    console.error("Error during API call:", error);
+                }
+            } else {
+                console.log("Deletion cancelled");
+            }
+        })
+        .catch((error) => {
+            console.error("Error fetching record lock status:", error);
+            toast.error("Error fetching record status");
+        });
+};
+
+useEffect(() => {
+  const totalDiff = (parseFloat(formData.amount) || 0) - parseFloat(globalTotalAmount);
+  setDiff(totalDiff.toFixed(2));
+}, [formData.amount, globalTotalAmount]);
+
 
   const handleBack = () => {
     navigate("/utrentry-Utility");
   };
-  const openPopup = () => {
+
+  const handleChangeDetail = (event) => {
+    const { name, value } = event.target;
+    setFormDataDetail((prevDetail) => ({
+      ...prevDetail,
+      [name]: value,
+    }));
+  };
+
+  //Detail Part Functionality
+  const openPopup = (mode) => {
     const initialAmount = users.length === 0 ? formData.amount : diff;
 
     setFormDataDetail((prevDetail) => ({
@@ -368,7 +401,11 @@ const UTREntry = () => {
       amount: initialAmount,
     }));
 
+    setPopupMode(mode);
     setShowPopup(true);
+    if (mode === "add") {
+      clearForm();
+    }
   };
 
   //close popup function
@@ -378,6 +415,39 @@ const UTREntry = () => {
     clearForm();
   };
 
+  //Handling PurchaseNumber Help
+  const handlePurcno = (Tenderno, Tenderid) => {
+    setTenderno(Tenderno);
+
+    setFormData({
+      ...formData,
+      lot_no: Tenderno,
+    });
+  };
+
+  //Fetching Details Of Selected PurchaseNo
+  const handleTenderDetailsFetched = (details) => {
+    setTenderDetails(details.last_details_data[0]);
+
+    const newData = {
+      grade_no: details.last_details_data[0].Grade,
+
+      lotCompany_Code: details.last_details_data[0].Company_Code,
+      lotYear_Code: details.last_details_data[0].Year_Code,
+      ln: details.last_details_data[0].tenderid,
+      Adjusted_Amt: details.last_details_data[0].Packing,
+      lot_no: details.last_details_data[0].Tender_No,
+    };
+
+    setFormDataDetail((prevState) => ({
+      ...prevState,
+      ...newData,
+    }));
+
+    return newData;
+  };
+
+  //Add Records In Detail
   const addUser = async () => {
     const newUser = {
       id: users.length > 0 ? Math.max(...users.map((user) => user.id)) + 1 : 1,
@@ -414,12 +484,10 @@ const UTREntry = () => {
     });
   };
 
+  //Edit Record In Detail
   const editUser = (user) => {
-    debugger;
     setSelectedUser(user);
-    console.log("selectedUser", selectedUser);
     setTenderno(user.lot_no);
-    console.log("tender", Tenderno);
     setFormDataDetail({
       grade_no: user.grade_no || "",
       amount: user.amount || "",
@@ -429,16 +497,14 @@ const UTREntry = () => {
       ln: user.ln || "",
     });
 
-    console.log("amount", user.amount);
-
-    openPopup();
+    openPopup("edit");
   };
 
   useEffect(() => {
-    console.log("Tenderno In UseEffect", Tenderno);
     setTenderno(Tenderno);
   }, [Tenderno]);
 
+  //Setting Calculations For Amount and Diff
   useEffect(() => {
     if (showPopup) {
       const initialAmount =
@@ -460,39 +526,41 @@ const UTREntry = () => {
     }
   }, [showPopup, selectedUser, users, formData, diff]);
 
-  const openDelete = async (user) => {
-    let updatedUsers;
+  //Update Record In Detail
+  const updateUser = async () => {
+    const updatedUsers = users.map((user) => {
+      if (user.id === selectedUser.id) {
+        const updatedRowaction =
+          user.rowaction === "Normal" ? "update" : user.rowaction;
 
-    setDeleteMode(true);
-    setSelectedUser(user);
-
-    if (isEditMode && user.rowaction === "delete") {
-      updatedUsers = users.map((u) =>
-        u.id === user.id ? { ...u, rowaction: "Normal" } : u
-      );
-    } else {
-      updatedUsers = users.map((u) =>
-        u.id === user.id ? { ...u, rowaction: "add" } : u
-      );
-    }
-
-    setDiff((prevDiff) =>
-      (parseFloat(prevDiff) - parseFloat(user.amount)).toFixed(2)
-    );
-
-    setGlobalTotalAmount((prevTotal) =>
-      (parseFloat(prevTotal) + parseFloat(user.amount)).toFixed(2)
-    );
-
+        return {
+          ...user,
+          ...formDataDetail,
+          rowaction: updatedRowaction,
+        };
+      } else {
+        return user;
+      }
+    });
     setFormDataDetail({
-      ...formDataDetail,
+      ...updatedUsers,
+      lot_no: Tenderno,
     });
 
     setUsers(updatedUsers);
 
-    setSelectedUser({});
+    const totalItemAmount = updatedUsers.reduce(
+      (total, user) => total + parseFloat(user.amount || 0),
+      0
+    );
+    setGlobalTotalAmount(totalItemAmount.toFixed(2));
+    const totalDiff = (parseFloat(formData.amount) || 0) - totalItemAmount;
+    setDiff(totalDiff.toFixed(2));
+
+    closePopup();
   };
 
+  //Delete Records In Detail
   const deleteModeHandler = async (userToDelete) => {
     let updatedUsers;
 
@@ -530,22 +598,104 @@ const UTREntry = () => {
     setSelectedUser(userToDelete);
   };
 
+  //Open Records In Detail
+  const openDelete = async (user) => {
+    let updatedUsers;
+
+    setDeleteMode(true);
+    setSelectedUser(user);
+
+    if (isEditMode && user.rowaction === "delete") {
+      updatedUsers = users.map((u) =>
+        u.id === user.id ? { ...u, rowaction: "Normal" } : u
+      );
+    } else {
+      updatedUsers = users.map((u) =>
+        u.id === user.id ? { ...u, rowaction: "add" } : u
+      );
+    }
+
+    setDiff((prevDiff) =>
+      (parseFloat(prevDiff) - parseFloat(user.amount)).toFixed(2)
+    );
+
+    setGlobalTotalAmount((prevTotal) =>
+      (parseFloat(prevTotal) + parseFloat(user.amount)).toFixed(2)
+    );
+
+    setFormDataDetail({
+      ...formDataDetail,
+    });
+
+    setUsers(updatedUsers);
+
+    setSelectedUser({});
+  };
+
+  useEffect(() => {
+    if (selectedRecord) {
+      handlerecordDoubleClicked();
+    } else {
+      handleAddOne();
+    }
+  }, [selectedRecord]);
+
+  useEffect(() => {
+    if (selectedRecord) {
+      setUsers(
+        lastTenderDetails.map((detail) => ({
+          rowaction: "Normal",
+
+          utrdetailid: detail.utrdetailid,
+          lot_no: detail.lot_no || Tenderno,
+          grade_no: detail.grade_no,
+          amount: detail.amount,
+          lotCompany_Code: detail.lotCompany_Code,
+          Detail_Id: detail.Detail_Id,
+          Company_Code: companyCode,
+          Year_Code: Year_Code,
+          lotYear_Code: detail.lotYear_Code,
+          LTNo: 0,
+          Adjusted_Amt: detail.Adjusted_Amt,
+          ln: detail.ln,
+          id: detail.utrdetailid,
+        }))
+      );
+    }
+  }, [selectedRecord, lastTenderDetails]);
+
+  useEffect(() => {
+    setUsers(
+      lastTenderDetails.map((detail) => ({
+        rowaction: "Normal",
+        utrdetailid: detail.utrdetailid,
+        lot_no: detail.lot_no,
+        grade_no: detail.grade_no,
+        amount: detail.amount,
+        lotCompany_Code: detail.lotCompany_Code,
+        Detail_Id: detail.Detail_Id,
+        Company_Code: companyCode,
+        Year_Code: Year_Code,
+        lotYear_Code: detail.lotYear_Code,
+        LTNo: 0,
+        Adjusted_Amt: detail.Adjusted_Amt,
+        ln: detail.ln,
+        id: detail.utrdetailid,
+      }))
+    );
+  }, [lastTenderDetails]);
+
+  //get a particular record
   const handlerecordDoubleClicked = async () => {
     try {
       const response = await axios.get(
         `${API_URL}/getutrByid?Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${selectedRecord.utr_head_data.doc_no}`
       );
       const data = response.data;
-      console.log("utr_head_data", data.utr_head);
-      // lblBankname = data.labels.bankAcName;
+      lblBankname = data.labels.bankAcName;
       lblmillname = data.labels.millName;
-      // newbank_ac = data.utr_head.bank_ac;
+      newbank_ac = data.utr_head.bank_ac;
       newmill_code = data.utr_head.mill_code;
-
-      setBankDetails({
-        lblBankname: data.labels.bankAcName,
-        newbank_ac: data.utr_head.bank_ac,
-      });
 
       setFormData((prevData) => ({
         ...prevData,
@@ -580,127 +730,6 @@ const UTREntry = () => {
     setIsEditing(false);
   };
 
-  useEffect(() => {
-    if (selectedRecord) {
-      handlerecordDoubleClicked();
-    } else {
-      handleAddOne();
-    }
-  }, [selectedRecord]);
-
-  useEffect(() => {
-    if (selectedRecord) {
-      setUsers(
-        lastTenderDetails.map((detail) => ({
-          rowaction: "Normal",
-
-          utrdetailid: detail.utrdetailid,
-          lot_no: detail.lot_no || Tenderno,
-          grade_no: detail.grade_no,
-          amount: detail.amount,
-          lotCompany_Code: detail.lotCompany_Code,
-          Detail_Id: detail.Detail_Id,
-          Company_Code: companyCode,
-          Year_Code: Year_Code,
-          lotYear_Code: detail.lotYear_Code,
-          LTNo: 0,
-          Adjusted_Amt: detail.Adjusted_Amt,
-          ln: detail.ln,
-          id: detail.utrdetailid,
-        }))
-      );
-      console.log(lastTenderDetails);
-    }
-  }, [selectedRecord, lastTenderDetails]);
-
-  useEffect(() => {
-    setUsers(
-      lastTenderDetails.map((detail) => ({
-        rowaction: "Normal",
-        utrdetailid: detail.utrdetailid,
-        lot_no: detail.lot_no,
-        grade_no: detail.grade_no,
-        amount: detail.amount,
-        lotCompany_Code: detail.lotCompany_Code,
-        Detail_Id: detail.Detail_Id,
-        Company_Code: companyCode,
-        Year_Code: Year_Code,
-        lotYear_Code: detail.lotYear_Code,
-        LTNo: 0,
-        Adjusted_Amt: detail.Adjusted_Amt,
-        ln: detail.ln,
-        id: detail.utrdetailid,
-      }))
-    );
-    console.log("lastTenderDetails", lastTenderDetails);
-  }, [lastTenderDetails]);
-
-  const updateUser = async () => {
-    debugger;
-    const updatedUsers = users.map((user) => {
-      if (user.id === selectedUser.id) {
-        const updatedRowaction =
-          user.rowaction === "Normal" ? "update" : user.rowaction;
-
-        return {
-          ...user,
-          ...formDataDetail,
-          rowaction: updatedRowaction,
-        };
-      } else {
-        return user;
-      }
-    });
-    setFormDataDetail({
-      ...updatedUsers,
-      lot_no: Tenderno,
-    });
-
-    setUsers(updatedUsers);
-
-    const totalItemAmount = updatedUsers.reduce(
-      (total, user) => total + parseFloat(user.amount || 0),
-      0
-    );
-    setGlobalTotalAmount(totalItemAmount.toFixed(2));
-    const totalDiff = (parseFloat(formData.amount) || 0) - totalItemAmount;
-    setDiff(totalDiff.toFixed(2));
-
-    closePopup();
-  };
-
-  const handlePurcno = (Tenderno, Tenderid) => {
-    setTenderno(Tenderno);
-
-    setFormData({
-      ...formData,
-      lot_no: Tenderno,
-    });
-  };
-  const handleTenderDetailsFetched = (details) => {
-    console.log("data", details.last_details_data[0]);
-
-    setTenderDetails(details.last_details_data[0]);
-
-    const newData = {
-      grade_no: details.last_details_data[0].Grade,
-
-      lotCompany_Code: details.last_details_data[0].Company_Code,
-      lotYear_Code: details.last_details_data[0].Year_Code,
-      ln: details.last_details_data[0].tenderid,
-      Adjusted_Amt: details.last_details_data[0].Packing,
-      lot_no: details.last_details_data[0].Tender_No,
-    };
-
-    setFormDataDetail((prevState) => ({
-      ...prevState,
-      ...newData,
-    }));
-
-    return newData;
-  };
-  //Calulate millamount
-
   //change No functionality to get that particular record
   const handleKeyDown = async (event) => {
     if (event.key === "Tab") {
@@ -710,16 +739,10 @@ const UTREntry = () => {
           `${API_URL}/getutrByid?Company_Code=${companyCode}&doc_no=${changeNoValue}&Year_Code=${Year_Code}`
         );
         const data = response.data;
-        console.log("utr_head_data", data.utr_head);
-        // lblBankname = data.labels.bankAcName;
+        lblBankname = data.labels.bankAcName;
         lblmillname = data.labels.millName;
-        // newbank_ac = data.utr_head.bank_ac;
+        newbank_ac = data.utr_head.bank_ac;
         newmill_code = data.utr_head.mill_code;
-
-        setBankDetails({
-          lblBankname: data.labels.bankAcName,
-          newbank_ac: data.utr_head.bank_ac,
-        });
 
         setFormData((prevData) => ({
           ...prevData,
@@ -742,13 +765,6 @@ const UTREntry = () => {
       }
     }
   };
-  const handleChangeDetail = (event) => {
-    const { name, value } = event.target;
-    setFormDataDetail((prevDetail) => ({
-      ...prevDetail,
-      [name]: value,
-    }));
-  };
 
   //Navigation Buttons
   const handleFirstButtonClick = async () => {
@@ -757,18 +773,12 @@ const UTREntry = () => {
         `${API_URL}/get-firstutr-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}`
       );
       if (response.ok) {
-        // response.ok checks if status is in the range 200-299
         const data = await response.json();
         // Access the first element of the array
-        // lblBankname = data.labels.bankAcName;
+        lblBankname = data.labels.bankAcName;
         lblmillname = data.labels.millName;
-        // newbank_ac = data.first_head_data.bank_ac;
+        newbank_ac = data.first_head_data.bank_ac;
         newmill_code = data.first_head_data.mill_code;
-
-        setBankDetails({
-          lblBankname: data.labels.bankAcName,
-          newbank_ac: data.first_head_data.bank_ac,
-        });
 
         setFormData((prevData) => ({
           ...prevData,
@@ -799,25 +809,17 @@ const UTREntry = () => {
 
   const handlePreviousButtonClick = async () => {
     try {
-      debugger;
-      // Use formData.Company_Code as the current company code
       const response = await fetch(
         `${API_URL}/get-previousutr-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&currentDocNo=${formData.doc_no}`
       );
 
       if (response.ok) {
-        // response.ok checks if status is in the range 200-299
         const data = await response.json();
 
-        // lblBankname = data.labels.bankAcName;
+        lblBankname = data.labels.bankAcName;
         lblmillname = data.labels.millName;
-        // newbank_ac = data.previous_head_data.bank_ac;
+        newbank_ac = data.previous_head_data.bank_ac;
         newmill_code = data.previous_head_data.mill_code;
-
-        setBankDetails({
-          lblBankname: data.labels.bankAcName,
-          newbank_ac: data.previous_head_data.bank_ac,
-        });
 
         setFormData((prevData) => ({
           ...prevData,
@@ -853,18 +855,11 @@ const UTREntry = () => {
       );
 
       if (response.ok) {
-        // response.ok checks if status is in the range 200-299
         const data = await response.json();
-        // Assuming setFormData is a function to update the form data
-        // lblBankname = data.labels.bankAcName;
+        lblBankname = data.labels.bankAcName;
         lblmillname = data.labels.millName;
-        // newbank_ac = data.next_head_data.bank_ac;
+        newbank_ac = data.next_head_data.bank_ac;
         newmill_code = data.next_head_data.mill_code;
-
-        setBankDetails({
-          lblBankname: data.labels.bankAcName,
-          newbank_ac: data.next_head_data.bank_ac,
-        });
 
         setFormData((prevData) => ({
           ...prevData,
@@ -899,18 +894,11 @@ const UTREntry = () => {
         `${API_URL}/get-lastutrdata?Company_Code=${companyCode}&Year_Code=${Year_Code}`
       );
       if (response.ok) {
-        // response.ok checks if status is in the range 200-299
         const data = await response.json();
-        // Access the first element of the array
-        // lblBankname = data.labels.bankAcName;
+        lblBankname = data.labels.bankAcName;
         lblmillname = data.labels.millName;
-        // newbank_ac = data.last_head_data.bank_ac;
+        newbank_ac = data.last_head_data.bank_ac;
         newmill_code = data.last_head_data.mill_code;
-
-        setBankDetails({
-          lblBankname: data.labels.bankAcName,
-          newbank_ac: data.last_head_data.bank_ac,
-        });
 
         setFormData((prevData) => ({
           ...prevData,
@@ -971,8 +959,11 @@ const UTREntry = () => {
             isFirstRecord={formData.Company_Code === 1}
           />
         </div>
-        <div style={{ marginBottom: '10px', marginRight: "10px" }}>
-          <UTRReport doc_no={formData.doc_no} disabledFeild={!addOneButtonEnabled} />
+        <div style={{ marginBottom: "10px", marginRight: "10px" }}>
+          <UTRReport
+            doc_no={formData.doc_no}
+            disabledFeild={!addOneButtonEnabled}
+          />
         </div>
       </div>
 
@@ -980,189 +971,185 @@ const UTREntry = () => {
         <form>
           <br />
           <div className="form-group ">
-            <Container maxWidth="sm">
-              <Box
-                component="form"
-                noValidate
-                autoComplete="off"
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1.5,
-                  width: 800,
-                  margin: "auto",
-                  padding: 3,
-                  boxShadow: 3,
-                  borderRadius: 2,
-                  backgroundColor: "background.paper",
-                }}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.5rem",
+                width: "1500px",
+                margin: "auto",
+                padding: "24px",
+                backgroundColor: "#fff",
+              }}
+            >
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  label="Change No"
+                  name="changeNo"
+                  variant="outlined"
+                  fullWidth
+                  onKeyDown={handleKeyDown}
+                  disabled={!addOneButtonEnabled}
+                  size="small"
+                  style={{ width: "150px" }}
+                />
+              </Grid>
+
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    label="Entry No"
+                    name="doc_no"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.doc_no}
+                    onChange={handleChange}
+                    disabled
+                    size="small"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    label="Doc Date"
+                    type="date"
+                    name="doc_date"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.doc_date}
+                    ref={docDateRef}
+                    onChange={handleChange}
+                    disabled={!isEditing && addOneButtonEnabled}
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
+
+              <Grid
+                item
+                xs={12}
+                sm={6}
+                md={6}
+                style={{ display: "flex", alignItems: "center" }}
               >
-                <Grid item xs={12} sm={1}>
+                <label
+                  htmlFor="bank_ac"
+                  style={{ marginRight: "10px", whiteSpace: "nowrap" }}
+                >
+                  Bank Code:
+                </label>
+                <AccountMasterHelp
+                  name="bank_ac"
+                  onAcCodeClick={handleBankCode}
+                  CategoryName={lblBankname}
+                  CategoryCode={newbank_ac}
+                  Ac_type="B"
+                  tabIndex={3}
+                  disabledFeild={!isEditing && addOneButtonEnabled}
+                />
+              </Grid>
+
+              {/* Mill Code Field */}
+              <Grid
+                item
+                xs={12}
+                sm={6}
+                md={6}
+                style={{ display: "flex", alignItems: "center" }}
+              >
+                <label
+                  htmlFor="mill_code"
+                  style={{ marginRight: "10px", whiteSpace: "nowrap" }}
+                >
+                  Mill Code:
+                </label>
+                <AccountMasterHelp
+                  name="mill_code"
+                  onAcCodeClick={handleMillCode}
+                  CategoryName={lblmillname}
+                  CategoryCode={newmill_code}
+                  Ac_type=""
+                  tabIndex={4}
+                  disabledFeild={!isEditing && addOneButtonEnabled}
+                />
+              </Grid>
+
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={4}>
                   <TextField
-                    label="Change No"
-                    name="changeNo"
+                    label="Amount:"
+                    name="amount"
                     variant="outlined"
                     fullWidth
-                    onKeyDown={handleKeyDown}
-                    disabled={!addOneButtonEnabled}
-                    size="small"
-                    style={{ width: "150px" }}
-                  />
-                </Grid>
-
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={6} md={3}>
-                    <TextField
-                      label="Entry No"
-                      name="doc_no"
-                      variant="outlined"
-                      fullWidth
-                      value={formData.doc_no}
-                      onChange={handleChange}
-                      disabled
-                      size="small"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6} md={3}>
-                    <TextField
-                      label="Doc Date"
-                      type="date"
-                      name="doc_date"
-                      variant="outlined"
-                      fullWidth
-                      value={formData.doc_date}
-                      onChange={handleChange}
-                      disabled={!isEditing && addOneButtonEnabled}
-                      size="small"
-                    />
-                  </Grid>
-                </Grid>
-
-                <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  md={6}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  <label
-                    htmlFor="bank_ac"
-                    style={{ marginRight: "10px", whiteSpace: "nowrap" }}
-                  >
-                    Bank Code:
-                  </label>
-                  <AccountMasterHelp
-                    name="bank_ac"
-                    onAcCodeClick={handlebank_ac}
-                    CategoryName={bankDetails.lblBankname}
-                    CategoryCode={bankDetails.newbank_ac}
-                    tabIndex={3}
-                    disabledFeild={!isEditing && addOneButtonEnabled}
-                  />
-                </Grid>
-
-                {/* Mill Code Field */}
-                <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  md={6}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  <label
-                    htmlFor="mill_code"
-                    style={{ marginRight: "10px", whiteSpace: "nowrap" }}
-                  >
-                    Mill Code:
-                  </label>
-                  <AccountMasterHelp
-                    name="mill_code"
-                    onAcCodeClick={handlemill_code}
-                    CategoryName={lblmillname}
-                    CategoryCode={newmill_code}
-                    tabIndex={4}
-                    disabledFeild={!isEditing && addOneButtonEnabled}
-                  />
-                </Grid>
-
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={6} md={4}>
-                    <TextField
-                      label="Amount:"
-                      name="amount"
-                      variant="outlined"
-                      fullWidth
-                      value={formData.amount}
-                      onChange={handleChange}
-                      disabled={!isEditing && addOneButtonEnabled}
-                      size="small"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={8}>
-                    <TextField
-                      label="UTR NO:"
-                      name="utr_no"
-                      variant="outlined"
-                      fullWidth
-                      value={formData.utr_no}
-                      onChange={handleChange}
-                      disabled={!isEditing && addOneButtonEnabled}
-                      size="small"
-                    />
-                  </Grid>
-                </Grid>
-
-                <Grid item xs={12} sm={12}>
-                  <TextField
-                    label="Narration Header:"
-                    name="narration_header"
-                    variant="outlined"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={formData.narration_header}
+                    value={formData.amount}
                     onChange={handleChange}
-                    autoComplete="off"
                     disabled={!isEditing && addOneButtonEnabled}
                     size="small"
                   />
                 </Grid>
-                <Grid item xs={12} sm={12}>
+                <Grid item xs={12} sm={6} md={8}>
                   <TextField
-                    label="Narration Footer:"
-                    name="narration_footer"
+                    label="UTR NO:"
+                    name="utr_no"
                     variant="outlined"
                     fullWidth
-                    multiline
-                    rows={2}
-                    value={formData.narration_footer}
+                    value={formData.utr_no}
                     onChange={handleChange}
-                    autoComplete="off"
                     disabled={!isEditing && addOneButtonEnabled}
                     size="small"
                   />
                 </Grid>
-                <Grid
-                  item
-                  xs={12}
-                  sm={1}
-                  style={{ display: "flex", alignItems: "center" }}
-                ></Grid>
+              </Grid>
 
-                <Grid item xs={12} sm={1}>
-                  <TextField
-                    label="Payment Detail:"
-                    name="paymentData"
-                    variant="outlined"
-                    fullWidth
-                    value={formData.paymentData}
-                    onChange={handleChange}
-                    size="small"
-                  />
-                </Grid>
-              </Box>
-            </Container>
+              <Grid item xs={12} sm={12}>
+                <TextField
+                  label="Narration Header:"
+                  name="narration_header"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={formData.narration_header}
+                  onChange={handleChange}
+                  autoComplete="off"
+                  disabled={!isEditing && addOneButtonEnabled}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={12}>
+                <TextField
+                  label="Narration Footer:"
+                  name="narration_footer"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={formData.narration_footer}
+                  onChange={handleChange}
+                  autoComplete="off"
+                  disabled={!isEditing && addOneButtonEnabled}
+                  size="small"
+                />
+              </Grid>
+              <Grid
+                item
+                xs={12}
+                sm={1}
+                style={{ display: "flex", alignItems: "center" }}
+              ></Grid>
+
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  label="Payment Detail:"
+                  name="paymentData"
+                  variant="outlined"
+                  fullWidth
+                  value={formData.paymentData}
+                  onChange={handleChange}
+                  size="small"
+                />
+              </Grid>
+            </div>
           </div>
         </form>
       </div>
@@ -1177,12 +1164,12 @@ const UTREntry = () => {
       <div className="">
         <button
           className="btn btn-primary"
-          onClick={openPopup}
+          onClick={() => openPopup("add")}
           disabled={!isEditing}
           tabIndex="16"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              openPopup();
+              openPopup("add");
             }
           }}
         >

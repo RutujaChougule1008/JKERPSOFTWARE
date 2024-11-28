@@ -3,14 +3,17 @@ from app import app, db
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 import os
+
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
 
 @app.route(API_URL+'/account_master_all', methods=['GET'])
 def account_master_all():
     try:
-        # Extract Company_Code from query parameters
+        # Extract Company_Code and Ac_type from query parameters
         Company_Code = request.args.get('Company_Code')
+        Ac_type = request.args.get('Ac_type')
+
         if Company_Code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
 
@@ -21,21 +24,35 @@ def account_master_all():
 
         # Start a database transaction
         with db.session.begin_nested():
-            query = db.session.execute(text('''
-                SELECT dbo.nt_1_accountmaster.Ac_Code, dbo.nt_1_accountmaster.Ac_Name_E, dbo.nt_1_accountmaster.Ac_type,
-                       dbo.nt_1_citymaster.city_name_e as cityname, dbo.nt_1_accountmaster.Gst_No, 
-                       dbo.nt_1_accountmaster.accoid, dbo.nt_1_accountmaster.Mobile_No,TDSApplicable, dbo.nt_1_accountmaster.GSTStateCode
-                FROM dbo.nt_1_accountmaster 
-                LEFT OUTER JOIN dbo.nt_1_citymaster 
-                ON dbo.nt_1_accountmaster.City_Code = dbo.nt_1_citymaster.city_code 
-                AND dbo.nt_1_accountmaster.company_code = dbo.nt_1_citymaster.company_code 
-                WHERE Locked=0 
-                AND dbo.nt_1_accountmaster.Company_Code=:company_code
-                ORDER BY Ac_Name_E DESC
-            '''), {'company_code': Company_Code})
+            if Ac_type:
+                query = db.session.execute(text(''' 
+                    SELECT dbo.nt_1_accountmaster.Ac_Code, dbo.nt_1_accountmaster.Ac_Name_E, dbo.nt_1_accountmaster.Ac_type,
+                           dbo.nt_1_citymaster.city_name_e as cityname, dbo.nt_1_accountmaster.Gst_No, 
+                           dbo.nt_1_accountmaster.accoid, dbo.nt_1_accountmaster.Mobile_No, TDSApplicable, dbo.nt_1_accountmaster.GSTStateCode
+                    FROM dbo.nt_1_accountmaster 
+                    LEFT OUTER JOIN dbo.nt_1_citymaster 
+                    ON dbo.nt_1_accountmaster.City_Code = dbo.nt_1_citymaster.city_code 
+                    AND dbo.nt_1_accountmaster.company_code = dbo.nt_1_citymaster.company_code 
+                    WHERE dbo.nt_1_accountmaster.Company_Code=:company_code  
+                    AND dbo.nt_1_accountmaster.Ac_type=:Ac_type 
+                    ORDER BY Ac_Name_E DESC
+                '''), {'company_code': Company_Code, 'Ac_type': Ac_type})
+            else:
+                query = db.session.execute(text(''' 
+                    SELECT dbo.nt_1_accountmaster.Ac_Code, dbo.nt_1_accountmaster.Ac_Name_E, dbo.nt_1_accountmaster.Ac_type,
+                           dbo.nt_1_citymaster.city_name_e as cityname, dbo.nt_1_accountmaster.Gst_No, 
+                           dbo.nt_1_accountmaster.accoid, dbo.nt_1_accountmaster.Mobile_No, TDSApplicable, dbo.nt_1_accountmaster.GSTStateCode
+                    FROM dbo.nt_1_accountmaster 
+                    LEFT OUTER JOIN dbo.nt_1_citymaster 
+                    ON dbo.nt_1_accountmaster.City_Code = dbo.nt_1_citymaster.city_code 
+                    AND dbo.nt_1_accountmaster.company_code = dbo.nt_1_citymaster.company_code 
+                    WHERE dbo.nt_1_accountmaster.Company_Code=:company_code
+                    ORDER BY Ac_Name_E DESC
+                '''), {'company_code': Company_Code})
 
             result = query.fetchall()
 
+        # Format the results into a response list
         response = []
         for row in result:
             response.append({

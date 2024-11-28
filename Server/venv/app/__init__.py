@@ -93,6 +93,9 @@ from app.Helpers.PurcNoFromReturnPurchaseHelp import *
 from app.Helpers.PurcNoFromReturnSale import *
 from app.Helpers.UTRLotnoHelp import *
 
+#Voucher No Help
+from app.Helpers.RecieptVoucherNoHelp import *
+
 #common API Routes
 from app.Common.CommonSugarPurchaseStatusCheck import *
 
@@ -107,6 +110,14 @@ from app.Controllers.EBuySugarian.EBuySugarUser.EBuySugarUserControllers import 
 
 #Pending Reports Routes
 from app.Reports.PendingReports.TenderWiseSauda import *
+#GSTUtilities Reports
+from app.Controllers.GSTUtilities.GSTUtilitiesController import *
+
+#Record Locked-Unlock APIS
+from app.Common.LockUnlockAPI.LockUnlockAPI import *
+
+#ewayBillGenerationData
+from app.Common.EWayBillNEInvoiceGen.EWayBillNEInvoiceGen import *
 
 upload_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 

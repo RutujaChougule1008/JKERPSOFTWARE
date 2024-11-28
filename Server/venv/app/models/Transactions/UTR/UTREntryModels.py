@@ -34,6 +34,8 @@ class UTRHead(db.Model):
     PaymentType = Column(String(4), nullable=True)
     paymentData = Column(Text, nullable=True)
     IsDeleted = Column(Integer, nullable=True)
+    LockedRecord = Column(Boolean, nullable=False, default=False)
+    LockedUser = Column(String(50),default='',nullable=True)
 
     details = db.relationship('UTRDetail', backref='Utrid', lazy=True)
 

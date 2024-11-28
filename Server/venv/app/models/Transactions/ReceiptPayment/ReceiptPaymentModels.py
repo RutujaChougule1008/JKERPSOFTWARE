@@ -12,6 +12,8 @@ class ReceiptPaymentHead(db.Model):
     Created_By = db.Column(db.String(50),nullable=True)
     Modified_By = db.Column(db.String(50),nullable=True)
     doc_date = db.Column(db.Date,nullable=True)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)
 
     details = db.relationship('ReceiptPaymentDetail', backref='receipPaymentHead', lazy=True)
 

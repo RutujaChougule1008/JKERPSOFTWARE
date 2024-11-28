@@ -25,8 +25,8 @@ def system_master():
         # Start a database transaction
         with db.session.begin_nested():
             query = db.session.execute(text('''
-                SELECT System_Code AS Category_Code, System_Name_E AS Category_Name, systemid AS accoid, HSN
-                FROM nt_1_systemmaster 
+                SELECT        System_Code AS Category_Code, System_Name_E AS Category_Name, systemid AS accoid, HSN, Gst_Code
+FROM            dbo.nt_1_systemmaster 
                 WHERE System_Type = :system_type 
                 AND Company_Code = :company_code;
             '''), {'system_type': SystemType, 'company_code': CompanyCode})
@@ -39,7 +39,8 @@ def system_master():
                 'Category_Code': row.Category_Code,
                 'Category_Name': row.Category_Name,
                 'accoid': row.accoid,
-                'HSN':row.HSN
+                'HSN':row.HSN,
+                'Gst_Code':row.Gst_Code
             })
 
         return jsonify(response)

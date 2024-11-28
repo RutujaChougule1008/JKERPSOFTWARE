@@ -68,7 +68,10 @@ import PendingReports from './Reports/PendingReports/PendingReports.jsx';
 import TenderReports from "./Reports/PendingReports/TenderReports.jsx"
 import UserCreationWithPermissionUtility from './Utilities/UserCreationWithPermission/UserCreationWithPermissionUtility.jsx';
 
-
+import GSTUtilitiesForm from './GSTUtilities/GstUtilities';
+import EwayBillGeneration from './EwayBillGeneration.jsx';
+import EWayBillNEInvoiceGen from './EWayBillNEInvoiceGen/EWayBillNEInvoiceGen.jsx';
+import EwayBills from './EWayBillNEInvoiceGen/EwayBills.jsx';
 const routes = [
   {
     path: '/create-utility',
@@ -395,6 +398,12 @@ const routes = [
   element: TenderReports
 },
 
+//GST Utilities
+{
+  path: '/gstutilities',
+  element: GSTUtilitiesForm
+},
+
 //eBuySugar
 {
   path: '/eBuySugarian-user-utility',
@@ -403,6 +412,12 @@ const routes = [
 {
   path: '/eBuySugarian-AcMaster-utility',
   element: EBuySugarAccountMasterUtility
+},
+
+//ewayBillGeneration
+{
+  path:'/multiple-sale-bill-against-single-payment',
+  element: EwayBills
 }
 ];
 

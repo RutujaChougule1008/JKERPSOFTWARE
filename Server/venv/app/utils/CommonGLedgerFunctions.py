@@ -96,14 +96,16 @@ FROM  dbo.nt_1_companyparameters
 #Create GLegder Effects
 def create_gledger_entry(data, amount, drcr, ac_code, accoid,ordercode,trans_type,doc_no,narration):
         doc_date = data.get('doc_date', data.get('Date'))
+        company_code = data.get('Company_Code') or data.get('company_code')
+        year_code = data.get('Year_Code') or data.get('year_code')
         return {
             "TRAN_TYPE": trans_type,
             "DOC_NO": doc_no,
             "DOC_DATE": doc_date,
             "AC_CODE": ac_code,
             "AMOUNT": amount,
-            "COMPANY_CODE": data['Company_Code'],
-            "YEAR_CODE": data['Year_Code'],
+            "COMPANY_CODE": company_code,
+            "YEAR_CODE":year_code,
             "ORDER_CODE": ordercode,
             "DRCR": drcr,
             "UNIT_Code": 0,
@@ -125,10 +127,12 @@ def create_gledger_entry(data, amount, drcr, ac_code, accoid,ordercode,trans_typ
 
 #GLedger 
 def send_gledger_entries(headData, gledger_entries,trans_type):
+    company_code = headData.get('Company_Code') or headData.get('company_code')
+    year_code = headData.get('Year_Code') or headData.get('year_code')
     query_params = {
-        'Company_Code': headData.get('Company_Code'),
+        'Company_Code': company_code,
         'DOC_NO': headData.get('doc_no'),
-        'Year_Code': headData.get('Year_Code'),
+        'Year_Code': year_code,
         'TRAN_TYPE': trans_type,
     }
     print("DOC_NO",headData.get('doc_no'))

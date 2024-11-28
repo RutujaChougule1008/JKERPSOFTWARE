@@ -195,6 +195,9 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         const bankCommission = parseFloat(formData.bank_commission) || 0;
         const billAmount = subTotal + parseFloat(cgstAmount) + parseFloat(sgstAmount) + parseFloat(igstAmount) +
             otherAmt + cashAdvance + bankCommission;
+        const freightRate = parseFloat(formData.LESS_FRT_RATE) || 0;
+        const formattedFreightRate = freightRate.toFixed(2);
+        const freightAmt = formattedFreightRate * quantalTotal
 
         const netPayable = (billAmount + parseFloat(tcsAmount)).toFixed(2);
         setFormData(prev => ({
@@ -207,7 +210,8 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             TCS_Amt: tcsAmount,
             TDS_Amt: tdsAmount,
             TCS_Net_Payable: netPayable,
-            NETQNTL: quantalTotal.toFixed(2)
+            NETQNTL: quantalTotal.toFixed(2),
+            freight:freightAmt.toFixed(2)
         }));
     };
 
@@ -272,6 +276,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
 
     const handleSaveOrUpdate = async () => {
+        debugger
         setIsEditing(true);
         setIsLoading(true);
 
@@ -279,7 +284,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             ...formData,
             subTotal: subTotal,
             NETQNTL: globalQuantalTotal,
-            GstRateCode: gstCode
+            GstRateCode: gstCode || GstRateCode
         };
 
         if (isEditMode) {
@@ -1146,16 +1151,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         });
     }
 
-    const handleFrom = (code, accoid) => {
-        setFrom(code)
-        newAcCode = code
-        setFormData({
-            ...formData,
-            Ac_Code: code,
-            ac: accoid
-        });
-
-    }
 
     const handleUnit = (code, accoid) => {
         setUnit(code);
@@ -1184,82 +1179,117 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         });
     }
 
+    const calculateAndUpdateFormData = async (subTotal, gstRate, matchStatus) => {
+        const cgstRate = gstRate / 2;
+        const sgstRate = gstRate / 2;
+        const igstRate = gstRate;
+    
+        const cgstAmount = parseFloat(calculateGSTAmount(subTotal, cgstRate)).toFixed(2);
+        const sgstAmount = parseFloat(calculateGSTAmount(subTotal, sgstRate)).toFixed(2);
+        const igstAmount = parseFloat(calculateGSTAmount(subTotal, igstRate)).toFixed(2);
+    
+        const TCSRate = parseFloat(formData.TCS_Rate) || 0;
+        const TDSRate = parseFloat(formData.TDS_Rate) || 0;
+    
+        let billAmount;
+        let netPayable;
+        let TCSAmount;
+        let TDSAmount;
+    
+        if (matchStatus === "TRUE") {
+            billAmount = parseFloat(subTotal) + parseFloat(cgstAmount) + parseFloat(sgstAmount) + parseFloat(formData.OTHER_AMT) + parseFloat(formData.cash_advance);
+            netPayable = billAmount.toFixed(2);
+            TCSAmount = billAmount * TCSRate / 100;
+            TDSAmount = subTotal * TDSRate / 100;
+    
+            setFormData(prevFormData => ({
+                ...prevFormData,
+                CGSTRate: cgstRate.toFixed(2),
+                SGSTRate: sgstRate.toFixed(2),
+                IGSTRate: "0.00",
+                CGSTAmount: cgstAmount,
+                SGSTAmount: sgstAmount,
+                IGSTAmount: "0.00",
+                Bill_Amount: billAmount,
+                TCS_Net_Payable: netPayable,
+                TCS_Amt: TCSAmount,
+                TDS_Amt: TDSAmount
+            }));
+        } else {
+            billAmount = parseFloat(subTotal) + parseFloat(igstAmount) + parseFloat(formData.OTHER_AMT) + parseFloat(formData.cash_advance);
+            netPayable = billAmount.toFixed(2);
+            TCSAmount = billAmount * TCSRate / 100;
+            TDSAmount = subTotal * TDSRate / 100;
+    
+            setFormData(prevFormData => ({
+                ...prevFormData,
+                CGSTRate: "0.00",
+                SGSTRate: "0.00",
+                IGSTRate: igstRate.toFixed(2),
+                CGSTAmount: "0.00",
+                SGSTAmount: "0.00",
+                IGSTAmount: igstAmount,
+                Bill_Amount: billAmount,
+                TCS_Net_Payable: netPayable,
+                TCS_Amt: TCSAmount,
+                TDS_Amt: TDSAmount
+            }));
+        }
+    };
+    
+    
     const handleGstCode = async (code, Rate) => {
-        debugger
+        debugger;
         setGstCode(code);
         setGstRate(Rate);
-
-        const updatedFormData = {
-            ...formData,
-        };
-
-
+    
+        setFormData(prevFormData => ({
+            ...prevFormData,
+            GstRateCode: code
+        }));
+    
         if (from != "" || FromCode != "") {
             const match_status = await fetchMatchStatus({
                 Company_Code: companyCode,
                 Year_Code: Year_Code,
-                Ac_Code: cancelButtonClicked ? FromCode : updatedFormData.Ac_Code
+                Ac_Code: cancelButtonClicked ? FromCode : from
             });
-
+    
             const gstRateDivide = parseFloat(Rate);
-
-            const cgstRate = gstRateDivide / 2;
-            const sgstRate = gstRateDivide / 2;
-            const igstRate = gstRateDivide;
-
-            const cgstAmount = parseFloat(calculateGSTAmount(subTotal, cgstRate)).toFixed(2);
-            const sgstAmount = parseFloat(calculateGSTAmount(subTotal, sgstRate)).toFixed(2);
-            const igstAmount = parseFloat(calculateGSTAmount(subTotal, igstRate)).toFixed(2);
-
-            const TCSRate = parseFloat(formData.TCS_Rate) || 0
-            const TDSRate = parseFloat(formData.TDS_Rate) || 0
-
-            let billAmount;
-            let netPayable;
-            let TCSAmount;
-            let TDSAmount;
-
-            if (match_status === "TRUE") {
-                billAmount = parseFloat(subTotal) + parseFloat(cgstAmount) + parseFloat(sgstAmount) + parseFloat(formData.OTHER_AMT) + parseFloat(formData.cash_advance);
-                netPayable = billAmount.toFixed(2);
-                TCSAmount = billAmount * TCSRate / 100
-                TDSAmount = subTotal * TDSRate / 100
-
-                setFormData({
-                    ...formData,
-                    CGSTRate: cgstRate.toFixed(2),
-                    SGSTRate: sgstRate.toFixed(2),
-                    IGSTRate: 0.00,
-                    CGSTAmount: cgstAmount,
-                    SGSTAmount: sgstAmount,
-                    IGSTAmount: 0.00,
-                    Bill_Amount: billAmount,
-                    TCS_Net_Payable: netPayable,
-                    TCS_Amt: TCSAmount,
-                    TDS_Amt: TDSAmount
-                });
-            } else {
-                billAmount = parseFloat(subTotal) + parseFloat(igstAmount) + parseFloat(formData.OTHER_AMT) + parseFloat(formData.cash_advance);
-                netPayable = billAmount.toFixed(2);
-                TCSAmount = billAmount * TCSRate / 100
-                TDSAmount = subTotal * TDSRate / 100
-                setFormData({
-                    ...formData,
-                    CGSTRate: 0.00,
-                    SGSTRate: 0.00,
-                    IGSTRate: igstRate.toFixed(2),
-                    CGSTAmount: 0.00,
-                    SGSTAmount: 0.00,
-                    IGSTAmount: igstAmount,
-                    Bill_Amount: billAmount,
-                    TCS_Net_Payable: netPayable,
-                    TCS_Amt: TCSAmount,
-                    TDS_Amt: TDSAmount
-                });
-            }
+    
+            await calculateAndUpdateFormData(subTotal, gstRateDivide,match_status);
         }
+    };
+    
+    const handleFrom = async (code, accoid) => {
+        setFrom(code);
+    
+        setFormData(prevFormData => ({
+            ...prevFormData,
+            Ac_Code: code,
+            ac: accoid
+        }));
+    
+        const matchStatusResult = await fetchMatchStatus({
+            Company_Code: companyCode,
+            Year_Code: Year_Code,
+            Ac_Code: code
+        });
 
-    }
+        let GSTRate = gstRate;
+
+        if (!GSTRate || GSTRate === 0) {
+          const cgstRate = parseFloat(formData.CGSTRate) || 0;
+          const sgstRate = parseFloat(formData.SGSTRate) || 0;
+          const igstRate = parseFloat(formData.IGSTRate) || 0;
+  
+          GSTRate = igstRate > 0 ? igstRate : cgstRate + sgstRate;
+        }
+    
+        const gstRateDivide = parseFloat(GSTRate);
+    
+        await calculateAndUpdateFormData(subTotal, gstRateDivide, matchStatusResult);
+    };
 
     const calculateGSTAmount = (subTotal, rate) => {
         return (subTotal * (rate / 100)).toFixed(2);
@@ -1353,7 +1383,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                         CategoryName={""}
                                         CategoryCode={""}
                                         name="DO_No"
-
+                                        Ac_type=""
                                         disabledFeild={!isEditing && addOneButtonEnabled}
 
                                     />
@@ -1410,6 +1440,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                         CategoryName={FromName}
                                         CategoryCode={FromCode}
                                         name="From"
+                                        Ac_type=""
                                         disabledFeild={!isEditing && addOneButtonEnabled}
 
                                     />
@@ -1425,7 +1456,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                         CategoryName={Unitname}
                                         CategoryCode={UnitCode}
                                         name="Unit"
-
+                                        Ac_type=""
                                         disabledFeild={!isEditing && addOneButtonEnabled}
                                     />
                                 </FormControl>
@@ -1439,7 +1470,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                             CategoryName={MillName}
                                             CategoryCode={MillCode}
                                             name="Mill"
-
+                                            Ac_type=""
                                             disabledFeild={!isEditing && addOneButtonEnabled}
                                         />
                                     </FormControl>
@@ -1534,7 +1565,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                             CategoryName={BrokerName}
                                             CategoryCode={BrokerCode}
                                             name="broker"
-
+                                            Ac_type=""
                                             disabledFeild={!isEditing && addOneButtonEnabled}
                                         />
                                     </FormControl>
@@ -2118,6 +2149,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                     autoComplete="off"
                                     value={formData.LESS_FRT_RATE}
                                     onChange={handleChange}
+                                    onKeyDown={handleKeyDownOther}
                                     disabled={!isEditing && addOneButtonEnabled}
                                     fullWidth
                                     InputLabelProps={{ shrink: true }}
@@ -2138,6 +2170,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                     name="freight"
                                     autoComplete="off"
                                     value={formData.freight}
+                                    onKeyDown={handleKeyDownOther}
                                     onChange={handleChange}
                                     disabled={!isEditing && addOneButtonEnabled}
                                     fullWidth

@@ -6,9 +6,11 @@ import axios from "axios";
 import "../App.css";
 
 var lActiveInputFeild = "";
-const CompanyCode = sessionStorage.getItem("Company_Code")
+
 
 const GSTRateMasterHelp = ({ onAcCodeClick, name, GstRateName, GstRateCode, disabledFeild, tabIndexHelp }) => {
+
+    const CompanyCode = sessionStorage.getItem("Company_Code")
 
     const [showModal, setShowModal] = useState(false);
     const [popupContent, setPopupContent] = useState([]);

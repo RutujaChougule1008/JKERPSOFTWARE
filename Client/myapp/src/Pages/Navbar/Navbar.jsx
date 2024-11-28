@@ -512,11 +512,8 @@ const Navbar = () => {
           </div>
         )}
       </div>
-      <div
-        className="nav-item"
-        onMouseEnter={() => handleMouseEnter("gst-utilities")}
-      >
-        GST Utilities
+      <div className="nav-item" onMouseEnter={() => handleMouseEnter('gst-utilities')}>
+        <Link to="/gstutilities" className="nav-link"> GST Utilities</Link>
       </div>
       <div
         className="nav-item"

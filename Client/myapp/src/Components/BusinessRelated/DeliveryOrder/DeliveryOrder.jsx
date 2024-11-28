@@ -490,7 +490,7 @@ const DeliveryOrder = () => {
   };
 
   const handleSBGenerate = async (e) => {
-    debugger;
+
   if(e){
     e.preventDefault();
   }
@@ -689,7 +689,6 @@ const DeliveryOrder = () => {
   };
 
   useEffect(() => {
-   debugger
     if (selectedRecord) {
       handlerecordDoubleClicked();
     }
@@ -709,7 +708,6 @@ const DeliveryOrder = () => {
   }, [selectedRecordPendingDo]);
 
   const handleTenderWithoutCarpoDetailsFetched = async (details, event) => {
-    debugger;
     setTenderDetails(details.last_details_data[0]);
     console.log("Tender", details.last_details_data[0]);
     let Carporate_Sale_No = formData.Carporate_Sale_No;
@@ -793,14 +791,6 @@ const DeliveryOrder = () => {
         ...newData,
         amount: millamount
       }));
-
-      //   const updatedFormData = await calculateDependentValues(
-
-      //       newData // Pass gstRate explicitly to calculateDependentValues
-      //     )
-
-      //   setFormData(updatedFormData)
-      console.log("Updated-------------", newData);
      
       return newData;
     }
@@ -808,7 +798,6 @@ const DeliveryOrder = () => {
 
   const handleTenderDetailsFetched = (details) => {
     console.log(details.last_details_data[0]);
-    debugger
     setTenderDetails(details.last_details_data[0]);
     let Carporate_Sale_No = formData.Carporate_Sale_No;
     let assingqntl = 0;
@@ -969,7 +958,6 @@ const DeliveryOrder = () => {
   };
 
   const AmountCalculation = async (name, input, formData) => {  
-    debugger;
     formData={
       ...formData,
       TCS_Rate:0.00,
@@ -1296,6 +1284,7 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
 }
 
   const PurchaseBillCalculation = async (name, input, formData, gstRate) => {
+    debugger
     // Clone formData and initialize additional fields
 
     let updatedFormData = { ...formData, [name]: input };
@@ -1704,17 +1693,9 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
   };
 
   const handleKeyDownCalculations = async (event) => {
-    debugger
     if (event.key === "Tab") {
       // event.preventDefault();
-
-
       const { name, value } = event.target;
-
-      
-
-
-
       const updatedFormData = await calculateDependentValues(
         name,
         value,
@@ -1825,7 +1806,6 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
 
   // Handle change for all inputs
   const handleChange = async (event) => {
-    debugger
     const { name, value } = event.target;
     // const updatedFormData = await calculateDependentValues(
     //   name,
@@ -1847,7 +1827,6 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
   };
 
   const deleteModeHandler = async (userToDelete) => {
-    debugger;
     let updatedUsers;
 
     if (isEditMode && userToDelete.rowaction === "add") {
@@ -1889,7 +1868,6 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
   };
 
   useEffect(() => {
-    debugger
     if (selectedRecord) {
       setUsers(
         lastTenderDetails.map((detail) => ({
@@ -2113,14 +2091,13 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
   };
 
   const handleSaveOrUpdate = async () => {
-    debugger;
+    debugger
     if (!validateForm()) return;
     setIsEditing(true);
     setIsLoading(true);
 
     let headData = {
       ...formData,
-      //   gst_code: gstCode || GSTCode,
     };
     let desp_type = formData.desp_type;
     if (desp_type === "DI") {
@@ -2233,7 +2210,6 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
     setIsEditing(true);
   };
   const handleCancel = async () => {
-    debugger
     setIsEditing(false);
     setIsEditMode(false);
     setAddOneButtonEnabled(true);
@@ -2849,7 +2825,6 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
   };
 
   const handleKeyDownPendingDO = async (event) => {
-    debugger
         const changeNoValue = event.target.value;
         try {
           const response = await axios.get(
@@ -3079,10 +3054,11 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
             <input
               type="text"
               id="doc_no"
-              Name="doc_no"
+              name="doc_no"
               value={formData.doc_no}
               onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
+              disabled={true}
+
             />
             <label htmlFor="desp_type">Desp Type:</label>
 
@@ -3135,7 +3111,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
           <div className="form-group">
             <label htmlFor="mill_code">Mill Code</label>
             <AccountMasterHelp
-              Name="mill_code"
+              name="mill_code"
+              Ac_type='M'
               onAcCodeClick={handlemill_code}
               CategoryName={lblmillname}
               CategoryCode={newmill_code || pendingDOData.Mill_Code}
@@ -3228,7 +3205,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
           <div className="form-group">
             <label htmlFor="GETPASSCODE">GetpassCode</label>
             <AccountMasterHelp
-              Name="GETPASSCODE"
+              name="GETPASSCODE"
+               Ac_type=''
               onAcCodeClick={handleGETPASSCODE}
               CategoryName={
                 ChangeData
@@ -3281,7 +3259,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
           <div className="form-group">
             <label htmlFor="voucher_by">Voucher By </label>
             <AccountMasterHelp
-              Name="voucher_by"
+              name="voucher_by"
+                Ac_type=''
               onAcCodeClick={handlevoucher_by}
               CategoryName={
                 ChangeData
@@ -3309,7 +3288,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
           <div className="form-group">
             <label htmlFor="SaleBillTo">SaleBillTo</label>
             <AccountMasterHelp
-              Name="SaleBillTo"
+              name="SaleBillTo"
+                Ac_type=''
               onAcCodeClick={handleSaleBillTo}
               CategoryName={
                 ChangeData
@@ -3554,7 +3534,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
             />
             <label htmlFor="transport">Transport</label>
             <AccountMasterHelp
-              Name="transport"
+              name="transport"
+                Ac_type=''
               onAcCodeClick={handletransport}
               CategoryName={lbltransportname}
               CategoryCode={newtransport}
@@ -3664,7 +3645,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
           <div className="form-group">
             <label htmlFor="TDSAc">TDSAc</label>
             <AccountMasterHelp
-              Name="TDSAc"
+              name="TDSAc"
+                Ac_type=''
               onAcCodeClick={handleTDSAc}
               CategoryName={lbltdsacname}
               CategoryCode={newTDSAc || formData.TDSAc}
@@ -3712,7 +3694,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
             />
             <label htmlFor="CashDiffAc">B.P Ac</label>
             <AccountMasterHelp
-              Name="CashDiffAc"
+              name="CashDiffAc"
+                Ac_type=''
               onAcCodeClick={handleCashDiffAc}
               CategoryName={tenderDetails.buyername || lblcashdiffacname}
               CategoryCode={tenderDetails.Buyer || newCashDiffAc}
@@ -3760,7 +3743,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
             />
             <label htmlFor="Vasuli_Ac">Vasuli Ac</label>
             <AccountMasterHelp
-              Name="Vasuli_Ac"
+              name="Vasuli_Ac"
+                Ac_type=''
               onAcCodeClick={handleVasuli_Ac}
               CategoryName={lblvasuliacname}
               CategoryCode={newVasuli_Ac}
@@ -3769,7 +3753,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
             />
             <label htmlFor="DO">DO</label>
             <AccountMasterHelp
-              Name="DO"
+              name="DO"
+                Ac_type=''
               onAcCodeClick={handleDO}
               CategoryName={tenderDetails.tenderdoname || lblDoname || pendingDOData.tenderdoname}
               CategoryCode={tenderDetails.Tender_DO || newDO || pendingDOData.Tender_DO}
@@ -3838,7 +3823,8 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
           <div className="form-group">
             <label htmlFor="broker">Broker</label>
             <AccountMasterHelp
-              Name="broker"
+              name="broker"
+                Ac_type=''
               onAcCodeClick={handlebroker}
               CategoryName={
                 ChangeData
@@ -4064,6 +4050,7 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
                             formDataDetail.Bank_Code || pendingDOData.Payment_To
                           }
                           name="Bank_Code"
+                            Ac_type=''
                           tabIndexHelp={2}
                           disabledFeild={!isEditing && addOneButtonEnabled}
                         />

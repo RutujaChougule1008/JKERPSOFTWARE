@@ -30,6 +30,7 @@ def UtrLotno():
                        millamt1 AS millamount, paidamount, payableamount, Year_Code, Grade, millshortname
                 FROM qrymillpaymentbalance
                 WHERE payableamount != 0 AND Company_Code = :CompanyCode AND Payment_To = :MillCode
+                order by Tender_No desc
             '''), {'CompanyCode': CompanyCode, 'MillCode': MillCode})
 
             result = query.fetchall()

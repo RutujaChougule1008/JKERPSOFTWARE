@@ -113,6 +113,8 @@ def getRecieptVoucherNo_Data():
         if not all([CompanyCode, VoucherNo,Year_Code,FilterType]):
             return jsonify({"error": "Missing required parameters"}), 400
 
+        query = None
+
         with db.session.begin_nested():
             # Execute query
             if FilterType=="V" :
@@ -132,7 +134,7 @@ def getRecieptVoucherNo_Data():
             if FilterType=="D" :
                 query = db.session.execute(
                     text('''
-                select Doc_No,MillName,Date,PartyName,Sale_Rate,Purchase_Rate,Quantal,Balance
+                select Doc_No as doc_no,MillName,Date,PartyName,Sale_Rate,Purchase_Rate,Quantal,Balance
                 from NT_1_qryDebitNotesForBankReciept where Company_Code= :Company_Code and Year_Code= :Year_Code
                 and Doc_No= :VoucherNo and Tran_Type='LV'
                          
@@ -143,7 +145,7 @@ def getRecieptVoucherNo_Data():
             if FilterType=="S" :
                 query = db.session.execute(
                     text('''
-                  qry = "select [Tender_No],[ID],Convert(VarChar(10),[Tender_Date],103) as Tender_Date,
+                  qry = "select [Tender_No]as doc_no as autoId,[ID],Convert(VarChar(10),[Tender_Date],103) as Tender_Date,
                          [millname],[salerate],[salepartyfullname],[Buyer_Quantal],[salevalue],[received],
                          [balance],[Commission_Rate],Sauda_Date from NT_1_qrySaudaBalance
                          where Company_Code=:Company_Code and Year_Code=:Year_Code and Tender_No=:VoucherNo and ID=:VoucherType
@@ -157,9 +159,9 @@ def getRecieptVoucherNo_Data():
                         text('''
                             SELECT 
                                 billno AS doc_no,
-                                 bill_tran_type,
+                                 bill_tran_type as Tran_Type,
                                 balance,
-                                saleid AS Autoid,
+                                saleid AS autoId,
                                 Year_Code AS EntryYearCode,
                                 ('SB-No:' + CONVERT(VARCHAR(10), billno) + '-Dated:' + CONVERT(VARCHAR(10), doc_dateConverted)) AS Narration
                             FROM 
@@ -171,23 +173,35 @@ def getRecieptVoucherNo_Data():
                                 AND billno = :VoucherNo
                                 and  bill_tran_type= :VoucherType
                         '''),
-                        {'CompanyCode': CompanyCode, 'Year_Code': Year_Code, 
-                         'VoucherNo': VoucherNo, 'Autoid': Autoid,'VoucherType' : VoucherType}
+                        {'CompanyCode': CompanyCode, 'Year_Code': Year_Code, 'VoucherNo': VoucherNo, 'Autoid': Autoid,'VoucherType' : VoucherType}
                     )
 
             if FilterType=="N" :   
                 query = db.session.execute(
-                    text('''
-                  qry = "select doc_no as doc_no,convert(varchar(10),doc_date,103) as Doc_date,Tran_Type,
-                         suppliername as PartyName,NETQNTL,Bill_Amount,paid as received,'0' as adjusted,
-                         Billbalance as balance,purchaseid,  Year_Code as EntryYearCode,millshortname,
-                         adjacamt from qryManuallyPurchaseBalance 
-                         where doc_no =: VoucherNo and Billbalance!=0 
-                         and Company_Code=:Company_Code and Year_Code=:Year_Code
-                 '''),
-                    {'Company_Code': CompanyCode, 'Year_Code': Year_Code,
-                     'VoucherNo':VoucherNo}
-                ) 
+                text(''' 
+                    SELECT 
+                        doc_no AS doc_no, 
+                        CONVERT(varchar(10), doc_date, 103) AS Doc_date, 
+                        Tran_Type, 
+                        suppliername AS PartyName, 
+                        NETQNTL, 
+                        Bill_Amount, 
+                        paid AS received, 
+                        '0' AS adjusted, 
+                        Billbalance AS balance, 
+                        purchaseid as autoId, 
+                        Year_Code AS EntryYearCode, 
+                        millshortname, 
+                        adjacamt 
+                    FROM qryManuallyPurchaseBalance 
+                    WHERE 
+                        doc_no = :VoucherNo AND 
+                        Billbalance != 0 AND 
+                        Company_Code = :CompanyCode AND 
+                        Year_Code = :Year_Code
+                '''),
+                {'CompanyCode': CompanyCode, 'Year_Code': Year_Code, 'VoucherNo': VoucherNo}
+            )
 
             if FilterType=="P" :   
                 query = db.session.execute(
@@ -196,17 +210,16 @@ def getRecieptVoucherNo_Data():
                       " where balance<>0 and Voucher_Type= :VoucherType and doc_no= :VoucherNo
                          and Company_Code=:Company_Code and Year_Code=:Year_Code
                  '''),
-                    {'Company_Code': CompanyCode, 'Year_Code': Year_Code,
-                     'VoucherNo':VoucherNo,'VoucherType' : VoucherType}
+                    {'Company_Code': CompanyCode, 'Year_Code': Year_Code,'VoucherNo':VoucherNo,'VoucherType' : VoucherType}
                 )     
 
             if FilterType=="T" :   
                 query = db.session.execute(
                     text('''
-                  qry = "select doc_no as doc_no,convert(varchar(10),doc_date,103) as Doc_date,tran_type,transportname as PartyName,quantal,Memo_Advance,paid as received,'0' as adjusted,Balance as balance,doid, 
+                  qry = "select doc_no as doc_no,convert(varchar(10),doc_date,103) as Doc_date,tran_type,transportname as PartyName,quantal,Memo_Advance,paid as received,'0' as adjusted,Balance as balance,doid as autoId , 
                         Year_Code as EntryYearCode,millshortname,'' as adjacamt,truck_no,shiptoname
-                          from qrydofreightbalance where doc_no= :VoucherNo and doc_no=:VoucherNo
-                         and Company_Code=:Company_Code and Year_Code=:Year_Code
+                          from qrydofreightbalance where doc_no =: VoucherNo and 
+                         Company_Code=:Company_Code and Year_Code=:Year_Code
                  '''),
                     {'Company_Code': CompanyCode, 'Year_Code': Year_Code,
                      'VoucherNo':VoucherNo,'VoucherType' : VoucherType}

@@ -3,7 +3,7 @@ from app import app, db
 import requests
 from app.models.Transactions.ReceiptPayment.ReceiptPaymentModels import ReceiptPaymentHead, ReceiptPaymentDetail
 from app.models.Transactions.ReceiptPayment.ReceiptPaymentSchema import ReceiptPaymentHeadSchema, ReceiptPaymentDetailSchema
-from app.utils.CommonGLedgerFunctions import fetch_company_parameters, get_accoid, getSaleAc, get_acShort_Name
+from app.utils.CommonGLedgerFunctions import fetch_company_parameters, get_accoid, getSaleAc, get_acShort_Name,create_gledger_entry,send_gledger_entries
 from sqlalchemy import text, func
 from sqlalchemy.exc import SQLAlchemyError
 import os
@@ -59,46 +59,88 @@ def format_dates(task):
         "doc_date": task.doc_date.strftime('%Y-%m-%d') if task.doc_date else None,
     }
 
+def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid, order_code, tran_type, doc_no, narration):
+    if amount > 0:
+        entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid, order_code, tran_type, doc_no, narration))
+
+def process_gledger_entries(detailData, headData, gledger_entries, order_code):
+    for item in detailData:
+        amount = float(item.get('amount', 0))
+        narration = item.get('narration', '')
+        tran_type = headData.get('tran_type')
+        if amount > 0:
+            if tran_type == "JV":
+                dr_cr = item['drcr']
+                account_code = item['debit_ac'] if dr_cr == 'D' else item['credit_ac']
+                accoid = get_accoid(account_code, headData['company_code'])
+                order_code += 1
+                add_gledger_entry(gledger_entries, headData, amount, dr_cr, account_code, accoid, order_code, tran_type, headData['doc_no'], narration)
+            elif tran_type in ["BR", "CR", "CP", "BP"]:
+                credit_ac = item['credit_ac']
+                cashbank = headData['cashbank']
+                credit_accoid = get_accoid(credit_ac, headData['company_code'])
+                cashbank_accoid = get_accoid(cashbank, headData['company_code'])
+                if tran_type in ["CP", "BP"]:
+                    add_gledger_entry(gledger_entries, headData, amount, "C", cashbank, cashbank_accoid, order_code, tran_type, headData['doc_no'], narration)
+                    add_gledger_entry(gledger_entries, headData, amount, "D", credit_ac, credit_accoid, order_code + 1, tran_type, headData['doc_no'], narration)
+                elif tran_type in ["BR", "CR"]:
+                    add_gledger_entry(gledger_entries, headData, amount, "D", cashbank, cashbank_accoid, order_code, tran_type, headData['doc_no'], narration)
+                    add_gledger_entry(gledger_entries, headData, amount, "C", credit_ac, credit_accoid, order_code + 1, tran_type, headData['doc_no'], narration)
+    return gledger_entries
+
+
 # Get data from both tables ReceiptPaymentHead and ReceiptPaymentDetail
 @app.route(API_URL + "/getdata-receiptpayment", methods=["GET"])
 def getdata_receiptpayment():
     try:
+        # Extract query parameters
         Company_Code = request.args.get('Company_Code')
         Year_Code = request.args.get('Year_Code')
         tran_type = request.args.get('tran_type')
+
+        # Validate required parameters
         if not all([Company_Code, Year_Code, tran_type]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        records = ReceiptPaymentHead.query.filter_by(company_code=Company_Code, year_code=Year_Code,tran_type = tran_type).all()
+        # SQL query to fetch data
+        query = """
+        SELECT        creditac.Ac_Name_E AS creditacname, dbo.nt_1_transactdetail.credit_ac, dbo.nt_1_transactdetail.amount, dbo.nt_1_transacthead.tran_type, dbo.nt_1_transacthead.doc_no, dbo.nt_1_transacthead.doc_date, 
+                         dbo.nt_1_transactdetail.narration, dbo.nt_1_transacthead.tranid, dbo.nt_1_transactdetail.da, debitac.Ac_Name_E AS debitName, dbo.nt_1_transactdetail.debit_ac
+FROM            dbo.nt_1_accountmaster AS debitac RIGHT OUTER JOIN
+                         dbo.nt_1_transactdetail ON debitac.accoid = dbo.nt_1_transactdetail.da LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS creditac ON dbo.nt_1_transactdetail.ca = creditac.accoid RIGHT OUTER JOIN
+                         dbo.nt_1_transacthead ON dbo.nt_1_transactdetail.tranid = dbo.nt_1_transacthead.tranid
 
-        if not records:
-            return jsonify({"error": "No records found"}), 404
+        WHERE 
+            dbo.nt_1_transacthead.Company_Code = :Company_Code AND
+            dbo.nt_1_transacthead.Year_Code = :Year_Code AND
+            dbo.nt_1_transacthead.tran_type = :tran_type
+        ORDER BY 
+            dbo.nt_1_transacthead.doc_no DESC
+        """
 
-        all_records_data = []
-
-        for record in records:
-            receipt_payment_head_data = {column.name: getattr(record, column.name) for column in record.__table__.columns}
-            receipt_payment_head_data.update(format_dates(record))
-
-            tranid = record.tranid
-            additional_data = db.session.execute(text(RECEIPT_PAYMENT_DETAILS_QUERY), {"tranid": tranid})
-            additional_data_rows = additional_data.fetchall()
-
-            labels = [dict(row._mapping) for row in additional_data_rows]
-
-            
-            detail_data = [{
-                **{column.name: getattr(detail, column.name) for column in detail.__table__.columns},
-                **format_dates(detail)
-            } for detail in ReceiptPaymentDetail.query.filter_by(tranid=tranid).all()]
-
-            record_response = {
-                "receipt_payment_head_data": receipt_payment_head_data,
-                "labels": labels,
-                "receipt_payment_details": detail_data
+        # Execute the query
+        results = db.session.execute(
+            text(query),
+            {
+                "Company_Code": Company_Code,
+                "Year_Code": Year_Code,
+                "tran_type": tran_type
             }
+        )
+        rows = results.fetchall()
 
-            all_records_data.append(record_response)
+        # Format the response
+        all_records_data = []
+        for row in rows:
+            record = dict(row._mapping)
+            if record.get("doc_date"):
+                record["doc_date"] = record["doc_date"].strftime('%Y-%m-%d')
+            all_records_data.append(record)
+
+        # Check if data exists
+        if not all_records_data:
+            return jsonify({"error": "No records found"}), 404
 
         response = {
             "all_data_receiptpayment": all_records_data
@@ -152,37 +194,6 @@ def insert_receiptpayment():
     def get_max_doc_no(tran_type):
         return db.session.query(func.max(ReceiptPaymentHead.doc_no)).filter(ReceiptPaymentHead.tran_type == tran_type).scalar() or 0
     
-    def create_gledger_entry(data, amount, drcr, ac_code, accoid, DRCR_Head):
-        return {
-            "TRAN_TYPE": tran_type,
-            "DOC_NO": new_doc_no,
-            "DOC_DATE": data['doc_date'],
-            "AC_CODE": ac_code,
-            "AMOUNT": amount,
-            "COMPANY_CODE": data['company_code'],
-            "YEAR_CODE": data['year_code'],
-            "ORDER_CODE": 12,
-            "DRCR": drcr,
-            "UNIT_Code": 0,
-            "NARRATION": item['narration'],
-            "TENDER_ID": 0,
-            "TENDER_ID_DETAIL": 0,
-            "VOUCHER_ID": 0,
-            "DRCR_HEAD": DRCR_Head,
-            "ADJUSTED_AMOUNT": 0,
-            "Branch_Code": 1,
-            "SORT_TYPE": tran_type,
-            "SORT_NO": new_doc_no,
-            "vc": 0,
-            "progid": 0,
-            "tranid": 0,
-            "saleid": 0,
-            "ac": accoid
-        }
-    
-    def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid, DRCR_Head):
-        if amount > 0:
-            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid, DRCR_Head))
             
     try:
         data = request.get_json()
@@ -196,7 +207,6 @@ def insert_receiptpayment():
         max_doc_no = get_max_doc_no(tran_type)
         new_doc_no = max_doc_no + 1
         headData['doc_no'] = new_doc_no
-        print('headdata',headData)
         new_head = ReceiptPaymentHead(**headData)
         db.session.add(new_head)
 
@@ -216,7 +226,6 @@ def insert_receiptpayment():
                     del item['rowaction']
                     new_detail = ReceiptPaymentDetail(**item)
                     new_head.details.append(new_detail)
-                    print(new_head.details)
                     createdDetails.append(new_detail)
 
                 elif item['rowaction'] == "update":
@@ -235,41 +244,13 @@ def insert_receiptpayment():
         db.session.commit()
 
         gledger_entries = []
-
-        for item in detailData:
-            amount = float(item.get('amount', 0) or 0)
-            if tran_type in ["JV"]:
-                 DrCr = item['drcr']
-                 debit_ac = item['debit_ac']
-            elif tran_type in ["BR", "CR","CP","BP"]:
-                credit_ac = item['credit_ac']
-                cashbank = headData['cashbank']
-            
-        
-            if amount > 0:
-                if tran_type in ["CP", "BP"]:
-                    add_gledger_entry(gledger_entries, headData, amount, "C", cashbank, get_accoid(cashbank, headData['company_code']), credit_ac)
-                    add_gledger_entry(gledger_entries, headData, amount, "D", credit_ac, get_accoid(credit_ac, headData['company_code']), cashbank)
-                elif tran_type in ["BR", "CR"]:
-                    add_gledger_entry(gledger_entries, headData, amount, "D", cashbank, get_accoid(cashbank, headData['company_code']), credit_ac)
-                    add_gledger_entry(gledger_entries, headData, amount, "C", credit_ac, get_accoid(credit_ac, headData['company_code']), cashbank)
-                elif tran_type in ["JV"]:
-                    add_gledger_entry(gledger_entries, headData, amount, DrCr, debit_ac, get_accoid(debit_ac, headData['company_code']), 99999999)
-
-        query_params = {
-            'Company_Code': headData['company_code'],
-            'DOC_NO': new_doc_no,
-            'Year_Code': headData['year_code'],
-            'TRAN_TYPE': headData['tran_type'],
-        }
-
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
-
-        if response.status_code == 201:
-            db.session.commit()
-        else:
-            db.session.rollback()
-            return jsonify({"error": "Failed to create gLedger record", "details": response.json()}), response.status_code
+        order_code=0
+        gledger_entries = process_gledger_entries(detailData, headData, gledger_entries, order_code)
+        if gledger_entries:
+            response = send_gledger_entries(headData, gledger_entries, tran_type)
+            if response.status_code != 200:
+                db.session.rollback()
+                return jsonify({"error": "Failed to create GLedger record", "details": response.text}), response.status_code
 
         return jsonify({
             "message": "Data Inserted successfully",
@@ -277,7 +258,7 @@ def insert_receiptpayment():
             "addedDetails": receipt_payment_detail_schemas.dump(createdDetails),
             "updatedDetails": updatedDetails,
             "deletedDetailIds": deletedDetailIds
-        }), 201
+        }), 200
 
     except Exception as e:
         logger.error("Traceback: %s", traceback.format_exc())
@@ -287,39 +268,7 @@ def insert_receiptpayment():
 
 # Update record for ReceiptPaymentHead and ReceiptPaymentDetail
 @app.route(API_URL + "/update-receiptpayment", methods=["PUT"])
-def update_receiptpayment():
-    def create_gledger_entry(data, amount, drcr, ac_code, accoid, DRCR_Head):
-        return {
-            "TRAN_TYPE": tran_type,
-            "DOC_NO": updated_head.doc_no,
-            "DOC_DATE": data['doc_date'],
-            "AC_CODE": ac_code,
-            "AMOUNT": amount,
-            "COMPANY_CODE": data['company_code'],
-            "YEAR_CODE": data['year_code'],
-            "ORDER_CODE": 12,
-            "DRCR": drcr,
-            "UNIT_Code": 0,
-            "NARRATION": item['narration'],
-            "TENDER_ID": 0,
-            "TENDER_ID_DETAIL": 0,
-            "VOUCHER_ID": 0,
-            "DRCR_HEAD": DRCR_Head,
-            "ADJUSTED_AMOUNT": 0,
-            "Branch_Code": 1,
-            "SORT_TYPE": tran_type,
-            "SORT_NO": updated_head.doc_no,
-            "vc": 0,
-            "progid": 0,
-            "tranid": 0,
-            "saleid": 0,
-            "ac": accoid
-        }
-    
-    def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid, DRCR_Head):
-        if amount > 0:
-            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid, DRCR_Head))
-            
+def update_receiptpayment():      
     try:
         tranid = request.args.get('tranid')
         if not tranid:
@@ -339,7 +288,6 @@ def update_receiptpayment():
         created_details = []
         updated_details = []
         deleted_detail_ids = []
-        print('headData',headData)
         for item in detailData:
             item['tranid'] = updated_head.tranid
             item['Tran_Type'] = updated_head.tran_type
@@ -368,41 +316,15 @@ def update_receiptpayment():
         db.session.commit()
 
         gledger_entries = []
+        order_code=0
 
-        for item in detailData:
-            amount = float(item.get('amount', 0) or 0)
-            if tran_type in ["JV"]:
-                 DrCr = item['drcr']
-                 debit_ac = item['debit_ac']
-            elif tran_type in ["BR", "CR","CP","BP"]:
-                credit_ac = item['credit_ac']
-                cashbank = headData['cashbank']
-            
-            if amount > 0:
-                if tran_type in ["CP", "BP"]:
-                    add_gledger_entry(gledger_entries, headData, amount, "C", cashbank, get_accoid(cashbank, headData['company_code']), credit_ac)
-                    add_gledger_entry(gledger_entries, headData, amount, "D", credit_ac, get_accoid(credit_ac, headData['company_code']), cashbank)
-                elif tran_type in ["BR", "CR"]:
-                    add_gledger_entry(gledger_entries, headData, amount, "D", cashbank, get_accoid(cashbank, headData['company_code']), credit_ac)
-                    add_gledger_entry(gledger_entries, headData, amount, "C", credit_ac, get_accoid(credit_ac, headData['company_code']), cashbank)
-                elif tran_type in ["JV"]:
-                    add_gledger_entry(gledger_entries, headData, amount, DrCr, debit_ac, get_accoid(debit_ac, headData['company_code']), 99999999)
+        gledger_entries = process_gledger_entries(detailData, headData, gledger_entries, order_code)
 
-        query_params = {
-            'Company_Code': headData['company_code'],
-            'DOC_NO': updated_head.doc_no,
-            'Year_Code': headData['year_code'],
-            'TRAN_TYPE': headData['tran_type'],
-        }
-        print('ledger',gledger_entries)
-        
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
-
-        if response.status_code == 201:
-            db.session.commit()
-        else:
-            db.session.rollback()
-            return jsonify({"error": "Failed to create gLedger record", "details": response.json()}), response.status_code
+        if gledger_entries:
+            response = send_gledger_entries(headData, gledger_entries, tran_type)
+            if response.status_code != 201:
+                db.session.rollback()
+                return jsonify({"error": "Failed to create GLedger record", "details": response.text}), response.status_code
 
         return jsonify({
             "message": "Data updated successfully",
@@ -443,7 +365,6 @@ def delete_data_by_tranid():
                 'TRAN_TYPE': tran_type,
             }
 
-            # Make the external request
             response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
@@ -630,4 +551,25 @@ def get_nextreceiptpayment_navigation():
         return jsonify(response), 200
 
     except Exception as e:
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+@app.route(API_URL + "/get_next_paymentRecord_docNo", methods=["GET"])
+def get_next_paymentRecord_docNo():
+    try:
+        company_code = request.args.get('Company_Code')
+        year_code = request.args.get('Year_Code')
+        tranType = request.args.get('tran_type')
+
+        if not company_code or not year_code or not tranType:
+            return jsonify({"error": "Missing 'Company_Code' or 'Year_Code' or 'Tran_Type' parameter"}), 400
+
+        max_doc_no = db.session.query(func.max(ReceiptPaymentHead.doc_no)).filter_by(company_code=company_code, year_code=year_code, tran_type=tranType).scalar()
+
+        next_doc_no = max_doc_no + 1 if max_doc_no else 1
+        response = {
+            "next_doc_no": next_doc_no
+        }
+        return jsonify(response), 200
+    except Exception as e:
+        print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500

@@ -96,7 +96,7 @@ const SystemHelpMaster = ({ onAcCodeClick, name, CategoryName, CategoryCode, tab
                 setEnteredHSN(matchingItem.HSN)
 
                 if (onAcCodeClick) {
-                    onAcCodeClick(matchingItem.Category_Code, matchingItem.accoid, matchingItem.HSN, matchingItem.Category_Name);
+                    onAcCodeClick(matchingItem.Category_Code, matchingItem.accoid, matchingItem.HSN, matchingItem.Category_Name,matchingItem.Gst_Code);
                 }
             } else {
                 setEnteredName("");
@@ -112,7 +112,7 @@ const SystemHelpMaster = ({ onAcCodeClick, name, CategoryName, CategoryCode, tab
         setEnteredAccoid(item.accoid);
         setEnteredHSN(item.HSN)
         if (onAcCodeClick) {
-            onAcCodeClick(item.Category_Code, item.accoid, item.HSN, item.Category_Name);
+            onAcCodeClick(item.Category_Code, item.accoid, item.HSN, item.Category_Name, item.Gst_Code);
         }
         setShowModal(false);
     };
@@ -227,6 +227,7 @@ const SystemHelpMaster = ({ onAcCodeClick, name, CategoryName, CategoryCode, tab
                                         <th>Item Name</th>
                                         <th>Accoid</th>
                                         <th>HSN</th>
+                                        <th>Gst Code</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -242,6 +243,7 @@ const SystemHelpMaster = ({ onAcCodeClick, name, CategoryName, CategoryCode, tab
                                             <td>{item.Category_Name}</td>
                                             <td>{item.accoid}</td>
                                             <td>{item.HSN}</td>
+                                            <td>{item.Gst_Code}</td>
                                         </tr>
                                     ))}
                                 </tbody>

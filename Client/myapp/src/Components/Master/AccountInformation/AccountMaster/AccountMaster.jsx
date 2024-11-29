@@ -6,14 +6,38 @@ import NavigationButtons from "../../../../Common/CommonButtons/NavigationButton
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AccountMasterHelp from "../../../../Helper/AccountMasterHelp";
 import GroupMasterHelp from "../../../../Helper/GroupMasterHelp";
 import GSTStateMasterHelp from "../../../../Helper/GSTStateMasterHelp";
 import CityMasterHelp from "../../../../Helper/CityMasterHelp";
 import { HashLoader } from "react-spinners";
 import CityMaster from "../CityMaster/CityMaster";
-import "./AccountMaster.css";
 import FinicialMaster from "../FinicialMasters/FinicialMaster";
+import {
+  Box,
+  TextField,
+  Select,
+  MenuItem,
+  Button,
+  Modal,
+  Typography,
+  InputLabel,
+  FormControl,
+  IconButton,
+  TextareaAutosize,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 const companyCode = sessionStorage.getItem("Company_Code");
 const Year_Code = sessionStorage.getItem("Year_Code");
@@ -62,7 +86,6 @@ const AccountMaster = () => {
   const groupMasterRef = useRef(null);
   const [groupMasterData, setGroupMasterData] = useState("");
   const [city_data, setCityData] = useState("");
-
 
   const navigate = useNavigate();
   //In utility page record doubleClicked that recod show for edit functionality
@@ -162,7 +185,7 @@ const AccountMaster = () => {
     setAccountCode(code);
     setFormData({
       ...formData,
-      City_Code:code,
+      City_Code: code,
       cityid: cityId,
       Pincode: pinCode,
     });
@@ -190,11 +213,10 @@ const AccountMaster = () => {
     Person_Pan: "",
     Other: "",
   });
-  // Handle change for all inputs
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prevState) => {
-      // Create a new object based on existing state
       const updatedFormData = { ...prevState, [name]: value };
       return updatedFormData;
     });
@@ -203,7 +225,6 @@ const AccountMaster = () => {
   const handleDetailChange = (event) => {
     const { name, value } = event.target;
     setFormDataDetail((prevState) => {
-      // Create a new object based on existing state
       const updatedFormData = { ...prevState, [name]: value };
       return updatedFormData;
     });
@@ -211,120 +232,103 @@ const AccountMaster = () => {
 
   const handleCheckbox = (e, valueType = "string") => {
     const { name, checked } = e.target;
-
-    // Determine the value to set based on the valueType parameter
     const value =
       valueType === "numeric" ? (checked ? 1 : 0) : checked ? "Y" : "N";
 
     setFormData((prevState) => ({
       ...prevState,
-      [name]: value, // Set the appropriate value based on valueType
+      [name]: value,
     }));
   };
 
-const validateForm = () => {
-  // Common required fields
-  if (!formData.Ac_Name_E.trim()) {
-    toast.error("Account Name is required.");
-    return false;
-  }
-
-  if (!formData.City_Code) {
-    toast.error("City Code is required.");
-    return false;
-  }
-
-  if (!formData.Group_Code) {
-    toast.error("Group Code is required.");
-    return false;
-  }
-
-  if (!formData.Address_E.trim()) {
-    toast.error("Address is required.");
-    return false;
-  }
-
-  // Specific validation for Brokers
-  if (formData.Ac_type === "BR" && !formData.Short_Name.trim()) {
-    toast.error("Short Name is required for Brokers.");
-    return false;
-  }
-
-  // Validation for Party and Supplier
-  if ((formData.Ac_type === "P" || formData.Ac_type === "S") && formData.Bank_Opening > 0) {
-    toast.error("Bank Opening must be zero for Party or Supplier.");
-    return false;
-  }
-
-  // Conditional validation for GST and Company PAN if not unregistered
-  if ((formData.Ac_type === "P" || formData.Ac_type === "S") && formData.UnregisterGST !== 1) {
-    if (!formData.Gst_No) {
-      toast.error("GST Number is required");
+  const validateForm = () => {
+    const showError = (message) => {
+      toast.error(message);
       return false;
+    };
+
+    // Basic validations
+    if (!formData.Ac_Name_E.trim())
+      return showError("Account Name is required.");
+    if (!formData.City_Code) return showError("City Code is required.");
+    if (!formData.Group_Code) return showError("Group Code is required.");
+    if (!formData.Address_E.trim()) return showError("Address is required.");
+
+    // Validation for Brokers
+    if (formData.Ac_type === "BR" && !formData.Short_Name.trim()) {
+      return showError("Short Name is required for Brokers.");
     }
-    if (!formData.CompanyPan) {
-      toast.error("Company Pan is required");
-      return false;
+
+    // Validation for Party and Supplier
+    if (["P", "S"].includes(formData.Ac_type)) {
+      if (formData.Bank_Opening > 0) {
+        return showError("Bank Opening must be zero for Party or Supplier.");
+      }
+      if (formData.UnregisterGST !== 1) {
+        if (!formData.Gst_No) return showError("GST Number is required.");
+        if (!formData.CompanyPan) return showError("Company Pan is required.");
+      }
     }
-  }
 
-  // Validation for Banks
-  if (formData.Ac_type === "B" && (!formData.Bank_Ac_No.trim() || !formData.IFSC.trim())) {
-    toast.error("Bank Account Number and IFSC Code are required for Banks.");
-    return false;
-  }
-
-  // Specific requirements for Fixed Assets, Interest Party, and Transport
-  if (["F", "I", "T"].includes(formData.Ac_type)) {
-    if (!formData.Short_Name.trim()) {
-      toast.error("Short Name is required for Fixed Assets, Interest Party, and Transport.");
-      return false;
+    // Validation for Banks
+    if (
+      formData.Ac_type === "B" &&
+      (!formData.Bank_Ac_No.trim() || !formData.IFSC.trim())
+    ) {
+      return showError(
+        "Bank Account Number and IFSC Code are required for Banks."
+      );
     }
-    if (formData.Ac_rate <= 0) {
-      toast.error("Interest Rate must be greater than zero for Fixed Assets, Interest Party, and Transport.");
-      return false;
+
+    // Validation for Fixed Assets, Interest Party, and Transport
+    if (["F", "I", "T"].includes(formData.Ac_type)) {
+      if (!formData.Short_Name.trim()) {
+        return showError(
+          "Short Name is required for Fixed Assets, Interest Party, and Transport."
+        );
+      }
+      if (formData.Ac_rate <= 0) {
+        return showError(
+          "Interest Rate must be greater than zero for Fixed Assets, Interest Party, and Transport."
+        );
+      }
+      if (!formData.Ac_Name_R.trim()) {
+        return showError(
+          "Regional Name is required for Fixed Assets, Interest Party, and Transport."
+        );
+      }
     }
-    if (!formData.Ac_Name_R.trim()) {
-      toast.error("Regional Name is required for Fixed Assets, Interest Party, and Transport.");
-      return false;
-    }
-  }
 
-  return true;
-};
+    return true;
+  };
 
-
-  console.log(cityMasterData, city_data, cityName);
-
-
-const isFieldEnabled = (fieldType) => {
-  const yearCode = sessionStorage.getItem("Year_Code"); // Assuming you store Year_Code in sessionStorage
-
-  switch (fieldType) {
+  const isFieldEnabled = (fieldType) => {
+    const yearCode = sessionStorage.getItem("Year_Code");
+    switch (fieldType) {
       case "Ac_rate":
-          // Enable Interest Rate only for Interest Party and Fixed Assets
-          return ["I", "F"].includes(formData.Ac_type);
+        // Enable Interest Rate only for Interest Party and Fixed Assets
+        return ["I", "F"].includes(formData.Ac_type);
       case "Ac_Name_E":
       case "Ac_Name_R":
       case "Short_Name":
       case "Group_Code":
-          // Enable for all types, but with specific additional logic for 'C'
-          return formData.Ac_type !== "B";
+        // Enable for all types, but with specific additional logic for 'C'
+        return formData.Ac_type !== "B";
       case "Bank_Opening":
       case "bank_Op_Drcr":
-          // Enable for Banks
-          return formData.Ac_type === "B";
+        // Enable for Banks
+        return formData.Ac_type === "B";
       case "Opening_Balance":
       case "Drcr":
-          // Enable only for Party (P) when Year_Code is 1
-          return formData.Ac_type === "P" && yearCode === "1";
+        // Enable only for Party (P) when Year_Code is 1
+        return formData.Ac_type === "P" && yearCode === "1";
       case "Limit_By":
       case "Local_Lic_No":
       case "Tan_no":
       case "FSSAI":
       case "carporate_party":
-          // Disable these fields for Banks
-          return formData.Ac_type !== "B" && formData.Ac_type !== "C";
+        // Disable these fields for Banks
+        return formData.Ac_type !== "B" && formData.Ac_type !== "C";
       case "Limit_By":
       case "Local_Lic_No":
       case "Tan_no":
@@ -364,14 +368,13 @@ const isFieldEnabled = (fieldType) => {
       case "referBy":
       case "Pincode":
       case "TransporterId":
-                // Disable these fields for Cash
-          return formData.Ac_type !== "C";
+        // Disable these fields for Cash
+        return formData.Ac_type !== "C";
       default:
-          return true;
-  }
-};
+        return true;
+    }
+  };
 
-  
   const handleCheckboxAcGroups = (e, group) => {
     const { checked } = e.target;
 
@@ -390,7 +393,6 @@ const isFieldEnabled = (fieldType) => {
     });
     console.log("Selected Groups:", selectedGroups);
   };
-
 
   const handleSearchClick = async () => {
     debugger;
@@ -558,7 +560,7 @@ const isFieldEnabled = (fieldType) => {
           response.data.city.city_name_e,
           response.data.city.pincode
         );
-        setShowCityPopup(false); 
+        setShowCityPopup(false);
       } catch (error) {
         toast.error(
           "Error occurred while creating city: " +
@@ -587,8 +589,7 @@ const isFieldEnabled = (fieldType) => {
         setGroupMasterData(response.data);
         handleGroup_Code(
           response.data.group.group_Code,
-          response.data.group.bsid,
-          
+          response.data.group.bsid
         );
         setShowGroupPopup(false); // Close the popup after saving
       } catch (error) {
@@ -633,8 +634,7 @@ const isFieldEnabled = (fieldType) => {
     if (selectedRecord) {
       setUsers(
         accountDetail.map((detail) => ({
-          Id:
-            detail.id,
+          Id: detail.id,
           id: detail.id,
           Ac_Code: detail.Ac_Code,
           rowaction: "Normal",
@@ -784,7 +784,7 @@ const isFieldEnabled = (fieldType) => {
     setFormData(initialFormData);
     setAccountDetail([]);
     setSelectedGroups([]);
-    setCityMasterData("")
+    setCityMasterData("");
     newCity_Code = "";
     newGSTStateCode = "";
     newGroup_Code = "";
@@ -792,7 +792,6 @@ const isFieldEnabled = (fieldType) => {
     gstStateName = "";
     grpName = "";
   };
-
 
   const handleSaveOrUpdate = async () => {
     debugger;
@@ -803,7 +802,7 @@ const isFieldEnabled = (fieldType) => {
     setIsEditing(true);
     setIsLoading(true);
 
-    const master_data = { ...formData};
+    const master_data = { ...formData };
 
     if (isEditMode) {
       delete master_data.accoid;
@@ -820,12 +819,14 @@ const isFieldEnabled = (fieldType) => {
       id: user.id,
     }));
 
-    const acGroupsData = selectedGroups.map((groupCode) => ({
-      Group_Code: groupCode,
-      Company_Code: companyCode,
-      Ac_Code: master_data.Ac_Code,
-      accoid: master_data.accoid || newAccoid
-    })).filter(group => group.Group_Code);
+    const acGroupsData = selectedGroups
+      .map((groupCode) => ({
+        Group_Code: groupCode,
+        Company_Code: companyCode,
+        Ac_Code: master_data.Ac_Code,
+        accoid: master_data.accoid || newAccoid,
+      }))
+      .filter((group) => group.Group_Code);
 
     const requestData = {
       master_data,
@@ -840,7 +841,10 @@ const isFieldEnabled = (fieldType) => {
         response = await axios.put(updateApiUrl, requestData);
         toast.success("Data updated successfully!");
       } else {
-        response = await axios.post(`${API_URL}/insert-accountmaster`, requestData);
+        response = await axios.post(
+          `${API_URL}/insert-accountmaster`,
+          requestData
+        );
         toast.success("Data saved successfully!");
       }
 
@@ -849,9 +853,12 @@ const isFieldEnabled = (fieldType) => {
           acGroups: acGroupsData,
           Ac_Code: formData.Ac_Code,
           Company_Code: companyCode,
-          accoid: newAccoid 
+          accoid: newAccoid,
         };
-        await axios.post(`${API_URL}/create-multiple-acgroups`, groupUpdateData);
+        await axios.post(
+          `${API_URL}/create-multiple-acgroups`,
+          groupUpdateData
+        );
         toast.success("Groups updated successfully!");
       }
       setTimeout(() => {
@@ -867,16 +874,12 @@ const isFieldEnabled = (fieldType) => {
       setCancelButtonEnabled(false);
       setIsEditing(false);
       setIsLoading(false);
-      
     } catch (error) {
       console.error("Error during API call:", error);
       toast.error(`Error occurred while saving data: ${error.message}`);
       setIsLoading(false);
     }
   };
-
-  
-  
 
   const handleEdit = () => {
     setIsEditMode(true);
@@ -979,8 +982,6 @@ const isFieldEnabled = (fieldType) => {
     navigate("/AccountMaster-utility");
   };
 
-
-
   //Handle Record DoubleCliked in Utility Page Show that record for Edit
   const handlerecordDoubleClicked = async () => {
     try {
@@ -988,29 +989,29 @@ const isFieldEnabled = (fieldType) => {
         `${API_URL}/getaccountmasterByid?Company_Code=${companyCode}&Ac_Code=${selectedRecord.Ac_Code}`
       );
       const data = await response.json();
-        // Access the first element of the array
-        const acData = data.account_master_data;
-        const labels = data.account_labels;
-        const detailData = data.account_detail_data;
-        const groupCodes = data.group_codes ?? [];
-        console.log("acData", acData);
-        console.log("labels", labels);
-        console.log("detailData", detailData);
-        newAccoid = acData.accoid;
-        newCity_Code = acData.City_Code;
-        cityName = labels.cityname;
-        grpName = labels.groupcodename;
-        newGroup_Code = acData.Group_Code;
-        gstStateName = labels.State_Name;
-        newGSTStateCode = acData.GSTStateCode;
-        setFormData({
-          ...formData,
-          ...acData,
-        });
+      // Access the first element of the array
+      const acData = data.account_master_data;
+      const labels = data.account_labels;
+      const detailData = data.account_detail_data;
+      const groupCodes = data.group_codes ?? [];
+      console.log("acData", acData);
+      console.log("labels", labels);
+      console.log("detailData", detailData);
+      newAccoid = acData.accoid;
+      newCity_Code = acData.City_Code;
+      cityName = labels.cityname;
+      grpName = labels.groupcodename;
+      newGroup_Code = acData.Group_Code;
+      gstStateName = labels.State_Name;
+      newGSTStateCode = acData.GSTStateCode;
+      setFormData({
+        ...formData,
+        ...acData,
+      });
 
-        setAccountData(acData || {});
-        setAccountDetail(detailData || []);
-        setSelectedGroups(groupCodes || []);
+      setAccountData(acData || {});
+      setAccountDetail(detailData || []);
+      setSelectedGroups(groupCodes || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -1149,7 +1150,7 @@ const isFieldEnabled = (fieldType) => {
         setSelectedGroups(groupCodes || []);
 
         console.log("Account Data:", acData);
-      console.log("Group Codes:", groupCodes);
+        console.log("Group Codes:", groupCodes);
       } else {
         console.error(
           "Failed to fetch previous record:",
@@ -1211,7 +1212,6 @@ const isFieldEnabled = (fieldType) => {
   return (
     <>
       <ToastContainer />
-      {/* <button className="eTenderButton" onClick={handleEtender}>eTender</button> */}
       <div>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
@@ -1242,301 +1242,313 @@ const isFieldEnabled = (fieldType) => {
         />
       </div>
 
-      <div className="ac-master-form-container">
-        <form>
-          <h2>Account Master</h2>
-          <div className="ac-master-form-group ">
-            <label htmlFor="changeNo">Change No:</label>
-            <input
-              type="text"
-              id="changeNo"
-              Name="changeNo"
-              onKeyDown={handleKeyDown}
-              disabled={!addOneButtonEnabled}
-            />
-          </div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="Ac_Code">Account Code:</label>
-            <input
-              type="text"
-              id="Ac_Code"
-              Name="Ac_Code"
-              value={formData.Ac_Code}
-              onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
-            />
-            <label htmlFor="Ac_type">Type:</label>
-            <select
+      <Box
+        sx={{
+          maxWidth: "100%",
+          margin: "auto",
+          padding: "20px",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          backgroundColor: "#76D7C4",
+        }}
+      >
+        <Typography variant="h4" gutterBottom>
+          Account Master
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+          <TextField
+            label="Change No"
+            variant="outlined"
+            size="small"
+            disabled={!isEditing}
+          />
+          <TextField
+            label="Account Code"
+            name="Ac_Code"
+            variant="outlined"
+            size="small"
+            value={formData.Ac_Code}
+            onChange={handleChange}
+            disabled={!isEditing}
+          />
+          <FormControl size="small" fullWidth sx={{ width: "20vh" }}>
+            <InputLabel>Type</InputLabel>
+            <Select
               id="Ac_type"
               name="Ac_type"
               value={formData.Ac_type}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
               ref={acTypeRef}
+              InputLabelProps={{
+                shrink: true,
+              }}
             >
-              <option value="P">Party</option>
-              <option value="S">Supplier</option>
-              <option value="B">Bank</option>
-              <option value="C">Cash</option>
-              <option value="R">Relative</option>
-              <option value="F">Fixed Assets</option>
-              <option value="I">Interest Party</option>
-              <option value="E">Income/Expenses</option>
-              <option value="O">Trading</option>
-              <option value="M">Mill</option>
-              <option value="T">Transport</option>
-              <option value="BR">Broker</option>
-              <option value="RP">Retail Party</option>
-              <option value="CR">Cash Retail Party</option>
-            </select>
-            <label htmlFor="Ac_Name_E">Name Of Account::</label>
-            <input
-              type="text"
-              id="Ac_Name_E"
-              Name="Ac_Name_E"
-              value={formData.Ac_Name_E}
-              onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
-            />
-            <label htmlFor="Ac_Name_R">Regional Name::</label>
-            <input
-              type="text"
-              id="Ac_Name_R"
-              Name="Ac_Name_R"
-              value={formData.Ac_Name_R}
-              onChange={handleChange}
-              disabled={!isEditing && addOneButtonEnabled}
-            />
-            <label htmlFor="Ac_rate">
-              {formData.Ac_type === "F" ? "Depreciation Rate" : "Interest Rate"}
-              :
-            </label>
-            <input
-              type="text"
-              id="Ac_rate"
-              name="Ac_rate"
-              value={formData.Ac_rate}
-              onChange={handleChange}
-              disabled={!isFieldEnabled("Ac_rate")}
-            />
-          </div>
+              <MenuItem value="P">Party</MenuItem>
+              <MenuItem value="S">Supplier</MenuItem>
+              <MenuItem value="B">Bank</MenuItem>
+              <MenuItem value="C">Cash</MenuItem>
+              <MenuItem value="R">Relative</MenuItem>
+              <MenuItem value="F">Fixed Assets</MenuItem>
+              <MenuItem value="I">Interest Party</MenuItem>
+              <MenuItem value="E">Income/Expenses</MenuItem>
+              <MenuItem value="O">Trading</MenuItem>
+              <MenuItem value="M">Mill</MenuItem>
+              <MenuItem value="T">Transport</MenuItem>
+              <MenuItem value="BR">Broker</MenuItem>
+              <MenuItem value="RP">Retail Party</MenuItem>
+              <MenuItem value="CR">Cash Retail Party</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Ac_Name_E"
+            variant="outlined"
+            size="small"
+            type="text"
+            id="Ac_Name_E"
+            name="Ac_Name_E"
+            value={formData.Ac_Name_E}
+            onChange={handleChange}
+            disabled={!isEditing && addOneButtonEnabled}
+          />
+          <TextField
+            label="Ac_Name_R"
+            variant="outlined"
+            size="small"
+            id="Ac_Name_R"
+            name="Ac_Name_R"
+            value={formData.Ac_Name_R}
+            onChange={handleChange}
+            disabled={!isEditing && addOneButtonEnabled}
+          />
+          <TextField
+            label={
+              formData.Ac_type === "F" ? "Depreciation Rate" : "Interest Rate"
+            }
+            name="Ac_rate"
+            variant="outlined"
+            size="small"
+            value={formData.Ac_rate}
+            onChange={handleChange}
+            disabled={!isFieldEnabled("Ac_rate")}
+          />
+          <TextField
+            label="Address_E"
+            variant="outlined"
+            size="small"
+            id="Address_E"
+            name="Address_E"
+            value={formData.Address_E}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Address_E") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+            minLength={10}
+          />
+          <TextField
+            label="Address_R"
+            variant="outlined"
+            size="small"
+            id="Address_R"
+            name="Address_R"
+            value={formData.Address_R}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Address_R") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+        </Box>
 
-          <div className="ac-master-form-group ">
-            <label htmlFor="Address_E">Address:</label>
-            <input
-              type="text"
-              id="Address_E"
-              Name="Address_E"
-              value={formData.Address_E}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Address_E") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-              minLength={10}
-            />
-            <label htmlFor="Address_R">Address2::</label>
-            <input
-              type="text"
-              id="Address_R"
-              name="Address_R"
-              value={formData.Address_R}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Address_R") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="City_Code">City Code:</label>
-            <CityMasterHelp
-              name="City_Code"
-              onAcCodeClick={handleCity_Code}
-              CityName={
-                cityMasterData
-                  ? cityMasterData.city.city_name_e || ""
-                  : city_data
-                  ? city_data.city_name_e
-                  : cityName || ""
-              }
-              CityCode={
-                cityMasterData
-                  ? cityMasterData.city.city_code
-                  : city_data 
-                  ? city_data.city_code
-                  : newCity_Code || ""
-              }
-              tabIndex={8}
-              disabledFeild={!isEditing && addOneButtonEnabled}
-            />
-            
-            <div>
-              <button onClick={handleAddCity}>Add City</button>
-            </div>
-            {showCityPopup && (
-              <div className="city-master-modal">
-                <div className="city-master-modal-content">
-                  <button
-                    className="city-master-close-btn"
-                    onClick={handleClosePopup}
-                  >
-                    &times;
-                  </button>
-                  <div className="city-master-popup-wrapper">
-                    <CityMaster isPopup={true} ref={cityMasterRef} />{" "}
-                    {/* Render CityMaster component */}
-                    <div className="popup-action-buttons">
-                      <button onClick={handleCitySave} className="save-btn">
-                        Save
-                      </button>
-                      <button onClick={handleClosePopup} className="cancel-btn">
-                        Cancel
-                      </button>
-                    </div>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+          <label htmlFor="City_Code">City Code:</label>
+          <CityMasterHelp
+            name="City_Code"
+            onAcCodeClick={handleCity_Code}
+            CityName={
+              cityMasterData
+                ? cityMasterData.city.city_name_e || ""
+                : city_data
+                ? city_data.city_name_e
+                : cityName || ""
+            }
+            CityCode={
+              cityMasterData
+                ? cityMasterData.city.city_code
+                : city_data
+                ? city_data.city_code
+                : newCity_Code || ""
+            }
+            tabIndex={8}
+            disabledFeild={!isEditing && addOneButtonEnabled}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            onClick={(e) => handleAddCity(e)}
+          >
+            Add City
+          </Button>
+          {showCityPopup && (
+            <div className="city-master-modal">
+              <div className="city-master-modal-content">
+                <button
+                  className="city-master-close-btn"
+                  onClick={handleClosePopup}
+                >
+                  &times;
+                </button>
+                <div className="city-master-popup-wrapper">
+                  <CityMaster isPopup={true} ref={cityMasterRef} />{" "}
+                  {/* Render CityMaster component */}
+                  <div className="popup-action-buttons">
+                    <button onClick={handleCitySave} className="save-btn">
+                      Save
+                    </button>
+                    <button onClick={handleClosePopup} className="cancel-btn">
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Overlay for the modal */}
-            {showCityPopup && (
-              <div
-                className="city-master-modal-overlay"
-                onClick={handleClosePopup}
-                role="button"
-              ></div>
-            )}
-            <label htmlFor="Pincode">Pin Code::</label>
-            <input
-              type="text"
-              id="Pincode"
-              name="Pincode"
-              value={
-                cityMasterData ? cityMasterData.city.pincode : formData.Pincode
-              }
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Pincode") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-          </div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="Local_Lic_No">Sugar Lic No::</label>
-            <input
-              type="text"
-              id="Local_Lic_No"
-              name="Local_Lic_No"
-              value={formData.Local_Lic_No}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Local_Lic_No") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Gst_No">GST No::</label>
-            <input
-              type="text"
-              id="Gst_No"
-              name="Gst_No"
-              value={formData.Gst_No}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Gst_No") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
+          {/* Overlay for the modal */}
+          {showCityPopup && (
+            <div
+              className="city-master-modal-overlay"
+              onClick={handleClosePopup}
+              role="button"
+            ></div>
+          )}
+          <TextField
+            label="Pin Code"
+            type="text"
+            id="Pincode"
+            name="Pincode"
+            size="small"
+            value={
+              cityMasterData ? cityMasterData.city.pincode : formData.Pincode
+            }
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Pincode") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Sugar Lic No"
+            id="Local_Lic_No"
+            name="Local_Lic_No"
+            size="small"
+            value={formData.Local_Lic_No}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Local_Lic_No") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Gst No"
+            type="text"
+            id="Gst_No"
+            name="Gst_No"
+            size="small"
+            value={formData.Gst_No}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Gst_No") || (!isEditing && addOneButtonEnabled)
+            }
+          />
 
-            <svg
-              className="search-icon"
-              onClick={handleSearchClick}
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              width="24"
-              height="24"
-            >
-              <path d="M10,20a10,10,0,1,1,10-10A10,10,0,0,1,10,20ZM10,2a8,8,0,1,0,8,8A8,8,0,0,0,10,2Z" />
-              <path d="M22,22l-5.66-5.66a8,8,0,1,1,1.41-1.41L22,22ZM20.59,21.17,16.66,17.24a9,9,0,1,0-1.41,1.41l3.93,3.93Z" />
-            </svg>
+          <SearchIcon
+            className="search-icon"
+            onClick={handleSearchClick}
+            style={{ cursor: "pointer" }}
+          />
+          <TextField
+            label="Email"
+            id="Email_Id"
+            name="Email_Id"
+            size="small"
+            value={formData.Email_Id}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Email_Id") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="CC Email"
+            id="Email_Id_cc"
+            name="Email_Id_cc"
+            size="small"
+            value={formData.Email_Id_cc}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Email_Id_cc") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+        </Box>
 
-            <label htmlFor="Email_Id">Email::</label>
-            <input
-              type="text"
-              id="Email_Id"
-              name="Email_Id"
-              value={formData.Email_Id}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Email_Id") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Email_Id_cc">CC Email::</label>
-            <input
-              type="text"
-              id="Email_Id_cc"
-              name="Email_Id_cc"
-              value={formData.Email_Id_cc}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Email_Id_cc") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Other_Narration">Other Narration::</label>
-            <textarea
-              type="text"
-              id="Other_Narration"
-              name="Other_Narration"
-              value={formData.Other_Narration}
-              rows={2}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Other_Narration") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-          </div>
-
-          <div className="ac-master-form-group "></div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="Bank_Name">Bank Name::</label>
-            <input
-              type="text"
-              id="Bank_Name"
-              name="Bank_Name"
-              value={formData.Bank_Name}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Bank_Name") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Bank_Ac_No">Bank A/c No::</label>
-            <input
-              type="text"
-              id="Bank_Ac_No"
-              name="Bank_Ac_No"
-              value={formData.Bank_Ac_No}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Bank_Ac_No") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Bank_Opening">Bank Opening Bal::</label>
-            <input
-              type="text"
-              id="Bank_Opening"
-              name="Bank_Opening"
-              value={formData.Bank_Opening}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Bank_Opening") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="bank_Op_Drcr">Bank Dr/Cr: :</label>
-            <select
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+          <Typography variant="outlined">Other Narration</Typography>
+          <TextareaAutosize
+            label="Other Narration"
+            id="Other_Narration"
+            name="Other_Narration"
+            value={formData.Other_Narration}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Other_Narration") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+            style={{
+              width: "20%",
+              fontSize: "20px",
+              borderRadius: "2px",
+            }}
+          />
+          <TextField
+            label="Bank Name"
+            id="Bank_Name"
+            name="Bank_Name"
+            value={formData.Bank_Name}
+            size="small"
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Bank_Name") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Bank A/c No"
+            id="Bank_Ac_No"
+            name="Bank_Ac_No"
+            value={formData.Bank_Ac_No}
+            onChange={handleChange}
+            size="small"
+            disabled={
+              !isFieldEnabled("Bank_Ac_No") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Bank Opening Bal"
+            id="Bank_Opening"
+            name="Bank_Opening"
+            value={formData.Bank_Opening}
+            size="small"
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Bank_Opening") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <FormControl size="small" fullWidth sx={{ width: "10vh" }}>
+            <InputLabel>Bank Opening Dr/Cr</InputLabel>
+            <Select
               id="bank_Op_Drcr"
               name="bank_Op_Drcr"
               value={formData.bank_Op_Drcr}
@@ -1546,23 +1558,25 @@ const isFieldEnabled = (fieldType) => {
                 (!isEditing && addOneButtonEnabled)
               }
             >
-              <option value="D">Debit</option>
-              <option value="C">Credit</option>
-            </select>
-            <label htmlFor="Opening_Balance">Opening Balance: :</label>
-            <input
-              type="text"
-              id="Opening_Balance"
-              name="Opening_Balance"
-              value={formData.Opening_Balance}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Opening_Balance") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Drcr">Dr/Cr:</label>
-            <select
+              <MenuItem value="D">Debit</MenuItem>
+              <MenuItem value="C">Credit</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Opening Balance"
+            id="Opening_Balance"
+            name="Opening_Balance"
+            value={formData.Opening_Balance}
+            onChange={handleChange}
+            size="small"
+            disabled={
+              !isFieldEnabled("Opening_Balance") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <FormControl size="small" fullWidth sx={{ width: "10vh" }}>
+            <InputLabel>Dr/Cr</InputLabel>
+            <Select
               id="Drcr"
               name="Drcr"
               value={formData.Drcr}
@@ -1571,260 +1585,271 @@ const isFieldEnabled = (fieldType) => {
                 !isFieldEnabled("Drcr") || (!isEditing && addOneButtonEnabled)
               }
             >
-              <option value="D">Debit</option>
-              <option value="C">Credit</option>
-            </select>
-          </div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="Group_Code">Group Code:</label>
-            <GroupMasterHelp
-              name="Group_Code"
-              onAcCodeClick={handleGroup_Code}
-              GroupName={
-                groupMasterData ? groupMasterData.group.group_Name_E : grpName
-              }
-              GroupCode={
-                groupMasterData
-                  ? groupMasterData.group.group_Code
-                  : newGroup_Code
-              }
-              tabIndex={24}
-              disabledFeild={!isEditing && addOneButtonEnabled}
-            />
-            <button onClick={handleAddGroup}>Add Group</button>
-            {showGroupPopup && (
-              <div className="group-master-modal">
-                <div className="group-master-modal-content">
-                  <button
-                    className="group-master-close-btn"
-                    onClick={handleCloseGroupPopup}
-                  >
-                    &times;
-                  </button>
-                  <div className="group-master-popup-wrapper">
-                    <FinicialMaster isPopup={true} ref={groupMasterRef} />{" "}
-                    {/* Render GroupMasterHelp component */}
-                    <div className="popup-action-buttons">
-                      <button onClick={handleGroupSave} className="save-btn">
-                        Save
-                      </button>
-                      <button
-                        onClick={handleCloseGroupPopup}
-                        className="cancel-btn"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+              <MenuItem value="D">Debit</MenuItem>
+              <MenuItem value="C">Credit</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+          <label htmlFor="Group_Code">Group Code:</label>
+          <GroupMasterHelp
+            name="Group_Code"
+            onAcCodeClick={handleGroup_Code}
+            GroupName={
+              groupMasterData ? groupMasterData.group.group_Name_E : grpName
+            }
+            GroupCode={
+              groupMasterData ? groupMasterData.group.group_Code : newGroup_Code
+            }
+            tabIndex={24}
+            disabledFeild={!isEditing && addOneButtonEnabled}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            onClick={(e) => handleAddGroup(e)}
+          >
+            Add Group
+          </Button>
+          {showGroupPopup && (
+            <div className="group-master-modal">
+              <div className="group-master-modal-content">
+                <button
+                  className="group-master-close-btn"
+                  onClick={handleCloseGroupPopup}
+                >
+                  &times;
+                </button>
+                <div className="group-master-popup-wrapper">
+                  <FinicialMaster isPopup={true} ref={groupMasterRef} />{" "}
+                  {/* Render GroupMasterHelp component */}
+                  <div className="popup-action-buttons">
+                    <button onClick={handleGroupSave} className="save-btn">
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCloseGroupPopup}
+                      className="cancel-btn"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Overlay for the modal */}
-            {showGroupPopup && (
-              <div
-                className="group-master-modal-overlay"
-                onClick={handleCloseGroupPopup}
-                role="button"
-              ></div>
-            )}
-            <label htmlFor="Short_Name">Short Name::</label>
-            <input
-              type="text"
-              id="Short_Name"
-              name="Short_Name"
-              value={formData.Short_Name}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Short_Name") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Commission">Commission Rate::</label>
-            <input
-              type="text"
-              id="Commission"
-              name="Commission"
-              value={formData.Commission}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Commission") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="carporate_party">Is Carporate Party::</label>
-            <input
-              type="checkbox"
-              id="carporate_party"
-              name="carporate_party"
-              checked={formData.carporate_party === "Y"}
-              onChange={(e) => handleCheckbox(e, "string")}
-              disabled={
-                !isFieldEnabled("carporate_party") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="referBy">Ref By::</label>
-            <input
-              type="text"
-              id="referBy"
-              name="referBy"
-              value={formData.referBy}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("referBy") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-          </div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="OffPhone">Off. Phone::</label>
-            <input
-              type="text"
-              id="OffPhone"
-              name="OffPhone"
-              value={formData.OffPhone}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("OffPhone") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Fax">TCS/TDS Link::</label>
-            <input
-              type="text"
-              id="Fax"
-              name="Fax"
-              value={formData.Fax}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Fax") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="CompanyPan">Company Pan::</label>
-            <input
-              type="text"
-              id="CompanyPan"
-              name="CompanyPan"
-              value={
-                formData.CompanyPan ||
-                formData.Gst_No.substring(2, formData.Gst_No.length - 3).trim()
-              }
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("CompanyPan") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Mobile_No">Mobile No.::</label>
-            <input
-              type="text"
-              id="Mobile_No"
-              name="Mobile_No"
-              value={formData.Mobile_No}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Mobile_No") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="IFSC">Bank IFSC Code::</label>
-            <input
-              type="text"
-              id="IFSC"
-              name="IFSC"
-              value={formData.IFSC}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("IFSC") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="FSSAI">FSSAI Lic No::</label>
-            <input
-              type="text"
-              id="FSSAI"
-              name="FSSAI"
-              value={formData.FSSAI}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("FSSAI") || (!isEditing && addOneButtonEnabled)
-              }
-            />
-          </div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="Locked">Locked::</label>
-            <input
-              type="checkbox"
-              id="Locked"
-              name="Locked"
-              checked={formData.Locked === 1}
-              onChange={(e) => handleCheckbox(e, "numeric")}
-              disabled={
-                !isFieldEnabled("Locked") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="GSTStateCode">GST State Code:</label>
-            <GSTStateMasterHelp
-              name="GSTStateCode"
-              onAcCodeClick={handleGSTStateCode}
-              GstStateName={gstStateName}
-              GstStateCode={newGSTStateCode}
-              tabIndex={44}
-              disabledFeild={!isEditing && addOneButtonEnabled}
-            />
-            <label htmlFor="UnregisterGST">Unregister For GST::</label>
-            <input
-              type="checkbox"
-              id="UnregisterGST"
-              name="UnregisterGST"
-              checked={formData.UnregisterGST === 1}
-              onChange={(e) => handleCheckbox(e, "numeric")}
-              disabled={
-                !isFieldEnabled("UnregisterGST") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Distance">Distance::</label>
-            <input
-              type="text"
-              id="Distance"
-              name="Distance"
-              value={formData.Distance}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Distance") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="whatsup_no">whatsApp No::</label>
-            <input
-              type="text"
-              id="whatsup_no"
-              name="whatsup_no"
-              value={formData.whatsup_no}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("whatsup_no") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="adhar_no">Adhar No::</label>
-            <input
-              type="text"
-              id="adhar_no"
-              name="adhar_no"
-              value={formData.adhar_no}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("adhar_no") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="Limit_By">Limit::</label>
-            <select
+          {/* Overlay for the modal */}
+          {showGroupPopup && (
+            <div
+              className="group-master-modal-overlay"
+              onClick={handleCloseGroupPopup}
+              role="button"
+            ></div>
+          )}
+          <TextField
+            label="Short Name"
+            id="Short_Name"
+            name="Short_Name"
+            value={formData.Short_Name}
+            size="small"
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Short_Name") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Commission Rate"
+            id="Commission"
+            name="Commission"
+            size="small"
+            value={formData.Commission}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Commission") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <label htmlFor="carporate_party">Is Carporate Party::</label>
+          <Checkbox
+            sx={{
+              color: "primary.main",
+              "&.Mui-checked": {
+                color: "secondary.main",
+              },
+            }}
+            id="carporate_party"
+            name="carporate_party"
+            checked={formData.carporate_party === "Y"}
+            onChange={(e) => handleCheckbox(e, "string")}
+            disabled={
+              !isFieldEnabled("carporate_party") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Ref By"
+            id="referBy"
+            name="referBy"
+            value={formData.referBy}
+            onChange={handleChange}
+            size="small"
+            disabled={
+              !isFieldEnabled("referBy") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+          <TextField
+            label="Off. Phone"
+            id="OffPhone"
+            name="OffPhone"
+            size="small"
+            value={formData.OffPhone}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("OffPhone") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="TCS/TDS Link"
+            id="Fax"
+            name="Fax"
+            size="small"
+            value={formData.Fax}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Fax") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Company Pan"
+            id="CompanyPan"
+            name="CompanyPan"
+            size="small"
+            value={
+              formData?.CompanyPan ||
+              formData.Gst_No.substring(2, formData.Gst_No.length - 3).trim()
+            }
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("CompanyPan") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Mobile No"
+            id="Mobile_No"
+            name="Mobile_No"
+            size="small"
+            value={formData.Mobile_No}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Mobile_No") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Bank IFSC Code"
+            id="IFSC"
+            name="IFSC"
+            size="small"
+            value={formData.IFSC}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("IFSC") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+
+          <TextField
+            label="FSSAI Lic No"
+            id="FSSAI"
+            name="FSSAI"
+            size="small"
+            value={formData.FSSAI}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("FSSAI") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <label htmlFor="Locked">Locked::</label>
+          <Checkbox
+            sx={{
+              color: "primary.main",
+              "&.Mui-checked": {
+                color: "secondary.main",
+              },
+            }}
+            id="Locked"
+            name="Locked"
+            checked={formData.Locked === 1}
+            onChange={(e) => handleCheckbox(e, "numeric")}
+            disabled={
+              !isFieldEnabled("Locked") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+          <label htmlFor="GSTStateCode">GST State Code:</label>
+          <GSTStateMasterHelp
+            name="GSTStateCode"
+            onAcCodeClick={handleGSTStateCode}
+            GstStateName={gstStateName}
+            GstStateCode={newGSTStateCode}
+            tabIndex={44}
+            disabledFeild={!isEditing && addOneButtonEnabled}
+          />
+          <label htmlFor="UnregisterGST">Unregister For GST::</label>
+          <input
+            type="checkbox"
+            id="UnregisterGST"
+            name="UnregisterGST"
+            checked={formData.UnregisterGST === 1}
+            onChange={(e) => handleCheckbox(e, "numeric")}
+            disabled={
+              !isFieldEnabled("UnregisterGST") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Distance"
+            id="Distance"
+            name="Distance"
+            value={formData.Distance}
+            size="small"
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Distance") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="whatsApp No"
+            id="whatsup_no"
+            name="whatsup_no"
+            size="small"
+            value={formData.whatsup_no}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("whatsup_no") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Adhar No"
+            id="adhar_no"
+            name="adhar_no"
+            size="small"
+            value={formData.adhar_no}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("adhar_no") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <FormControl size="small" fullWidth sx={{ width: "12vh" }}>
+            <InputLabel>Limit</InputLabel>
+            <Select
               id="Limit_By"
               name="Limit_By"
               value={formData.Limit_By}
@@ -1834,43 +1859,46 @@ const isFieldEnabled = (fieldType) => {
                 (!isEditing && addOneButtonEnabled)
               }
             >
-              <option value="Y">By Limit</option>
-              <option value="N">No Limit</option>
-            </select>
-          </div>
-          <div className="ac-master-form-group ">
-            <label htmlFor="Tan_no">Tan No: :</label>
-            <input
-              type="text"
-              id="Tan_no"
-              name="Tan_no"
-              value={formData.Tan_no}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("Tan_no") || (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="TDSApplicable">TDS Applicable::</label>
-            <select
+              <MenuItem value="Y">By Limit</MenuItem>
+              <MenuItem value="N">No Limit</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Tan No"
+            id="Tan_no"
+            name="Tan_no"
+            value={formData.Tan_no}
+            size="small"
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("Tan_no") || (!isEditing && addOneButtonEnabled)
+            }
+          />
+        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+          <FormControl size="small" fullWidth sx={{ width: "25vh" }}>
+            <InputLabel>TDS Applicable</InputLabel>
+            <Select
               id="TDSApplicable"
               name="TDSApplicable"
               value={formData.TDSApplicable}
               onChange={handleChange}
               disabled={
-                !isFieldEnabled("TDSApplicable") || (!isEditing && addOneButtonEnabled)
+                !isFieldEnabled("TDSApplicable") ||
+                (!isEditing && addOneButtonEnabled)
               }
             >
-              <option value="L">Lock</option>
-              <option value="Y">Sale TDS By Limit</option>
-              <option value="N">Sale TCS By Limit</option>
-              <option value="T">TCS Bill 1 Sale</option>
-              <option value="S">TDS Bill 1 Sale</option>
-              <option value="U">URP</option>
-            </select>
-            <label htmlFor="PurchaseTDSApplicable">
-              Purchase TDS Applicable::
-            </label>
-            <select
+              <MenuItem value="L">Lock</MenuItem>
+              <MenuItem value="Y">Sale TDS By Limit</MenuItem>
+              <MenuItem value="N">Sale TCS By Limit</MenuItem>
+              <MenuItem value="T">TCS Bill 1 Sale</MenuItem>
+              <MenuItem value="S">TDS Bill 1 Sale</MenuItem>
+              <MenuItem value="U">URP</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" fullWidth sx={{ width: "25vh" }}>
+            <InputLabel>Purchase TDS Applicable</InputLabel>
+            <Select
               id="PurchaseTDSApplicable"
               name="PurchaseTDSApplicable"
               value={formData.PurchaseTDSApplicable}
@@ -1880,79 +1908,94 @@ const isFieldEnabled = (fieldType) => {
                 (!isEditing && addOneButtonEnabled)
               }
             >
-              <option value="L">Lock</option>
-              <option value="Y">Purchase TDS By Limit</option>
-              <option value="P">Purchase TDS By 1st Bill</option>
-              <option value="N">Purchase TCS By Limit</option>
-              <option value="B">Purchase TCS By 1st Bill</option>
-              <option value="U">URP</option>
-            </select>
-            <label htmlFor="PanLink">Pan Link::</label>
-            <input
-              type="text"
-              id="PanLink"
-              name="PanLink"
-              value={formData.PanLink}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("PanLink") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="loadingbyus">Loading by us:</label>
-            <input
-              type="checkbox"
-              id="loadingbyus"
-              name="loadingbyus"
-              checked={formData.loadingbyus === "Y"}
-              onChange={(e) => handleCheckbox(e, "string")}
-              disabled={
-                !isFieldEnabled("loadingbyus") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-            <label htmlFor="TransporterId">Transporter ID::</label>
-            <input
-              type="text"
-              id="TransporterId"
-              name="TransporterId"
-              value={formData.TransporterId}
-              onChange={handleChange}
-              disabled={
-                !isFieldEnabled("TransporterId") ||
-                (!isEditing && addOneButtonEnabled)
-              }
-            />
-          </div>
+              <MenuItem value="L">Lock</MenuItem>
+              <MenuItem value="Y">Purchase TDS By Limit</MenuItem>
+              <MenuItem value="P">Purchase TDS By 1st Bill</MenuItem>
+              <MenuItem value="N">Purchase TCS By Limit</MenuItem>
+              <MenuItem value="B">Purchase TCS By 1st Bill</MenuItem>
+              <MenuItem value="U">URP</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Pan Link"
+            id="PanLink"
+            name="PanLink"
+            value={formData.PanLink}
+            size="small"
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("PanLink") || (!isEditing && addOneButtonEnabled)
+            }
+          />
 
-          <div className="ac-master-form-group ">
-            <table className="custom-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Group Name</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupData.map((group, index) => (
-                  <tr key={group.Category_Code}>
-                    <td>{group.Category_Code}</td>
-                    <td>{group.Category_Name}</td>
-                    <td>
-                    <input
-          type="checkbox"
-          checked={selectedGroups.includes(group.Category_Code)} // Checked state based on group code
-          onChange={(e) => handleCheckboxAcGroups(e, group)}
-        />
-                     
-                    </td>
-                  </tr>
+          <label htmlFor="loadingbyus">Loading by us:</label>
+          <Checkbox
+            sx={{
+              color: "primary.main",
+              "&.Mui-checked": {
+                color: "secondary.main",
+              },
+            }}
+            id="loadingbyus"
+            name="loadingbyus"
+            checked={formData.loadingbyus === "Y"}
+            onChange={(e) => handleCheckbox(e, "string")}
+            disabled={
+              !isFieldEnabled("loadingbyus") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+          <TextField
+            label="Transporter ID"
+            id="TransporterId"
+            name="TransporterId"
+            size="small"
+            value={formData.TransporterId}
+            onChange={handleChange}
+            disabled={
+              !isFieldEnabled("TransporterId") ||
+              (!isEditing && addOneButtonEnabled)
+            }
+          />
+        </Box>
+
+        <Box sx={{ display: "flex", justifyContent: "center", marginTop: 2 }}>
+          <TableContainer
+            component={Paper}
+            sx={{
+              width: "50%",
+              maxWidth: 400,
+              ml: -160,
+            }}
+          >
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Code</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Group Name</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {groupData.map((group) => (
+                  <TableRow key={group.Category_Code}>
+                    <TableCell>{group.Category_Code}</TableCell>
+                    <TableCell>{group.Category_Name}</TableCell>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedGroups.includes(group.Category_Code)}
+                        onChange={(e) => handleCheckboxAcGroups(e, group)}
+                        disabled={!isEditing && addOneButtonEnabled}
+                        color="primary"
+                        size="small"
+                      />
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </form>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
         {isLoading && (
           <div className="loading-overlay">
             <div className="spinner-container">
@@ -1962,255 +2005,146 @@ const isFieldEnabled = (fieldType) => {
         )}
 
         {/*detail part popup functionality and Validation part Grid view */}
-        <div className="">
-          {showPopup && (
-            <div className="modal" role="dialog" style={{ display: "block" }}>
-              <div className="modal-dialog" role="document">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">
-                      {selectedUser.Id ? "Edit User" : "Add User"}
-                    </h5>
-                    <button
-                      type="button"
-                      onClick={closePopup}
-                      aria-label="Close"
-                      style={{
-                        marginLeft: "80%",
-                        width: "60px",
-                        height: "30px",
-                      }}
-                    >
-                      <span aria-hidden="true">&times;</span>
-                    </button>
-                  </div>
-                  <div className="modal-body-acMaster">
-                    <form>
-                      <label className="ac-master-form-label">
-                        Person Name:
-                      </label>
-                      <div className="ac-master-col-Ewaybillno">
-                        <div className="ac-master-form-group">
-                          <input
-                            type="text"
-                            tabIndex="5"
-                            className="ac-master-form-control"
-                            name="Person_Name"
-                            autoComplete="off"
-                            value={formDataDetail.Person_Name}
-                            onChange={handleDetailChange}
-                          />
-                        </div>
-                      </div>
-                      <label className="ac-master-form-label">
-                        Person Mobile:
-                      </label>
-                      <div className="ac-master-col-Ewaybillno">
-                        <div className="ac-master-form-group">
-                          <input
-                            type="text"
-                            tabIndex="5"
-                            className="ac-master-form-control"
-                            name="Person_Mobile"
-                            autoComplete="off"
-                            value={formDataDetail.Person_Mobile}
-                            onChange={handleDetailChange}
-                          />
-                        </div>
-                      </div>
-                      <label className="ac-master-form-label">
-                        Person Email:
-                      </label>
-                      <div className="ac-master-col-Ewaybillno">
-                        <div className="ac-master-form-group">
-                          <input
-                            type="text"
-                            tabIndex="5"
-                            className="ac-master-form-control"
-                            name="Person_Email"
-                            autoComplete="off"
-                            value={formDataDetail.Person_Email}
-                            onChange={handleDetailChange}
-                          />
-                        </div>
-                      </div>
-                      <label className="ac-master-form-label">
-                        Person Pan:
-                      </label>
-                      <div className="ac-master-col-Ewaybillno">
-                        <div className="ac-master-form-group">
-                          <input
-                            type="text"
-                            tabIndex="5"
-                            className="ac-master-form-control"
-                            name="Person_Pan"
-                            autoComplete="off"
-                            value={formDataDetail.Person_Pan}
-                            onChange={handleDetailChange}
-                          />
-                        </div>
-                      </div>
-                      <label className="ac-master-form-label">Other:</label>
-                      <div className="ac-master-col-Ewaybillno">
-                        <div className="ac-master-form-group">
-                          <textarea
-                            type="text"
-                            tabIndex="5"
-                            className="ac-master-form-control"
-                            name="Other"
-                            autoComplete="off"
-                            value={formDataDetail.Other}
-                            onChange={handleDetailChange}
-                            rows={2}
-                          />
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <div className="modal-footer">
-                    {selectedUser.Id ? (
-                      <button
-                        className="btn btn-primary"
-                        onClick={updateUser}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            updateUser();
-                          }
-                        }}
-                      >
-                        Update User
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-primary"
-                        onClick={addUser}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            addUser();
-                          }
-                        }}
-                      >
-                        Add User
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={closePopup}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div style={{ display: "flex" }}>
-            <div
-              style={{
-                display: "flex",
-                height: "35px",
-                marginTop: "25px",
-                marginRight: "10px",
-              }}
-            >
-              <button
-                className="btn btn-primary"
-                onClick={() => openPopup("add")}
-                tabIndex="16"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    openPopup("add");
-                  }
-                }}
-              >
-                Add
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={!isEditing}
-                style={{ marginLeft: "10px" }}
-                tabIndex="17"
-              >
-                Close
-              </button>
-            </div>
-            <table className="table mt-4 table-bordered">
-              <thead>
-                <tr>
-                  <th>Actions</th>
-                  {/* <th>ID</th>
-                <th>RowAction</th> */}
-                  <th>A/C Code</th>
-                  <th>Person Name</th>
-                  <th>Person Mobile</th>
-                  <th>Person Email</th>
-                  <th>Person Pan</th>
-                  <th>Other</th>
-                  {/* <th>Saledetailid</th> */}
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.Id}>
-                    <td>
-                      {user.rowaction === "add" ||
-                      user.rowaction === "update" ||
-                      user.rowaction === "Normal" ? (
-                        <>
-                          <button
-                            className="btn btn-warning"
-                            onClick={() => editUser(user)}
-                            disabled={!isEditing}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                editUser(user);
-                              }
-                            }}
-                            tabIndex="18"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger ms-2"
-                            onClick={() => deleteModeHandler(user)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                deleteModeHandler(user);
-                              }
-                            }}
-                            disabled={!isEditing}
-                            tabIndex="19"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : user.rowaction === "DNU" ||
-                        user.rowaction === "delete" ? (
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => openDelete(user)}
-                        >
-                          Open
-                        </button>
-                      ) : null}
-                    </td>
-                    {/* <td>{user.id}</td>
-                  <td>{user.rowaction}</td> */}
-                    <td>{formData.Ac_Code}</td>
-                    <td>{user.Person_Name}</td>
-                    <td>{user.Person_Mobile}</td>
-                    <td>{user.Person_Email}</td>
-                    <td>{user.Person_Pan}</td>
-                    <td>{user.Other}</td>
-                    {/* <td>{user.saledetailid}</td> */}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Dialog open={showPopup} onClose={closePopup} fullWidth>
+          <DialogTitle>
+            {selectedUser.Id ? "Edit User" : "Add User"}
+          </DialogTitle>
+          <DialogContent>
+            <form>
+              <TextField
+                label="Person Name"
+                name="Person_Name"
+                value={formDataDetail.Person_Name}
+                onChange={handleDetailChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label="Person Mobile"
+                name="Person_Mobile"
+                value={formDataDetail.Person_Mobile}
+                onChange={handleDetailChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label="Person Email"
+                name="Person_Email"
+                value={formDataDetail.Person_Email}
+                onChange={handleDetailChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label="Person Pan"
+                name="Person_Pan"
+                value={formDataDetail.Person_Pan}
+                onChange={handleDetailChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextareaAutosize
+                placeholder="Other"
+                name="Other"
+                value={formDataDetail.Other}
+                onChange={handleDetailChange}
+                minRows={3}
+                style={{ width: "100%", marginTop: "16px", padding: "8px" }}
+              />
+            </form>
+          </DialogContent>
+          <DialogActions>
+            {selectedUser.Id ? (
+              <Button variant="contained" color="primary" onClick={updateUser}>
+                Update User
+              </Button>
+            ) : (
+              <Button variant="contained" color="primary" onClick={addUser}>
+                Add User
+              </Button>
+            )}
+            <Button variant="outlined" color="secondary" onClick={closePopup}>
+              Cancel
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <div style={{ display: "flex", marginBottom: "16px" }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => openPopup("add")}
+            style={{ marginRight: "10px" }}
+          >
+            Add
+          </Button>
+          <Button variant="contained" color="error" disabled={!isEditing}>
+            Close
+          </Button>
         </div>
-      </div>
+
+        {/* Table for Users */}
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Actions</TableCell>
+                <TableCell>A/C Code</TableCell>
+                <TableCell>Person Name</TableCell>
+                <TableCell>Person Mobile</TableCell>
+                <TableCell>Person Email</TableCell>
+                <TableCell>Person Pan</TableCell>
+                <TableCell>Other</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.Id}>
+                  <TableCell>
+                    {user.rowaction === "add" ||
+                    user.rowaction === "update" ||
+                    user.rowaction === "Normal" ? (
+                      <>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          onClick={() => editUser(user)}
+                          disabled={!isEditing}
+                          style={{ marginRight: "8px" }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => deleteModeHandler(user)}
+                          disabled={!isEditing}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    ) : user.rowaction === "DNU" ||
+                      user.rowaction === "delete" ? (
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => openDelete(user)}
+                      >
+                        Open
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{formData.Ac_Code}</TableCell>
+                  <TableCell>{user.Person_Name}</TableCell>
+                  <TableCell>{user.Person_Mobile}</TableCell>
+                  <TableCell>{user.Person_Email}</TableCell>
+                  <TableCell>{user.Person_Pan}</TableCell>
+                  <TableCell>{user.Other}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
     </>
   );
 };

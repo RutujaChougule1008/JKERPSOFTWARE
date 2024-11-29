@@ -3,10 +3,10 @@ import ActionButtonGroup from "../../../../Common/CommonButtons/ActionButtonGrou
 import NavigationButtons from '../../../../Common/CommonButtons/NavigationButtons';
 import AccountMasterHelp from "../../../../Helper/AccountMasterHelp";
 import { useNavigate, useLocation } from 'react-router-dom';
-import './PartyUnitMaster.css';
 import axios, { isCancel } from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { Box, Container, TextField,Grid, Typography } from '@mui/material';
 
 const API_URL = process.env.REACT_APP_API;
 
@@ -36,7 +36,7 @@ const PartyUnitMaster = () => {
 
     const acCodeRef = useRef(null)
     const changeNoRef = useRef(null);
-    //In utility page record doubleClicked that recod show for edit functionality
+
     const location = useLocation();
     const selectedRecord = location.state?.selectedRecord;
     const permissions = location.state?.permissionsData;
@@ -52,28 +52,27 @@ const PartyUnitMaster = () => {
         Modified_By: '',
         ac: '',
         uc: '',
-        
-}
+
+    }
     const [formData, setFormData] = useState(initialFormData);
 
     useEffect(() => {
         if (isEditing) {
-          if (acCodeRef.current) {
-            acCodeRef.current.focus();
-          }
+            if (acCodeRef.current) {
+                acCodeRef.current.focus();
+            }
         }
-        else if(isCancel){
+        else if (isCancel) {
             if (changeNoRef.current) {
                 changeNoRef.current.focus();
-              }
+            }
         }
-      }, [isEditing, isCancel]);
-    
+    }, [isEditing, isCancel]);
+
     // Handle change for all inputs
     const handleChange = (event) => {
         const { name, value } = event.target;
         setFormData(prevState => {
-            // Create a new object based on existing state
             const updatedFormData = { ...prevState, [name]: value };
             return updatedFormData;
         });
@@ -82,22 +81,23 @@ const PartyUnitMaster = () => {
     const handleParty = (code, accoid) => {
         setParty(code);
         setFormData({
-          ...formData,
-          Ac_Code: code,
-          ac: accoid,
+            ...formData,
+            Ac_Code: code,
+            ac: accoid,
         });
-      };
+    };
 
-      const handleUnit = (code, accoid) => {
+    const handleUnit = (code, accoid) => {
         setUnit(code);
         setFormData({
-          ...formData,
-          Unit_name: code,
-          uc: accoid,
+            ...formData,
+            Unit_name: code,
+            uc: accoid,
         });
-      };
+    };
 
-    const fetchLastRecord= () => {
+    //Fetch Last record Unit code.
+    const fetchLastRecord = () => {
         fetch(`${API_URL}/getNextUnitCode_PartyUnitMaster?Company_Code=${companyCode}&Year_Code=${yearCode}`)
             .then(response => {
                 console.log("response", response)
@@ -107,7 +107,6 @@ const PartyUnitMaster = () => {
                 return response.json();
             })
             .then(data => {
-                // Set the last company code as the default value for Company_Code
                 setFormData(prevState => ({
                     ...prevState,
                     unit_code: data.next_unit_code
@@ -126,13 +125,14 @@ const PartyUnitMaster = () => {
         setDeleteButtonEnabled(false);
         setIsEditing(true);
         fetchLastRecord();
-        setFormData (initialFormData)
-        partyCode="";
-        partyName="";
-        unitCode="";
-        unitName="";
+        setFormData(initialFormData)
+        partyCode = "";
+        partyName = "";
+        unitCode = "";
+        unitName = "";
     }
 
+    //Handle Save or update the record.
     const handleSaveOrUpdate = () => {
         if (isEditMode) {
             axios
@@ -140,8 +140,8 @@ const PartyUnitMaster = () => {
                     `${API_URL}/update-PartyUnitMaster`, formData
                 )
                 .then((response) => {
-                    console.log("Data updated successfully:", response.data);
                     toast.success("Record update successfully!");
+                    window.location.reload()
                     setIsEditMode(false);
                     setAddOneButtonEnabled(true);
                     setEditButtonEnabled(true);
@@ -160,8 +160,8 @@ const PartyUnitMaster = () => {
             axios
                 .post(`${API_URL}/insert-PartyUnitMaster`, formData)
                 .then((response) => {
-                    console.log("Data saved successfully:", response.data);
                     toast.success("Record Create successfully!");
+                    window.location.reload()
                     setIsEditMode(false);
                     setAddOneButtonEnabled(true);
                     setEditButtonEnabled(true);
@@ -178,6 +178,7 @@ const PartyUnitMaster = () => {
         }
     };
 
+    //handle Edit Functionality
     const handleEdit = () => {
         setIsEditMode(true);
         setAddOneButtonEnabled(false);
@@ -189,6 +190,8 @@ const PartyUnitMaster = () => {
         setIsEditing(true);
 
     };
+
+    //Fetch last record from the database.
     const handleCancel = () => {
         axios.get(`${API_URL}/getLast_PartyUnitMaster?Company_Code=${companyCode}&Year_Code=${yearCode}`)
             .then((response) => {
@@ -197,9 +200,7 @@ const PartyUnitMaster = () => {
                 partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
                 unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
                 partyCode = data.lastRecordData.Ac_Code
-                unitCode=data.lastRecordData.Unit_name
-
-
+                unitCode = data.lastRecordData.Unit_name
                 setFormData({
                     ...formData,
                     ...data.lastRecordData,
@@ -208,7 +209,6 @@ const PartyUnitMaster = () => {
             .catch((error) => {
                 console.error("Error fetching latest data for edit:", error);
             });
-        // Reset other state variables
         setIsEditing(false);
         setIsEditMode(false);
         setAddOneButtonEnabled(true);
@@ -231,13 +231,11 @@ const PartyUnitMaster = () => {
             setBackButtonEnabled(true);
             setSaveButtonEnabled(false);
             setCancelButtonEnabled(false);
-
             try {
                 const deleteApiUrl = `${API_URL}/delete-PartyUnitMaster?unit_code=${formData.unit_code}&Company_Code=${companyCode}&Year_Code=${yearCode}`;
                 const response = await axios.delete(deleteApiUrl);
                 toast.success("Record deleted successfully!");
                 handleCancel();
-
             } catch (error) {
                 toast.error("Deletion cancelled");
                 console.error("Error during API call:", error);
@@ -248,23 +246,22 @@ const PartyUnitMaster = () => {
     };
 
     const handleBack = () => {
-        navigate ("/PartyUnitMaster-utility")
+        navigate("/PartyUnitMaster-utility")
     }
-    //Handle Record DoubleCliked in Utility Page Show that record for Edit
-    const handlerecordDoubleClicked = async() => {
+
+    //Handle Record DoubleCliked Functionality.
+    const handlerecordDoubleClicked = async () => {
         try {
-            const response = await axios.get(`${API_URL}/getByunit_code_PartyUnitMaster?Company_Code=${companyCode}&unit_code=${selectedRecord.recordData.unit_code}&Year_Code=${yearCode}`);
+            const response = await axios.get(`${API_URL}/getByunit_code_PartyUnitMaster?Company_Code=${companyCode}&unit_code=${selectedRecord.unit_code}&Year_Code=${yearCode}`);
             const data = response.data;
             partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
-                unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
-                partyCode = data.recordData.Ac_Code
-                unitCode=data.recordData.Unit_name
-
-
-                setFormData({
-                    ...formData,
-                    ...data.recordData,
-                });
+            unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
+            partyCode = data.recordData.Ac_Code
+            unitCode = data.recordData.Unit_name
+            setFormData({
+                ...formData,
+                ...data.recordData,
+            });
             setIsEditing(false);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -282,14 +279,14 @@ const PartyUnitMaster = () => {
     }
 
     useEffect(() => {
-        if(selectedRecord){
+        if (selectedRecord) {
             handlerecordDoubleClicked();
-        }else{
+        } else {
             handleAddOne()
         }
     }, [selectedRecord]);
 
-//change No functionality to get that particular record
+    //change No functionality to get that particular record
     const handleKeyDown = async (event) => {
         if (event.key === 'Tab') {
             debugger
@@ -300,19 +297,15 @@ const PartyUnitMaster = () => {
                 partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
                 unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
                 partyCode = data.recordData.Ac_Code
-                unitCode=data.recordData.Unit_name
-
-
+                unitCode = data.recordData.Unit_name
                 setFormData({
                     ...formData,
                     ...data.recordData,
                 });
                 setIsEditing(false);
-                
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
-            
         }
     };
 
@@ -320,22 +313,18 @@ const PartyUnitMaster = () => {
     const handleFirstButtonClick = async () => {
         try {
             const response = await axios.get(`${API_URL}/getFirst_PartyUnitMaster?Company_Code=${companyCode}&Year_Code=${yearCode}`);
-                const data = response.data;
-                console.log(data)
-                // Access the first element of the array
-                partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
-                unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
-                partyCode = data.firstRecordData.Ac_Code
-                unitCode=data.firstRecordData.Unit_name
-
-
-                setFormData({
-                    ...formData,
-                    ...data.firstRecordData,
-                });
-
-            } 
-         catch (error) {
+            const data = response.data;
+            console.log(data)
+            partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
+            unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
+            partyCode = data.firstRecordData.Ac_Code
+            unitCode = data.firstRecordData.Unit_name
+            setFormData({
+                ...formData,
+                ...data.firstRecordData,
+            });
+        }
+        catch (error) {
             console.error("Error during API call:", error);
         }
     };
@@ -343,22 +332,17 @@ const PartyUnitMaster = () => {
     const handlePreviousButtonClick = async () => {
         try {
             const response = await axios.get(`${API_URL}/getPrevious_PartyUnitMaster?Company_Code=${companyCode}&Year_Code=${yearCode}&unit_code=${formData.unit_code}`);
-                const data = response.data;
-                console.log(data)
-                // Access the first element of the array
-                partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
-                unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
-                partyCode = data.previousRecordData.Ac_Code
-                unitCode=data.previousRecordData.Unit_name
-
-
-                setFormData({
-                    ...formData,
-                    ...data.previousRecordData,
-                });
-
-            } 
-         catch (error) {
+            const data = response.data;
+            partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
+            unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
+            partyCode = data.previousRecordData.Ac_Code
+            unitCode = data.previousRecordData.Unit_name
+            setFormData({
+                ...formData,
+                ...data.previousRecordData,
+            });
+        }
+        catch (error) {
             console.error("Error during API call:", error);
         }
     };
@@ -366,128 +350,139 @@ const PartyUnitMaster = () => {
     const handleNextButtonClick = async () => {
         try {
             const response = await axios.get(`${API_URL}/getNext_PartyUnitMaster?Company_Code=${companyCode}&Year_Code=${yearCode}&unit_code=${formData.unit_code}`);
-                const data = response.data;
-                console.log(data)
-                // Access the first element of the array
-                partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
-                unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
-                partyCode = data.nextRecordData.Ac_Code
-                unitCode=data.nextRecordData.Unit_name
-
-
-                setFormData({
-                    ...formData,
-                    ...data.nextRecordData,
-                });
-
-            } 
-         catch (error) {
+            const data = response.data;
+            console.log(data)
+            partyName = data.additionalLabels.length > 0 ? data.additionalLabels[0].partyName : '';
+            unitName = data.additionalLabels.length > 0 ? data.additionalLabels[0].UnitName : '';
+            partyCode = data.nextRecordData.Ac_Code
+            unitCode = data.nextRecordData.Unit_name
+            setFormData({
+                ...formData,
+                ...data.nextRecordData,
+            });
+        }
+        catch (error) {
             console.error("Error during API call:", error);
         }
     };
 
     return (
         <>
-            <div className="container">
-                <ToastContainer />
-                <ActionButtonGroup
-                    handleAddOne={handleAddOne}
-                    addOneButtonEnabled={addOneButtonEnabled}
-                    handleSaveOrUpdate={handleSaveOrUpdate}
-                    saveButtonEnabled={saveButtonEnabled}
-                    isEditMode={isEditMode}
-                    handleEdit={handleEdit}
-                    editButtonEnabled={editButtonEnabled}
-                    handleDelete={handleDelete}
-                    deleteButtonEnabled={deleteButtonEnabled}
-                    handleCancel={handleCancel}
-                    cancelButtonEnabled={cancelButtonEnabled}
-                    handleBack={handleBack}
-                    backButtonEnabled={backButtonEnabled}
-                    permissions={permissions}
+            <ToastContainer />
+            <ActionButtonGroup
+                handleAddOne={handleAddOne}
+                addOneButtonEnabled={addOneButtonEnabled}
+                handleSaveOrUpdate={handleSaveOrUpdate}
+                saveButtonEnabled={saveButtonEnabled}
+                isEditMode={isEditMode}
+                handleEdit={handleEdit}
+                editButtonEnabled={editButtonEnabled}
+                handleDelete={handleDelete}
+                deleteButtonEnabled={deleteButtonEnabled}
+                handleCancel={handleCancel}
+                cancelButtonEnabled={cancelButtonEnabled}
+                handleBack={handleBack}
+                backButtonEnabled={backButtonEnabled}
+                permissions={permissions}
+            />
+
+            <Box mt={2}>
+                <NavigationButtons
+                    handleFirstButtonClick={handleFirstButtonClick}
+                    handlePreviousButtonClick={handlePreviousButtonClick}
+                    handleNextButtonClick={handleNextButtonClick}
+                    handleLastButtonClick={handleCancel}
+                    highlightedButton={highlightedButton}
+                    isEditing={isEditing}
+                    isFirstRecord={formData.Company_Code === 1}
                 />
-                <div>
-                    {/* Navigation Buttons */}
-                    <NavigationButtons
-                        handleFirstButtonClick={handleFirstButtonClick}
-                        handlePreviousButtonClick={handlePreviousButtonClick}
-                        handleNextButtonClick={handleNextButtonClick}
-                        handleLastButtonClick={handleCancel}
-                        highlightedButton={highlightedButton}
-                        isEditing={isEditing}
-                        isFirstRecord={formData.Company_Code === 1}
+            </Box>
 
-                    />
-                </div>
-            </div>
-
-<div className="form-container">
+            <Container >
+                <Typography variant="h5" gutterBottom style={{ marginBottom: "20px" }}>
+                    Party Unit Master
+                </Typography>
                 <form>
+                    <Grid container spacing={3}>
 
-                    <h2>Party Unit Master</h2>
-                    <br />
-                    <div className="form-group ">
-                        <label htmlFor="changeNo">Change No:</label>
-                        <input
-                            type="text"
-                            id = "changeNo"
-                            Name = "changeNo"
-                            tabIndex={1}
-                            onKeyDown={handleKeyDown}
-                            disabled={!addOneButtonEnabled}
-                            ref={changeNoRef}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="unit_code">Entry No:</label>
-                        <input
-                            type="text"
-                            id = "unit_code"
-                            Name = "unit_code"
-                            value={formData.unit_code}
-                            tabIndex={2}
-                            onChange={handleChange}
-                            disabled={true}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="Ac_Code">Party Code:</label>
-                        <AccountMasterHelp
-                            onAcCodeClick={handleParty}
-                            CategoryName={partyName}
-                            CategoryCode={partyCode}
-                            name="Ac_Code"
-                            tabIndexHelp={3}
-                            disabledFeild={!isEditing && addOneButtonEnabled}
-                            
-              />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="Unit_name">Unit Code:</label>
-                        <AccountMasterHelp
-                            onAcCodeClick={handleUnit}
-                            CategoryName={unitName}
-                            CategoryCode={unitCode}
-                            name="Unit_name"
-                            tabIndexHelp={4}
-                            disabledFeild={!isEditing && addOneButtonEnabled}
-              />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="Remarks">Remarks:</label>
-                        <input
-                            type="text"
-                            id = "Remarks"
-                            Name = "Remarks"
-                            value={formData.Remarks}
-                            tabIndex={5}
-                            onChange={handleChange}
-                            disabled={!isEditing && addOneButtonEnabled}
-                        />
-                    </div>
-</form>
-            </div>
+                        <Grid item xs={6}>
+                            <TextField
+                                label="Change No:"
+                                type="text"
+                                id="changeNo"
+                                name="changeNo"
+                                tabIndex={1}
+                                onKeyDown={handleKeyDown}
+                                fullWidth
+                                disabled={!addOneButtonEnabled}
+                                inputRef={changeNoRef}
+                                size="small"
+                            />
+                        </Grid>
 
-        </>    );};
+                        <Grid item xs={6}>
+                            <TextField
+                                label="Entry No:"
+                                type="text"
+                                id="unit_code"
+                                name="unit_code"
+                                value={formData.unit_code}
+                                tabIndex={2}
+                                onChange={handleChange}
+                                fullWidth
+                                disabled
+                                size="small"
+                            />
+                        </Grid>
+
+                        <Grid item xs={2}>
+                            <label htmlFor="Ac_Code">Party Code:</label>
+                        </Grid>
+                        <Grid item xs={9}>
+                            <AccountMasterHelp
+                                onAcCodeClick={handleParty}
+                                CategoryName={partyName}
+                                CategoryCode={partyCode}
+                                name="Ac_Code"
+                                Ac_type=""
+                                tabIndexHelp={3}
+                                disabledFeild={!isEditing && addOneButtonEnabled}
+                            />
+                        </Grid>
+
+                        <Grid item xs={2}>
+                            <label htmlFor="Unit_name">Unit Code:</label>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <AccountMasterHelp
+                                onAcCodeClick={handleUnit}
+                                CategoryName={unitName}
+                                CategoryCode={unitCode}
+                                name="Unit_name"
+                                Ac_type=""
+                                tabIndexHelp={4}
+                                disabledFeild={!isEditing && addOneButtonEnabled}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                label="Remarks:"
+                                type="text"
+                                id="Remarks"
+                                name="Remarks"
+                                value={formData.Remarks}
+                                tabIndex={5}
+                                onChange={handleChange}
+                                fullWidth
+                                disabled={!isEditing && addOneButtonEnabled}
+                                size="small"
+                            />
+                        </Grid>
+                    </Grid>
+                </form>
+            </Container>
+        </>);
+};
 
 export default PartyUnitMaster

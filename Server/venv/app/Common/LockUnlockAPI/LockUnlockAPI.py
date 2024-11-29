@@ -4,69 +4,113 @@ from app.models.Inword.PurchaseBill.PurchaseBillModels import SugarPurchase
 from app.models.Outword.SaleBill.SaleBillModels import SaleBillHead
 from app.models.Transactions.UTR.UTREntryModels import UTRHead
 from app.models.Transactions.ReceiptPayment.ReceiptPaymentModels import ReceiptPaymentHead
-from sqlalchemy import and_ 
-
+from sqlalchemy import and_, func
 import os
 
 API_URL = os.getenv('API_URL')
 
 # Define model information for record locking.
 MODEL_INFO = {
-    "sugar_purchase": {"model": SugarPurchase, "filter_field": "doc_no"},
-    "sugar_sale": {"model": SaleBillHead, "filter_field": "doc_no"},
-    "utr_entry": {"model": UTRHead, "filter_field": "doc_no"},
-    "journal_voucher": {"model": ReceiptPaymentHead, "filter_field": ["doc_no","tran_type"]},
+    "sugar_purchase": {
+        "model": SugarPurchase,
+        "filter_field": "doc_no",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    },
+    "sugar_sale": {
+        "model": SaleBillHead,
+        "filter_field": "doc_no",
+        "company_code_field": "company_code",
+        "year_code_field": "year_code",
+    },
+    "utr_entry": {
+        "model": UTRHead,
+        "filter_field": "doc_no",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    },
+    "journal_voucher": {
+        "model": ReceiptPaymentHead,
+        "filter_field": ["doc_no", "tran_type"],
+        "company_code_field": "company_code",
+        "year_code_field": "year_code",
+    },
 }
 
-#Locked-UnLocked record at the time of the multiple users edit the same record.
 @app.route(API_URL + "/record-lock", methods=["PUT"])
 def record_lock():
     try:
-        record_id = request.args.get('id')  
-        tran_type = request.args.get('tran_type')  
+        # Extract parameters
+        record_id = request.args.get('id')
+        tran_type = request.args.get('tran_type')
+        company_code = request.args.get('company_code')
+        year_code = request.args.get('year_code')
+        model_type = request.args.get('model_type')  # new parameter to specify model
 
-        if not record_id:
-            return jsonify({"error": "Bad Request", "message": "ID is a required parameter"}), 400
+        # Validate required parameters
+        if not record_id or not company_code or not year_code or not model_type:
+            return jsonify({
+                "error": "Bad Request",
+                "message": "Parameters 'id', 'company_code', 'year_code', and 'model_type' are required."
+            }), 400
 
-        
-        if tran_type:
-            model_info = MODEL_INFO.get("journal_voucher")  
-        else:
-            
-            model_info = MODEL_INFO.get("sugar_purchase")
-            model_info = MODEL_INFO.get("sugar_sale")
-            model_info = MODEL_INFO.get("utr_entry")  
-            if not model_info:
-                return jsonify({"error": "Internal Server Error", "message": "Model configuration missing"}), 500
+        # Ensure model_type exists in the MODEL_INFO dictionary
+        if model_type not in MODEL_INFO:
+            return jsonify({
+                "error": "Bad Request",
+                "message": f"Invalid model_type: {model_type}. Valid options are: {', '.join(MODEL_INFO.keys())}."
+            }), 400
 
+        # Determine the model from the provided model_type
+        model_info = MODEL_INFO.get(model_type)
+
+        # Check if record exists in the model
         model_class = model_info["model"]
-        filter_fields = model_info["filter_field"]
+        filter_field = model_info["filter_field"]
+        company_code_field = model_info.get("company_code_field", "company_code")
+        year_code_field = model_info.get("year_code_field", "year_code")
 
         query_conditions = []
-        if isinstance(filter_fields, str):  
-            query_conditions.append(getattr(model_class, filter_fields) == record_id)
-        elif isinstance(filter_fields, list): 
-            if "doc_no" in filter_fields:
-                query_conditions.append(getattr(model_class, "doc_no") == record_id)
-            if "tran_type" in filter_fields and tran_type:
-                query_conditions.append(getattr(model_class, "tran_type") == tran_type)
+        if isinstance(filter_field, str):
+            query_conditions.append(getattr(model_class, filter_field) == record_id)
+        elif isinstance(filter_field, list):
+            for field in filter_field:
+                if field == "tran_type" and tran_type:
+                    query_conditions.append(getattr(model_class, field) == tran_type)
+                elif field == "doc_no":
+                    query_conditions.append(getattr(model_class, field) == record_id)
 
+        query_conditions.append(func.lower(getattr(model_class, company_code_field)) == company_code.lower())
+        query_conditions.append(func.lower(getattr(model_class, year_code_field)) == year_code.lower())
+
+        # Fetch the record
         record = model_class.query.filter(and_(*query_conditions)).first()
-
         if not record:
-            return jsonify({"error": "Not Found", "message": "Record not found"}), 404
+            return jsonify({
+                "error": "Not Found",
+                "message": f"Record with ID {record_id}, company_code {company_code}, and year_code {year_code} not found."
+            }), 404
 
+        # Parse JSON body for the update
         data = request.get_json(silent=True)
         if not data:
-            return jsonify({"error": "Bad Request", "message": "Invalid or missing JSON data"}), 400
+            return jsonify({
+                "error": "Bad Request",
+                "message": "Invalid or missing JSON data."
+            }), 400
 
         # Update the record
         for key, value in data.items():
-            setattr(record, key, value)
+            if hasattr(record, key):
+                setattr(record, key, value)
 
         db.session.commit()
         return jsonify({"message": "Record updated successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "Internal Server Error", "message": str(e)}), 500
+        app.logger.exception("Error in record-lock endpoint")
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500

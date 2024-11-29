@@ -61,25 +61,6 @@ const UserCreationWithPermission = () => {
   const [userData, setUserData] = useState(initialFormData);
   const [permissions, setPermissions] = useState([]);
 
-  //   const fetchProgramNames = () => {
-  //     axios
-  //       .get(`${API_URL}/getProgramNames`)
-  //       .then((response) => {
-  //         const fetchedPrograms = response.data.programNames.map(
-  //           (programName, index) => ({
-  //             Detail_Id: index + 1,
-  //             Program_Name: programName,
-  //             canView: "N",
-  //             canSave: "N",
-  //             canEdit: "N",
-  //             canDelete: "N",
-  //             DND: "N",
-  //           })
-  //         );
-  //         setPermissions(fetchedPrograms);
-  //       })
-  //       .catch((error) => console.error("Error fetching program names:", error));
-  //   };
   const fetchProgramNames = () => {
     axios
       .get(`${API_URL}/getProgramNames`)
@@ -127,13 +108,11 @@ const UserCreationWithPermission = () => {
   };
 
   // Toggle permission checkboxes with "Y" or "N" values
-  // Toggle permission checkboxes with "Y" or "N" values
 const handlePermissionChange = (Detail_Id, field) => {
   setPermissions((prevPermissions) =>
     prevPermissions.map((perm) => {
       if (perm.Detail_Id === Detail_Id) {
         if (field === "DND" && perm[field] === "N") {
-          // If DND is being checked, set all other permissions to "N"
           return {
             ...perm,
             DND: "Y",
@@ -143,7 +122,6 @@ const handlePermissionChange = (Detail_Id, field) => {
             canDelete: "N",
           };
         } else if (field === "DND" && perm[field] === "Y") {
-          // If DND is being unchecked, set all other permissions to "Y"
           return {
             ...perm,
             DND: "N",
@@ -153,7 +131,6 @@ const handlePermissionChange = (Detail_Id, field) => {
             canDelete: "Y",
           };
         } else {
-          // Toggle the specific field normally
           return { ...perm, [field]: perm[field] === "Y" ? "N" : "Y" };
         }
       }
@@ -198,11 +175,14 @@ const handlePermissionChange = (Detail_Id, field) => {
   const handleSaveOrUpdate = () => {
     setIsEditing(true);
 
-    const updatedPermissions = permissions.map((perm) => ({
-      ...perm,
-      Year_Code: yearCode,
-      Company_Code: companyCode,
-    }));
+    const updatedPermissions = permissions.map((perm) => {
+      const { udid, ...rest } = perm; 
+      return {
+        ...rest,
+        Year_Code: yearCode,
+        Company_Code: companyCode,
+      };
+    });
     const requestData = {
       user_data: userData,
       permission_data: updatedPermissions,

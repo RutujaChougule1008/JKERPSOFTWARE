@@ -8,9 +8,12 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const API_URL = process.env.REACT_APP_API;
-const companyCode = sessionStorage.getItem('Company_Code')
 
 const GstStateMaster = () => {
+
+  //GET all necessary values from the session.
+  const companyCode = sessionStorage.getItem('Company_Code')
+
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
@@ -30,12 +33,9 @@ const GstStateMaster = () => {
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
 
-  console.log("selectedRecord", selectedRecord)
-
   const initialFormData = {
     State_Code: '',
     State_Name: '',
-
   };
   const [formData, setFormData] = useState(initialFormData);
 
@@ -43,12 +43,12 @@ const GstStateMaster = () => {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData(prevState => {
-      // Create a new object based on existing state
       const updatedFormData = { ...prevState, [name]: value };
       return updatedFormData;
     });
   };
 
+  //Fetch last state code from the database.
   const fetchLastStateCode = () => {
     fetch(`${API_URL}/get-last-state-data`)
       .then(response => {
@@ -59,7 +59,6 @@ const GstStateMaster = () => {
         return response.json();
       })
       .then(data => {
-        // Set the last company code as the default value for Company_Code
         setFormData(prevState => ({
           ...prevState,
           State_Code: data.State_Code + 1
@@ -81,6 +80,7 @@ const GstStateMaster = () => {
     setFormData(initialFormData)
   }
 
+  //Handle Save or Update record.
   const handleSaveOrUpdate = () => {
     if (isEditMode) {
       axios
@@ -138,6 +138,7 @@ const GstStateMaster = () => {
 
   };
 
+  //Fetch last record from the database.
   const handleCancel = () => {
     axios.get(`${API_URL}/get-last-state-data`)
       .then((response) => {
@@ -149,8 +150,6 @@ const GstStateMaster = () => {
       .catch((error) => {
         console.error("Error fetching latest data for edit:", error);
       });
-
-    // Reset other state variables
     setIsEditing(false);
     setIsEditMode(false);
     setAddOneButtonEnabled(true);
@@ -173,13 +172,11 @@ const GstStateMaster = () => {
       setBackButtonEnabled(true);
       setSaveButtonEnabled(false);
       setCancelButtonEnabled(false);
-
       try {
         const deleteApiUrl = `${API_URL}/delete-gststatemaster?State_Code=${formData.State_Code}`;
         const response = await axios.delete(deleteApiUrl);
         toast.success("Record deleted successfully!");
         handleCancel();
-
       } catch (error) {
         toast.error("Deletion cancelled");
         console.error("Error during API call:", error);
@@ -189,26 +186,77 @@ const GstStateMaster = () => {
     }
   };
 
-
-
   const handleBack = () => {
     navigate("/gst-state-master-utility")
   }
 
+  //Navigation Buttons 
   const handleFirstButtonClick = async () => {
-
+    try {
+      const response = await fetch(`${API_URL}/get-first-GSTStateMaster`);
+      if (response.ok) {
+        const data = await response.json();
+        const firstUserCreation = data[0];
+        setFormData({
+          ...formData, ...firstUserCreation,
+        });
+      } else {
+        console.error("Failed to fetch first tender data:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error during API call:", error);
+    }
   };
 
   const handlePreviousButtonClick = async () => {
-
+    try {
+      const response = await fetch(`${API_URL}/get-previous-GSTStateMaster?State_Code=${formData.State_Code}`);
+      if (response.ok) {
+        const data = await response.json();
+        setFormData({
+          ...formData, ...data,
+        });
+      } else {
+        console.error("Failed to fetch previous tender data:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error during API call:", error);
+    }
   };
 
   const handleNextButtonClick = async () => {
+    try {
+      const response = await fetch(`${API_URL}/get-next-GSTStateMaster?State_Code=${formData.State_Code}`);
 
+      if (response.ok) {
+        const data = await response.json();
+        setFormData({
+          ...formData, ...data.nextSelectedRecord
+
+        });
+      } else {
+        console.error("Failed to fetch next company creation data:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error during API call:", error);
+    }
   };
 
   const handleLastButtonClick = async () => {
-
+    try {
+      const response = await fetch(`${API_URL}/get-last-GSTStateMaster`);
+      if (response.ok) {
+        const data = await response.json();
+        const last_Navigation = data[0];
+        setFormData({
+          ...formData, ...last_Navigation,
+        });
+      } else {
+        console.error("Failed to fetch first tender data:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error during API call:", error);
+    }
   }
 
   //Handle Record DoubleCliked in Utility Page Show that record for Edit
@@ -225,7 +273,6 @@ const GstStateMaster = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
     }
-
     setIsEditMode(false);
     setAddOneButtonEnabled(true);
     setEditButtonEnabled(true);
@@ -243,7 +290,6 @@ const GstStateMaster = () => {
     } else {
       handleAddOne()
     }
-
   }, [selectedRecord]);
 
   //change No functionality to get that particular record
@@ -262,20 +308,17 @@ const GstStateMaster = () => {
     }
   };
 
-  
   return (
     <>
+      <div class="created-by-container">
+        <h2 class="created-by-heading">Created By: {formData.Created_By}</h2>
+      </div>
 
-    
-<div class="created-by-container">
-                <h2 class="created-by-heading">Created By: {formData.Created_By}</h2>
-            </div>
+      <div class="modified-by-container">
+        <h2 class="modified-by-heading">Modified By: {formData.Modified_By}</h2>
+      </div>
 
-            <div class="modified-by-container">
-                <h2 class="modified-by-heading">Modified By: {formData.Modified_By}</h2>
-            </div>
-     
-      <div className="container">
+      <div >
         <ToastContainer />
         <ActionButtonGroup
           handleAddOne={handleAddOne}
@@ -293,7 +336,6 @@ const GstStateMaster = () => {
           backButtonEnabled={backButtonEnabled}
         />
         <div>
-          {/* Navigation Buttons */}
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
             handlePreviousButtonClick={handlePreviousButtonClick}

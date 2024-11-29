@@ -99,7 +99,10 @@ const JournalVoucher = () => {
   // Manage the lock-unlock record at the same time multiple users edit the same record.
   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(
     formData.doc_no,
-    formData.tran_type
+    formData.tran_type,
+    companyCode,
+    YearCode,
+    "journal_voucher"
   );
 
   //handleChange For Input Fields

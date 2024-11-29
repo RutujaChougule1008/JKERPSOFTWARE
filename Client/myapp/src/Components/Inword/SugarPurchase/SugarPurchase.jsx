@@ -5,13 +5,12 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from '../../../Common/CommonButtons/ActionButtonGroup';
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
-import SystemHelpMaster from "../../../Helper/SystemmasterHelp";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import "./SugarPurchase.css"
 import { HashLoader } from 'react-spinners';
 import { Grid, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import BrandMasterHelp from "../../../Helper/BrandMasterHelp";
+import { useRecordLocking } from '../../../hooks/useRecordLocking';
+import SugarPurchaseDetail from "./SugarPurchaseDetail";
 
 //Global Variables
 var purchaseidNew = ""
@@ -45,6 +44,8 @@ const API_URL = process.env.REACT_APP_API;
 const companyCode = sessionStorage.getItem("Company_Code");
 const Year_Code = sessionStorage.getItem("Year_Code");
 
+  // ----------------------------------------- Sugar Purchase Head Functionality -----------------------------------------
+
     const [users, setUsers] = useState([]);
     const [showPopup, setShowPopup] = useState(false);
     const [selectedUser, setSelectedUser] = useState({});
@@ -53,6 +54,9 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     const [brandCodeAccoid, setBrandCodeAccoid] = useState("");
     const [itemSelect, setItemSelect] = useState("");
     const [itemSelectAccoid, setItemSelectAccoid] = useState("");
+    
+
+    // Sugar Purchase Detail States.
     const [formDataDetail, setFormDataDetail] = useState({
         Quantal: "",
         packing: "50",
@@ -152,6 +156,10 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     const [broker, setBroker] = useState("");
     const [gstCode, setGstCode] = useState("");
     const [gstRate, setGstRate] = useState("");
+
+    
+     //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
+     const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no,undefined,companyCode,Year_Code,"sugar_purchase");
 
     const formatTruckNumber = (value) => {
         const cleanedValue = value.replace(/\s+/g, '').toUpperCase();
@@ -264,19 +272,43 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         setLastTenderDetails([])
     };
 
-    const handleEdit = () => {
-        setIsEditMode(true);
-        setAddOneButtonEnabled(false);
-        setSaveButtonEnabled(true);
-        setCancelButtonEnabled(true);
-        setEditButtonEnabled(false);
-        setDeleteButtonEnabled(false);
-        setBackButtonEnabled(true);
-        setIsEditing(true);
+    //Edit button Functionality
+    const handleEdit = async () => {
+        axios.get(`${API_URL}/getsugarpurchasebyid?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`)
+            .then((response) => {
+                const data = response.data;
+
+                console.log(data)
+
+                const isLockedNew = data.getData_SugarPurchaseHead_data.LockedRecord;
+                const isLockedByUserNew = data.getData_SugarPurchaseHead_data.LockedUser;
+
+                if (isLockedNew) {
+                    window.alert(`This record is locked by ${isLockedByUserNew}`);
+                    return;
+                } else {
+                    lockRecord()
+                }
+                setFormData({
+                    ...formData,
+                    ...data.getData_SugarPurchaseHead_data
+                });
+                setIsEditMode(true);
+                setAddOneButtonEnabled(false);
+                setSaveButtonEnabled(true);
+                setCancelButtonEnabled(true);
+                setEditButtonEnabled(false);
+                setDeleteButtonEnabled(false);
+                setBackButtonEnabled(true);
+                setIsEditing(true);
+            })
+            .catch((error) => {
+                window.alert("This record is already deleted! Showing the previous record.");
+            });
     };
 
+
     const handleSaveOrUpdate = async () => {
-        debugger
         setIsEditing(true);
         setIsLoading(true);
 
@@ -316,7 +348,10 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             if (isEditMode) {
                 const updateApiUrl = `${API_URL}/update-SugarPurchase?purchaseid=${purchaseidNew}`;
                 const response = await axios.put(updateApiUrl, requestData);
+
+                await unlockRecord();
                 toast.success('Data updated successfully!');
+
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000)
@@ -348,11 +383,91 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         }
     };
 
-    const handleDelete = async () => {
-        const isConfirmed = window.confirm(
-            `Are you sure you want to delete this record ${formData.doc_no}?`
-        );
-        if (isConfirmed) {
+     // Record delte functionality
+     const handleDelete = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/getsugarpurchasebyid?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`);
+
+            const data = response.data;
+            const isLockedNew = data.getData_SugarPurchaseHead_data.LockedRecord;
+            const isLockedByUserNew = data.getData_SugarPurchaseHead_data.LockedUser;
+
+            if (isLockedNew) {
+                window.alert(`This record is locked by ${isLockedByUserNew}`);
+                return;
+            }
+
+            const isConfirmed = window.confirm(`Are you sure you want to delete this record ${formData.doc_no}?`);
+
+            if (isConfirmed) {
+                setIsEditMode(false);
+                setAddOneButtonEnabled(true);
+                setEditButtonEnabled(true);
+                setDeleteButtonEnabled(true);
+                setBackButtonEnabled(true);
+                setSaveButtonEnabled(false);
+                setCancelButtonEnabled(false);
+                setIsLoading(true);
+
+                const deleteApiUrl = `${API_URL}/delete_data_SugarPurchase?purchaseid=${purchaseidNew}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${formData.Tran_Type}`;
+                const deleteResponse = await axios.delete(deleteApiUrl);
+
+                if (deleteResponse.status === 200) {
+                    if (deleteResponse.data) {
+                        toast.success('Data deleted successfully!');
+                        handleCancel();
+                    }
+                } else {
+                    console.error("Failed to delete record:", deleteResponse.status, deleteResponse.statusText);
+                }
+            } else {
+                console.log("Deletion cancelled");
+            }
+        } catch (error) {
+            console.error("Error during API call:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+     // Common Feilds to set the feilds on the navigation.
+     const NavigationSetFields = (headData, detailData) => {
+        const details = detailData[0];
+        purchaseidNew = headData.purchaseid;
+        FromName = details.FromName;
+        FromCode = headData.Ac_Code;
+        newAcCode = headData.Ac_Code;
+        Unitname = details.Unit_Name;
+        UnitCode = headData.Unit_Code;
+        MillName = details.Mill_Name;
+        MillCode = headData.mill_code;
+        BrokerName = details.Broker_Name;
+        BrokerCode = headData.BROKER;
+        GstRateName = details.GST_Name;
+        GstRateCode = headData.GstRateCode;
+        ItemName = details.ItemName;
+        ItemCodeNew = details.item_code;
+        BrandName = details.Brand_Name;
+        BrandCode = details.Branch_Code;
+        subTotal = headData.subTotal;
+        globalQuantalTotal = headData.NETQNTL;
+        CGSTRate = headData.CGSTRate;
+        SGSTRate = headData.SGSTRate;
+        IGSTRate = headData.IGSTRate;
+        BillAmountNew = headData.Bill_Amount;
+
+        setFormData((prevData) => ({
+            ...prevData,
+            ...headData,
+        }));
+        setLastTenderData(headData || {});
+        setLastTenderDetails(detailData || []);
+    };
+
+    // handle cancel button is cliked show last record on the datatabse.
+    const handleCancel = async () => {
+        try {
+            setIsEditing(false);
             setIsEditMode(false);
             setAddOneButtonEnabled(true);
             setEditButtonEnabled(true);
@@ -360,127 +475,41 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             setBackButtonEnabled(true);
             setSaveButtonEnabled(false);
             setCancelButtonEnabled(false);
-            setIsLoading(true);
-            try {
-                const deleteApiUrl = `${API_URL}/delete_data_SugarPurchase?purchaseid=${purchaseidNew}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${formData.Tran_Type}`;
-                const response = await axios.delete(deleteApiUrl);
+            setCancelButtonClicked(true);
 
-                if (response.status === 200) {
-                    if (response.data) {
-                        toast.success('Data delete successfully!');
-                        handleCancel();
-                    }
-                    else if (response.status === 404) {
-                    }
-                } else {
-                    console.error(
-                        "Failed to delete tender:",
-                        response.status,
-                        response.statusText
-                    );
-                }
-            } catch (error) {
-                console.error("Error during API call:", error);
-            } finally {
-                setIsLoading(false)
-            }
-        } else {
-            console.log("Deletion cancelled");
-        }
-    };
+            const response2 = await axios.get(`${API_URL}/get-lastrecordsugarpurchase?Company_Code=${companyCode}&Year_Code=${Year_Code}`);
 
-    const handleCancel = async () => {
-        setIsEditing(false);
-        setIsEditMode(false);
-        setAddOneButtonEnabled(true);
-        setEditButtonEnabled(true);
-        setDeleteButtonEnabled(true);
-        setBackButtonEnabled(true);
-        setSaveButtonEnabled(false);
-        setCancelButtonEnabled(false);
-        setCancelButtonClicked(true);
-        try {
-            const response = await axios.get(
-                `${API_URL}/get-lastrecordsugarpurchase?Company_Code=${companyCode}&Year_Code=${Year_Code}`
-            );
-            if (response.status === 200) {
-                const data = response.data;
-                purchaseidNew = data.last_SugarPurchasehead.purchaseid
-                FromName = data.last_SugarPurchasedetail[0].FromName
-                FromCode = data.last_SugarPurchasehead.Ac_Code
-                newAcCode = data.last_SugarPurchasehead.Ac_Code
-                Unitname = data.last_SugarPurchasedetail[0].Unit_Name
-                UnitCode = data.last_SugarPurchasehead.Unit_Code
-                MillName = data.last_SugarPurchasedetail[0].Mill_Name
-                MillCode = data.last_SugarPurchasehead.mill_code
-                BrokerName = data.last_SugarPurchasedetail[0].Broker_Name
-                BrokerCode = data.last_SugarPurchasehead.BROKER
-                GstRateName = data.last_SugarPurchasedetail[0].GST_Name
-                GstRateCode = data.last_SugarPurchasehead.GstRateCode
-                ItemName = data.last_SugarPurchasedetail[0].ItemName
-                ItemCodeNew = data.last_SugarPurchasedetail[0].item_code
-                BrandName = data.last_SugarPurchasedetail[0].Brand_Name
-                BrandCode = data.last_SugarPurchasedetail[0].Branch_Code
-                subTotal = data.last_SugarPurchasehead.subTotal
-                globalQuantalTotal = data.last_SugarPurchasehead.NETQNTL
-                CGSTRate = data.last_SugarPurchasehead.CGSTRate
-                SGSTRate = data.last_SugarPurchasehead.SGSTRate
-                IGSTRate = data.last_SugarPurchasehead.IGSTRate
-                BillAmountNew = data.last_SugarPurchasehead.Bill_Amount
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.last_SugarPurchasehead
-                }));
-                setLastTenderData(data.last_SugarPurchasehead || {});
-                setLastTenderDetails(data.last_SugarPurchasedetail || []);
-            } else {
-                console.error(
-                    "Failed to fetch last data:",
-                    response.status,
-                    response.statusText
+            if (response2.status === 200) {
+                const data = response2.data;
+                NavigationSetFields(
+                    data.last_SugarPurchasehead,
+                    data.last_SugarPurchasedetail
                 );
+
+                unlockRecord();
+            } else {
+                console.error("Failed to fetch last record data:", response2.status, response2.statusText);
             }
         } catch (error) {
-            console.error("Error during API call:", error);
+            console.error("Error fetching data:", error);
         }
     };
 
+    // handle back button navigate to the dashboard page.
     const handleBack = () => {
         navigate("/sugarpurchasebill-utility")
     };
 
+    // Navigation Function to navigate to the first to last record easily.
     const handleFirstButtonClick = async () => {
         try {
             const response = await axios.get(`${API_URL}/get-firstsugarpurchase-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}`);
             if (response.status === 200) {
                 const data = response.data;
-                purchaseidNew = data.first_SugarPurchaseHead_data.purchaseid
-                FromName = data.first_SugarPurchasedetail_data[0].FromName
-                FromCode = data.first_SugarPurchaseHead_data.Ac_Code
-                Unitname = data.first_SugarPurchasedetail_data[0].Unit_Name
-                UnitCode = data.first_SugarPurchaseHead_data.Unit_Code
-                MillName = data.first_SugarPurchasedetail_data[0].Mill_Name
-                MillCode = data.first_SugarPurchaseHead_data.mill_code
-                BrokerName = data.first_SugarPurchasedetail_data[0].Broker_Name
-                BrokerCode = data.first_SugarPurchaseHead_data.BROKER
-                GstRateName = data.first_SugarPurchasedetail_data[0].GST_Name
-                GstRateCode = data.first_SugarPurchaseHead_data.GstRateCode
-                ItemName = data.first_SugarPurchasedetail_data[0].ItemName
-                ItemCodeNew = data.first_SugarPurchaseHead_data.item_code
-                BrandName = data.first_SugarPurchasedetail_data[0].Brand_Name
-                BrandCode = data.first_SugarPurchaseHead_data.Branch_Code
-                subTotal = data.first_SugarPurchaseHead_data.subTotal
-                globalQuantalTotal = data.first_SugarPurchaseHead_data.NETQNTL
-                CGSTRate = data.first_SugarPurchaseHead_data.CGSTRate
-                SGSTRate = data.first_SugarPurchaseHead_data.SGSTRate
-                IGSTRate = data.first_SugarPurchaseHead_data.IGSTRate
-                BillAmountNew = data.first_SugarPurchaseHead_data.Bill_Amount
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.first_SugarPurchaseHead_data
-                }));
-                setLastTenderData(data.first_SugarPurchaseHead_data || {});
-                setLastTenderDetails(data.first_SugarPurchasedetail_data || []);
+                NavigationSetFields(
+                    data.first_SugarPurchaseHead_data,
+                    data.first_SugarPurchasedetail_data
+                );
             } else {
                 console.error("Failed to fetch first tender data:", response.status, response.statusText);
             }
@@ -494,33 +523,10 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             const response = await axios.get(`${API_URL}/getlastSugarPurchase-record-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}`);
             if (response.status === 200) {
                 const data = response.data;
-                purchaseidNew = data.last_SugarPurchaseHead_data.purchaseid
-                FromName = data.last_SugarPurchasedetail_data[0].FromName
-                FromCode = data.last_SugarPurchaseHead_data.Ac_Code
-                Unitname = data.last_SugarPurchasedetail_data[0].Unit_Name
-                UnitCode = data.last_SugarPurchaseHead_data.Unit_Code
-                MillName = data.last_SugarPurchasedetail_data[0].Mill_Name
-                MillCode = data.last_SugarPurchaseHead_data.mill_code
-                BrokerName = data.last_SugarPurchasedetail_data[0].Broker_Name
-                BrokerCode = data.last_SugarPurchaseHead_data.BROKER
-                GstRateName = data.last_SugarPurchasedetail_data[0].GST_Name
-                GstRateCode = data.last_SugarPurchaseHead_data.GstRateCode
-                ItemName = data.last_SugarPurchasedetail_data[0].ItemName
-                ItemCodeNew = data.last_SugarPurchaseHead_data.item_code
-                BrandName = data.last_SugarPurchasedetail_data[0].Brand_Name
-                BrandCode = data.last_SugarPurchaseHead_data.Branch_Code
-                subTotal = data.last_SugarPurchaseHead_data.subTotal
-                globalQuantalTotal = data.last_SugarPurchaseHead_data.NETQNTL
-                CGSTRate = data.last_SugarPurchaseHead_data.CGSTRate
-                SGSTRate = data.last_SugarPurchaseHead_data.SGSTRate
-                IGSTRate = data.last_SugarPurchaseHead_data.IGSTRate
-                BillAmountNew = data.last_SugarPurchaseHead_data.Bill_Amount
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.last_SugarPurchaseHead_data
-                }));
-                setLastTenderData(data.last_SugarPurchaseHead_data || {});
-                setLastTenderDetails(data.last_SugarPurchasedetail_data || []);
+                NavigationSetFields(
+                    data.last_SugarPurchaseHead_data,
+                    data.last_SugarPurchasedetail_data
+                );
 
             } else {
                 console.error("Failed to fetch last tender data:", response.status, response.statusText);
@@ -535,34 +541,10 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             const response = await axios.get(`${API_URL}/getnextsugarpurchase-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${formData.doc_no}`);
             if (response.status === 200) {
                 const data = response.data;
-                purchaseidNew = data.next_SugarPurchasehead_data.purchaseid
-                FromName = data.next_SugarPurchasedetails_data[0].FromName
-                FromCode = data.next_SugarPurchasehead_data.Ac_Code
-                Unitname = data.next_SugarPurchasedetails_data[0].Unit_Name
-                UnitCode = data.next_SugarPurchasehead_data.Unit_Code
-                MillName = data.next_SugarPurchasedetails_data[0].Mill_Name
-                MillCode = data.next_SugarPurchasehead_data.mill_code
-                BrokerName = data.next_SugarPurchasedetails_data[0].Broker_Name
-                BrokerCode = data.next_SugarPurchasehead_data.BROKER
-                GstRateName = data.next_SugarPurchasedetails_data[0].GST_Name
-                GstRateCode = data.next_SugarPurchasehead_data.GstRateCode
-                ItemName = data.next_SugarPurchasedetails_data[0].ItemName
-                ItemCodeNew = data.next_SugarPurchasehead_data.item_code
-                BrandName = data.next_SugarPurchasedetails_data[0].Brand_Name
-                BrandCode = data.next_SugarPurchasehead_data.Branch_Code
-                subTotal = data.next_SugarPurchasehead_data.subTotal
-                globalQuantalTotal = data.next_SugarPurchasehead_data.NETQNTL
-                CGSTRate = data.next_SugarPurchasehead_data.CGSTRate
-                SGSTRate = data.next_SugarPurchasehead_data.SGSTRate
-                IGSTRate = data.next_SugarPurchasehead_data.IGSTRate
-                BillAmountNew = data.next_SugarPurchasehead_data.Bill_Amount
-
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.next_SugarPurchasehead_data
-                }));
-                setLastTenderData(data.next_SugarPurchasehead_data || {});
-                setLastTenderDetails(data.next_SugarPurchasedetails_data || []);
+                NavigationSetFields(
+                    data.next_SugarPurchasehead_data,
+                    data.next_SugarPurchasedetails_data
+                );
             } else {
                 console.error("Failed to fetch next tender data:", response.status, response.statusText);
             }
@@ -571,40 +553,16 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         }
     };
 
-    // Function to fetch the previous record
     const handlePreviousButtonClick = async () => {
         try {
             const response = await axios.get(`${API_URL}/getprevioussugarpurchase-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${formData.doc_no}`);
 
             if (response.status === 200) {
                 const data = response.data;
-                purchaseidNew = data.previous_SugarPurchaseHead_data.purchaseid
-                FromName = data.previous_SugarPurchasedetail_data[0].FromName
-                FromCode = data.previous_SugarPurchaseHead_data.Ac_Code
-                Unitname = data.previous_SugarPurchasedetail_data[0].Unit_Name
-                UnitCode = data.previous_SugarPurchaseHead_data.Unit_Code
-                MillName = data.previous_SugarPurchasedetail_data[0].Mill_Name
-                MillCode = data.previous_SugarPurchaseHead_data.mill_code
-                BrokerName = data.previous_SugarPurchasedetail_data[0].Broker_Name
-                BrokerCode = data.previous_SugarPurchaseHead_data.BROKER
-                GstRateName = data.previous_SugarPurchasedetail_data[0].GST_Name
-                GstRateCode = data.previous_SugarPurchaseHead_data.GstRateCode
-                ItemName = data.previous_SugarPurchasedetail_data[0].ItemName
-                ItemCodeNew = data.previous_SugarPurchaseHead_data.item_code
-                BrandName = data.previous_SugarPurchasedetail_data[0].Brand_Name
-                BrandCode = data.previous_SugarPurchaseHead_data.Branch_Code
-                subTotal = data.previous_SugarPurchaseHead_data.subTotal
-                globalQuantalTotal = data.previous_SugarPurchaseHead_data.NETQNTL
-                CGSTRate = data.previous_SugarPurchaseHead_data.CGSTRate
-                SGSTRate = data.previous_SugarPurchaseHead_data.SGSTRate
-                IGSTRate = data.previous_SugarPurchaseHead_data.IGSTRate
-                BillAmountNew = data.previous_SugarPurchaseHead_data.Bill_Amount
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.previous_SugarPurchaseHead_data
-                }));
-                setLastTenderData(data.previous_SugarPurchaseHead_data || {});
-                setLastTenderDetails(data.previous_SugarPurchasedetail_data || []);
+                NavigationSetFields(
+                    data.previous_SugarPurchaseHead_data,
+                    data.previous_SugarPurchasedetail_data
+                );
             } else {
                 console.error("Failed to fetch previous tender data:", response.status, response.statusText);
             }
@@ -641,33 +599,10 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             const response = await axios.get(`${API_URL}/getsugarpurchasebyid?doc_no=${selectedRecord.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`);
             if (response.status === 200) {
                 const data = response.data;
-                purchaseidNew = data.getData_SugarPurchaseHead_data.purchaseid
-                FromName = data.getData_SugarPurchaseDetail_data[0].FromName
-                FromCode = data.getData_SugarPurchaseHead_data.Ac_Code
-                Unitname = data.getData_SugarPurchaseDetail_data[0].Unit_Name
-                UnitCode = data.getData_SugarPurchaseHead_data.Unit_Code
-                MillName = data.getData_SugarPurchaseDetail_data[0].Mill_Name
-                MillCode = data.getData_SugarPurchaseHead_data.mill_code
-                BrokerName = data.getData_SugarPurchaseDetail_data[0].Broker_Name
-                BrokerCode = data.getData_SugarPurchaseHead_data.BROKER
-                GstRateName = data.getData_SugarPurchaseDetail_data[0].GST_Name
-                GstRateCode = data.getData_SugarPurchaseHead_data.GstRateCode
-                ItemName = data.getData_SugarPurchaseDetail_data[0].ItemName
-                ItemCodeNew = data.getData_SugarPurchaseHead_data.item_code
-                BrandName = data.getData_SugarPurchaseDetail_data[0].Brand_Name
-                BrandCode = data.getData_SugarPurchaseHead_data.Branch_Code
-                subTotal = data.getData_SugarPurchaseHead_data.subTotal
-                globalQuantalTotal = data.getData_SugarPurchaseHead_data.NETQNTL
-                CGSTRate = data.getData_SugarPurchaseHead_data.CGSTRate
-                SGSTRate = data.getData_SugarPurchaseHead_data.SGSTRate
-                IGSTRate = data.getData_SugarPurchaseHead_data.IGSTRate
-                BillAmountNew = data.getData_SugarPurchaseHead_data.Bill_Amount
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.getData_SugarPurchaseHead_data
-                }));
-                setLastTenderData(data.getData_SugarPurchaseHead_data || {});
-                setLastTenderDetails(data.getData_SugarPurchaseDetail_data || []);
+                NavigationSetFields(
+                    data.getData_SugarPurchaseHead_data,
+                    data.getData_SugarPurchaseDetail_data
+                );
             } else {
                 console.error("Failed to fetch last tender data:", response.status, response.statusText);
             }
@@ -685,33 +620,10 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                     `${API_URL}/getsugarpurchasebyid?Company_Code=${companyCode}&doc_no=${changeNoValue}&Year_Code=${Year_Code}`
                 );
                 const data = response.data
-                purchaseidNew = data.getData_SugarPurchaseHead_data.purchaseid
-                FromName = data.getData_SugarPurchaseDetail_data[0].FromName
-                FromCode = data.getData_SugarPurchaseHead_data.Ac_Code
-                Unitname = data.getData_SugarPurchaseDetail_data[0].Unit_Name
-                UnitCode = data.getData_SugarPurchaseHead_data.Unit_Code
-                MillName = data.getData_SugarPurchaseDetail_data[0].Mill_Name
-                MillCode = data.getData_SugarPurchaseHead_data.mill_code
-                BrokerName = data.getData_SugarPurchaseDetail_data[0].Broker_Name
-                BrokerCode = data.getData_SugarPurchaseHead_data.BROKER
-                GstRateName = data.getData_SugarPurchaseDetail_data[0].GST_Name
-                GstRateCode = data.getData_SugarPurchaseHead_data.GstRateCode
-                ItemName = data.getData_SugarPurchaseDetail_data[0].ItemName
-                ItemCodeNew = data.getData_SugarPurchaseHead_data.item_code
-                BrandName = data.getData_SugarPurchaseDetail_data[0].Brand_Name
-                BrandCode = data.getData_SugarPurchaseHead_data.Branch_Code
-                subTotal = data.getData_SugarPurchaseHead_data.subTotal
-                globalQuantalTotal = data.getData_SugarPurchaseHead_data.NETQNTL
-                CGSTRate = data.getData_SugarPurchaseHead_data.CGSTRate
-                SGSTRate = data.getData_SugarPurchaseHead_data.SGSTRate
-                IGSTRate = data.getData_SugarPurchaseHead_data.IGSTRate
-                BillAmountNew = data.getData_SugarPurchaseHead_data.Bill_Amount
-                setFormData((prevData) => ({
-                    ...prevData,
-                    ...data.getData_SugarPurchaseHead_data
-                }));
-                setLastTenderData(data.getData_SugarPurchaseHead_data || {});
-                setLastTenderDetails(data.getData_SugarPurchaseDetail_data || []);
+                NavigationSetFields(
+                    data.getData_SugarPurchaseHead_data,
+                    data.getData_SugarPurchaseDetail_data
+                );
                 setIsEditing(false);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -719,7 +631,8 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         }
     };
 
-    //detail Grid Functionality......
+       // ----------------------------------------- Sugar Purchase Detail Functionality -----------------------------------------
+
     useEffect(() => {
         if (selectedRecord) {
             setUsers(
@@ -1262,6 +1175,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
     
     const handleFrom = async (code, accoid) => {
+        debugger;
         setFrom(code);
     
         setFormData(prevFormData => ({
@@ -1654,175 +1568,24 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                 Close
                             </button>
                         </div>
-                        {showPopup && (
-                            <div
-                                className="modal"
+                        <SugarPurchaseDetail
+                            show={showPopup}
+                            onClose={() => setShowPopup(false)}
+                            selectedUser={selectedUser}
+                            formDataDetail={formDataDetail}
+                            handleChangeDetail={handleChangeDetail}
+                            handleItemSelect={handleItemSelect}
+                            handleBrandCode={handleBrandCode}
+                            itemNameLabel={itemNameLabel}
+                            itemSelect={itemSelect}
+                            brandName={brandName}
+                            brandCode={brandCode}
+                            addUser={addUser}
+                            updateUser={updateUser}
+                            isEditing={true}
+                            addOneButtonEnabled={false}
+                        />
 
-                                role="dialog"
-                                style={{ display: "block" }}
-                            >
-                                <div className="modal-dialog" role="document">
-                                    <div className="modal-content">
-                                        <div className="modal-header">
-                                            <h5 className="modal-title">
-                                                {selectedUser.id ? "Edit User" : "Add User"}
-                                            </h5>
-                                            <button
-                                                type="button"
-                                                onClick={closePopup}
-                                                aria-label="Close"
-                                                style={{ marginLeft: "80%", width: "60px", height: "30px" }}
-                                            >
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div className="modal-body">
-                                            <form>
-                                                <Grid container spacing={2}>
-                                                    <Grid item xs={6}>
-                                                        <label htmlFor="Item Name">Item Name :</label>
-                                                        <FormControl fullWidth variant="outlined" size="small">
-                                                            <SystemHelpMaster
-                                                                onAcCodeClick={handleItemSelect}
-                                                                CategoryName={itemNameLabel}
-                                                                CategoryCode={itemSelect}
-                                                                name="Item_Select"
-
-                                                                SystemType="I"
-                                                                className="account-master-help"
-                                                            />
-                                                        </FormControl>
-                                                    </Grid>
-                                                    <Grid item xs={6}>
-                                                        <label htmlFor="Item Name">Brand Code :</label>
-                                                        <FormControl fullWidth variant="outlined" size="small">
-                                                            <BrandMasterHelp
-                                                                onAcCodeClick={handleBrandCode}
-                                                                CategoryName={brandName}
-                                                                CategoryCode={brandCode}
-                                                                name="Brand_Code"
-                                                                className="account-master-help"
-                                                            />
-                                                        </FormControl>
-                                                    </Grid>
-                                                </Grid>
-                                                <Grid container spacing={2} sx={{ mt: 2 }}>
-                                                    <Grid item xs={4}>
-                                                        <InputLabel htmlFor="Quantal">Quantal:</InputLabel>
-                                                        <TextField
-                                                            id="Quantal"
-                                                            type="text"
-                                                            fullWidth
-                                                            size="small"
-                                                            name="Quantal"
-                                                            autoComplete="off"
-                                                            value={formDataDetail.Quantal}
-                                                            onChange={handleChangeDetail}
-                                                        />
-                                                    </Grid>
-                                                    <Grid item xs={4}>
-                                                        <InputLabel htmlFor="packing">Packing:</InputLabel>
-                                                        <TextField
-                                                            id="packing"
-                                                            type="text"
-                                                            fullWidth
-                                                            size="small"
-                                                            name="packing"
-                                                            autoComplete="off"
-                                                            value={formDataDetail.packing}
-                                                            onChange={handleChangeDetail}
-                                                        />
-                                                    </Grid>
-                                                    <Grid item xs={4}>
-                                                        <InputLabel htmlFor="bags">Bags:</InputLabel>
-                                                        <TextField
-                                                            id="bags"
-                                                            type="text"
-                                                            fullWidth
-                                                            size="small"
-                                                            name="bags"
-                                                            autoComplete="off"
-                                                            value={formDataDetail.bags}
-                                                            onChange={handleChangeDetail}
-                                                        />
-                                                    </Grid>
-                                                </Grid>
-
-                                                <Grid container spacing={2} sx={{ mt: 2 }}>
-                                                    <Grid item xs={4}>
-                                                        <InputLabel htmlFor="rate">Rate:</InputLabel>
-                                                        <TextField
-                                                            id="rate"
-                                                            type="text"
-                                                            fullWidth
-                                                            size="small"
-                                                            name="rate"
-                                                            autoComplete="off"
-                                                            value={formDataDetail.rate !== null ? formDataDetail.rate : ""}
-                                                            onChange={handleChangeDetail}
-                                                        />
-                                                    </Grid>
-                                                    <Grid item xs={4}>
-                                                        <InputLabel htmlFor="item_Amount">Item Amount:</InputLabel>
-                                                        <TextField
-                                                            id="item_Amount"
-                                                            type="text"
-                                                            fullWidth
-                                                            size="small"
-                                                            name="item_Amount"
-                                                            autoComplete="off"
-                                                            value={formDataDetail.item_Amount}
-                                                            onChange={handleChangeDetail}
-                                                        />
-                                                    </Grid>
-                                                    <Grid item xs={4}>
-                                                        <InputLabel htmlFor="narration" style={{ fontWeight: 'bold' }}>Narration:</InputLabel>
-                                                        <TextField
-                                                            id="narration"
-                                                            name="narration"
-                                                            value={formDataDetail.narration}
-                                                            onChange={handleChangeDetail}
-                                                            autoComplete="off"
-                                                            fullWidth
-                                                            multiline
-                                                            rows={3}
-                                                            size="small"
-                                                            disabled={!isEditing && addOneButtonEnabled}
-                                                        />
-                                                    </Grid>
-                                                </Grid>
-                                            </form>
-                                        </div>
-                                        <div className="modal-footer">
-                                            {selectedUser.id ? (
-                                                <button className="btn btn-primary" onClick={updateUser} onKeyDown={(event) => {
-                                                    if (event.key === 13) {
-                                                        updateUser();
-                                                    }
-                                                }}>
-                                                    Update User
-                                                </button>
-                                            ) : (
-                                                <button className="btn btn-primary" onClick={addUser} onKeyDown={(event) => {
-                                                    if (event.key === 13) {
-                                                        addUser();
-                                                    }
-                                                }}>
-                                                    Add User
-                                                </button>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className="btn btn-secondary"
-                                                onClick={closePopup}
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         <table className="table mt-4 table-bordered">
                             <thead>
@@ -2233,8 +1996,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                     inputProps={{
                                         sx: { textAlign: 'right' },
                                         inputMode: 'decimal',
-                                        pattern: '[0-9]*[.,]?[0-9]+',
-                                        onInput: validateNumericInput,
                                     }}
 
                                 />

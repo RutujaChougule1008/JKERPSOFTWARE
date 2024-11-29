@@ -60,6 +60,8 @@ class SugarPurchase(db.Model):
     TDS_Rate = db.Column(db.Numeric(18, 3), nullable=True)
     Retail_Stock = db.Column(db.String(1), nullable=True)
     gstid = db.Column(db.Integer, nullable=True)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(String(50),default='',nullable=True)
     
     details = db.relationship('SugarPurchaseDetail', backref='purchase', lazy=True)
 

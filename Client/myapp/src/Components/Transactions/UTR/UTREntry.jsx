@@ -26,6 +26,7 @@ const UTREntry = () => {
 
   const companyCode = sessionStorage.getItem("Company_Code");
   const Year_Code = sessionStorage.getItem("Year_Code");
+
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
   const [saveButtonEnabled, setSaveButtonEnabled] = useState(true);
@@ -103,7 +104,7 @@ const UTREntry = () => {
   const [formData, setFormData] = useState(initialFormData);
 
    // Manage the lock-unlock record at the same time multiple users edit the same record.
-   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no);
+   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no,"",companyCode,Year_Code,"utr_entry");
 
   const handleChange = (event) => {
     const { name, value } = event.target;

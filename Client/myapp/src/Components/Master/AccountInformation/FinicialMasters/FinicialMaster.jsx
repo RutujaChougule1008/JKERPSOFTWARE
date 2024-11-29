@@ -46,7 +46,7 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
     group_Code: "",
     group_Name_E: "",
     group_Summary: "Y",
-    group_Type: type || selectedRecord.group_Type || "",
+    group_Type: type || selectedRecord?.group_Type || "B",
     group_Order: "",
     Created_By: "",
     Modified_By: "",

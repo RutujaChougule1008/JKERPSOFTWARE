@@ -14,12 +14,10 @@ app.config['SECRET_KEY'] = 'ABCDEFGHIJKLMNOPQRST'
 CORS(app, cors_allowed_origins="*")
 
 # Get all groups API
-@app.route(API_URL+"/getall-gststatemaster", methods=["GET"])
+@app.route(API_URL + "/getall-gststatemaster", methods=["GET"])
 def get_all_gst_state_master():
-    # Query the database to get all records from the GSTStateMaster table
     gst_state_masters = GSTStateMaster.query.all()
 
-    # Convert the SQLAlchemy objects to a list of dictionaries
     gst_state_master_list = []
     for gst_state_master in gst_state_masters:
         gst_state_master_dict = {
@@ -28,8 +26,8 @@ def get_all_gst_state_master():
         }
         gst_state_master_list.append(gst_state_master_dict)
 
-    # Convert the list of dictionaries to JSON and return as a response
-    return jsonify(gst_state_master_list)
+    alldata = {'alldata': gst_state_master_list}
+    return jsonify(alldata)
 
 
 # Get last State_Code
@@ -164,3 +162,69 @@ def delete_gst_state_master():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+#Navigation APIS
+@app.route(API_URL+"/get-first-GSTStateMaster", methods=["GET"])
+def get_first_GSTStateMaster():
+    try:
+        first_user_creation = GSTStateMaster.query.order_by(GSTStateMaster.State_Code.asc()).first()
+        if first_user_creation:
+            serialized_user_creation = {key: value for key, value in first_user_creation.__dict__.items() if not key.startswith('_')}
+            return jsonify([serialized_user_creation])
+        else:
+            return jsonify({'error': 'No records found'}), 404
+    except Exception as e:
+        print (e)
+        return jsonify({'error': 'internal server error'}), 500
+
+@app.route(API_URL+"/get-last-GSTStateMaster", methods=["GET"])
+def get_last_GSTStateMaster():
+    try:
+        last_user_creation = GSTStateMaster.query.order_by(GSTStateMaster.State_Code.desc()).first()
+        if last_user_creation:
+            serialized_last_user_creation = {}
+            for key, value in last_user_creation.__dict__.items():
+                if not key.startswith('_'):
+                    serialized_last_user_creation [key] = value
+            return jsonify([serialized_last_user_creation])
+        else:
+            return jsonify({'error': 'No records found'}), 404
+    except Exception as e:
+        print (e)
+        return jsonify({'error': 'internal server error'}), 500
+
+@app.route(API_URL+"/get-previous-GSTStateMaster", methods=["GET"])
+def get_previous_GSTStateMaster():
+    try:
+        Selected_Record = request.args.get('State_Code')
+        if Selected_Record is None:
+            return jsonify({'errOr': 'Selected_Record parameter is required'}), 400
+
+        previous_selected_record = GSTStateMaster.query.filter(GSTStateMaster.State_Code < Selected_Record)\
+            .order_by(GSTStateMaster.State_Code.desc()).first()
+        if previous_selected_record:
+            serialized_previous_selected_record = {key: value for key, value in previous_selected_record.__dict__.items() if not key.startswith('_')}
+            return jsonify(serialized_previous_selected_record)
+        else:
+            return jsonify({'error': 'No previous record found'}), 404
+    except Exception as e:
+        print (e)
+        return jsonify({'error': 'internal server error'}), 500
+
+@app.route(API_URL+"/get-next-GSTStateMaster", methods=["GET"])
+def get_next_GSTStateMaster():
+    try:
+        Selected_Record = request.args.get('State_Code')
+        if Selected_Record is None:
+            return jsonify({'error': 'Selected_Record parameter is required'}), 400
+
+        next_Selected_Record = GSTStateMaster.query.filter(GSTStateMaster.State_Code > Selected_Record)\
+            .order_by(GSTStateMaster.State_Code.asc()).first()
+        if next_Selected_Record:
+            serialized_next_Selected_Record = {key: value for key, value in next_Selected_Record.__dict__.items() if not key.startswith('_')}
+            return jsonify({'nextSelectedRecord': serialized_next_Selected_Record})
+        else:
+            return jsonify({'error': 'No next record found'}), 404
+    except Exception as e:
+        print (e)
+        return jsonify({'error': 'internal server error'}), 500

@@ -24,7 +24,7 @@ const GSTStateMasterHelp = ({ onAcCodeClick, name,GstStateName,GstStateCode, dis
     const fetchAndOpenPopup = async () => {
         try {
             const response = await axios.get(`http://localhost:8080/api/sugarian/getall-gststatemaster`);
-            const data = response.data;
+            const data = response.data.alldata;
             setPopupContent(data);
             setShowModal(true);
         } catch (error) {
@@ -72,7 +72,7 @@ const GSTStateMasterHelp = ({ onAcCodeClick, name,GstStateName,GstStateCode, dis
         try {
             // Assuming `apiURL` is defined somewhere in your code
             const response = await axios.get(`http://localhost:8080/api/sugarian/getall-gststatemaster`);
-            const data = response.data;
+            const data = response.data.alldata;
             setPopupContent(data);
             setApiDataFetched(true);
 

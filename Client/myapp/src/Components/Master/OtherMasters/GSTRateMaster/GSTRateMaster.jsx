@@ -8,10 +8,13 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const API_URL = process.env.REACT_APP_API;
-const companyCode = sessionStorage.getItem('Company_Code')
-const year_code = sessionStorage.getItem('Year_Code')
 
 const GSTRateMaster = () => {
+  
+  //Fetch necessary values from the session.
+  const companyCode = sessionStorage.getItem('Company_Code')
+  const year_code = sessionStorage.getItem('Year_Code')
+
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
@@ -31,8 +34,6 @@ const GSTRateMaster = () => {
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
 
-  console.log("selectedRecord", selectedRecord)
-
   const initialFormData = {
     CGST: '',
     Company_Code: companyCode,
@@ -50,7 +51,6 @@ const GSTRateMaster = () => {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData(prevState => {
-      // Create a new object based on existing state
       const updatedFormData = { ...prevState, [name]: value };
       return updatedFormData;
     });
@@ -66,7 +66,6 @@ const GSTRateMaster = () => {
         return response.json();
       })
       .then(data => {
-        // Set the last company code as the default value for Company_Code
         setFormData(prevState => ({
           ...prevState,
           Doc_no: data.Doc_no + 1
@@ -156,8 +155,6 @@ const GSTRateMaster = () => {
       .catch((error) => {
         console.error("Error fetching latest data for edit:", error);
       });
-
-    // Reset other state variables
     setIsEditing(false);
     setIsEditMode(false);
     setAddOneButtonEnabled(true);
@@ -196,8 +193,6 @@ const GSTRateMaster = () => {
     }
   };
 
-
-
   const handleBack = () => {
     navigate("/gst-rate-masterutility")
   }
@@ -208,7 +203,6 @@ const GSTRateMaster = () => {
       const response = await fetch(`${API_URL}/get-first-GSTRateMaster`);
       if (response.ok) {
         const data = await response.json();
-        // Access the first element of the array
         const firstUserCreation = data[0];
 
         setFormData({
@@ -226,14 +220,10 @@ const GSTRateMaster = () => {
 
   const handlePreviousButtonClick = async () => {
     try {
-      // Use formData.Company_Code as the current company code
       const response = await fetch(`${API_URL}/get-previous-GSTRateMaster?Doc_no=${formData.Doc_no}`);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("previousCompanyCreation", data);
-
-        // Assuming setFormData is a function to update the form data
         setFormData({
           ...formData, ...data,
         });
@@ -252,8 +242,6 @@ const GSTRateMaster = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("nextCompanyCreation", data);
-        // Assuming setFormData is a function to update the form data
         setFormData({
           ...formData, ...data.nextSelectedRecord
 
@@ -271,9 +259,7 @@ const GSTRateMaster = () => {
       const response = await fetch(`${API_URL}/get-last-GSTRateMaster`);
       if (response.ok) {
         const data = await response.json();
-        // Access the first element of the array
         const last_Navigation = data[0];
-
         setFormData({
           ...formData, ...last_Navigation,
         });
@@ -290,7 +276,6 @@ const GSTRateMaster = () => {
     try {
       const response = await axios.get(`${API_URL}/get-GSTRateMasterSelectedRecord?Company_Code=${companyCode}&Doc_no=${selectedRecord.Doc_no}`);
       const data = response.data;
-      console.log("Gst data", data)
       setFormData({
         ...formData, ...data
       });
@@ -329,7 +314,6 @@ const GSTRateMaster = () => {
         const data = response.data;
         setFormData(data);
         setIsEditing(false);
-
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -345,7 +329,7 @@ const GSTRateMaster = () => {
       <div class="modified-by-container">
         <h2 class="modified-by-heading">Modified By: {formData.Modified_By}</h2>
       </div>
-      <div className="container">
+      <div >
         <ToastContainer />
         <ActionButtonGroup
           handleAddOne={handleAddOne}
@@ -363,7 +347,6 @@ const GSTRateMaster = () => {
           backButtonEnabled={backButtonEnabled}
         />
         <div>
-          {/* Navigation Buttons */}
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
             handlePreviousButtonClick={handlePreviousButtonClick}
@@ -371,7 +354,6 @@ const GSTRateMaster = () => {
             handleLastButtonClick={handleLastButtonClick}
             highlightedButton={highlightedButton}
             isEditing={isEditing}
-
           />
         </div>
       </div>
@@ -456,7 +438,6 @@ const GSTRateMaster = () => {
               disabled={!isEditing && addOneButtonEnabled}
             />
           </div>
-
         </form>
       </div>
 

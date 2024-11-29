@@ -186,7 +186,7 @@ def getsugarpurchasebyid():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        task_head = SugarPurchase.query.filter_by(doc_no=doc_no).first()
+        task_head = SugarPurchase.query.filter_by(doc_no=doc_no, Company_Code=Company_Code, Year_Code=Year_Code).first()
 
         newtaskid = task_head.purchaseid
 
@@ -571,4 +571,4 @@ def getnextsugarpurchase_navigation():
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
-
+    

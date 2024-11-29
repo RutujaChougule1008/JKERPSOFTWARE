@@ -1,6 +1,6 @@
 // PartyUnitMasterUtility.js
 import React, { useState } from "react";
-import TableUtility from "../../../../Common/UtilityCommon/TableUtility"; // Adjust path as needed
+import TableUtility from "../../../../Common/UtilityCommon/TableUtility";
 
 const PartyUnitMasterUtility = () => {
     const apiUrl = `${process.env.REACT_APP_API}/getAll_PartyUnitMaster`;
@@ -8,7 +8,7 @@ const PartyUnitMasterUtility = () => {
     const columns = [
         { label: "Unit Code", key: "unit_code" },
         { label: "Party Code", key: "Ac_Code" },
-        { label: "Party Name", key: "partyName" }, // Will safely access first item in additionalLabels if it exists
+        { label: "Party Name", key: "partyName" },
         { label: "Unit Name", key: "UnitName" },
         { label: "Remarks", key: "Remarks" }
     ];
@@ -24,7 +24,7 @@ const PartyUnitMasterUtility = () => {
             title="Party Unit Master"
             apiUrl={apiUrl}
             columns={columns}
-            rowKey="recordData.unit_code"
+            rowKey="unit_code"
             addUrl="/corporate-customer-limit"
             detailUrl="/corporate-customer-limit"
             permissionUrl="/PartyUnitMaster-utility"

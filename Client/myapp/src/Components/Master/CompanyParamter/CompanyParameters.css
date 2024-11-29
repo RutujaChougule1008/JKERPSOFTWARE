@@ -1,23 +1,13 @@
 .company-parameters-form-container {
-    max-width: 1500px;
-    margin: 0 auto;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
+    max-width: 1800px;
     background-color: #f9f9f9;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
 }
-
-
 
 .CompanyParameters-form-group {
     display: flex;
     justify-content: space-between;
     margin-bottom: 15px;
-    width: 100%;
-    align-items: center;
+    width: 90%;
 }
 
 .CompanyParameters-form-group label {
@@ -40,10 +30,6 @@
     max-width: 200px; 
     
 }
-
-
-
- 
 
 .button-container {
     text-align: center;

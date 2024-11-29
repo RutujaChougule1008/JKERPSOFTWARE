@@ -5,8 +5,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "./CompanyParameters.css";
 import "react-toastify/dist/ReactToastify.css";
 import AccountMasterHelp from "../../../Helper/AccountMasterHelp";
-const companyCode = sessionStorage.getItem("Company_Code");
-const Year_Code = sessionStorage.getItem("Year_Code");
+import { Grid, Typography } from "@mui/material";
+
 const API_URL = process.env.REACT_APP_API;
 
 var CommissionAcName;
@@ -88,8 +88,12 @@ var newInterestTDSAc;
 var BankPaymentAcName;
 var newBankPaymentAc;
 const CompanyParameters = () => {
-  const [accountCode, setAccountCode] = useState("");
 
+  //GET Company Code and year code from the session
+  const companyCode = sessionStorage.getItem("Company_Code");
+  const Year_Code = sessionStorage.getItem("Year_Code");
+
+  const [accountCode, setAccountCode] = useState("");
   const initialFormData = {
     COMMISSION_AC: "",
     INTEREST_AC: "",
@@ -429,11 +433,11 @@ const CompanyParameters = () => {
     });
   };
   const [formData, setFormData] = useState(initialFormData);
+
   // Handle change for all inputs
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prevState) => {
-      // Create a new object based on existing state
       const updatedFormData = { ...prevState, [name]: value };
       return updatedFormData;
     });
@@ -555,529 +559,678 @@ const CompanyParameters = () => {
 
   return (
     <>
-      <div className="company-parameters-form-container">
+      <div>
         <ToastContainer />
         <form onSubmit={handleSaveOrUpdate}>
-          <h2>Company Parameter</h2>
-          <br />
-          <div className="CompanyParameters-form-group">
-            <div className="CompanyParameters-form-group-column">
-            <label htmlFor="COMMISSION_AC">Commission A/c</label>
-            <AccountMasterHelp
-              name="COMMISSION_AC"
-              onAcCodeClick={handleCOMMISSION_AC}
-              CategoryName={CommissionAcName}
-              CategoryCode={newCOMMISSION_AC}
-              tabIndex={1}
-            />
-            </div>
-            <div className="CompanyParameters-form-group-row">
-            <label htmlFor="INTEREST_AC">Interest A/c</label>
-            <AccountMasterHelp
-              name="INTEREST_AC"
-              onAcCodeClick={handleINTEREST_AC}
-              CategoryName={InterestAcName}
-              CategoryCode={newINTEREST_AC}
-              tabIndex={2}
-            />
-            </div>
-          </div>
+          <Typography variant="h4" sx={{ mb: 3, fontWeight: "bold" }}>
+            Company Parameter
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="COMMISSION_AC" style={{ marginRight: "10px" }}>Commission A/c</label>
+              <AccountMasterHelp
+                name="COMMISSION_AC"
+                Ac_type=""
+                onAcCodeClick={handleCOMMISSION_AC}
+                CategoryName={CommissionAcName}
+                CategoryCode={newCOMMISSION_AC}
+                tabIndex={1}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="INTEREST_AC" style={{ marginRight: "10px" }}>Interest A/c</label>
+              <AccountMasterHelp
+                name="INTEREST_AC"
+                 Ac_type=""
+                onAcCodeClick={handleINTEREST_AC}
+                CategoryName={InterestAcName}
+                CategoryCode={newINTEREST_AC}
+                tabIndex={2}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="TRANSPORT_AC">Transport A/c</label>
-            <AccountMasterHelp
-              name="TRANSPORT_AC"
-              onAcCodeClick={handleTRANSPORT_AC}
-              CategoryName={TransportAcName}
-              CategoryCode={newTRANSPORT_AC}
-              tabIndex={3}
-            />
-            <label htmlFor="POSTAGE_AC">Postage A/c</label>
-            <AccountMasterHelp
-              name="POSTAGE_AC"
-              onAcCodeClick={handlePOSTAGE_AC}
-              CategoryName={PostageAcName}
-              CategoryCode={newPOSTAGE_AC}
-              tabIndex={4}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TRANSPORT_AC" style={{ marginRight: "10px" }}>Transport A/c</label>
+              <AccountMasterHelp
+                name="TRANSPORT_AC"
+                 Ac_type=""
+                onAcCodeClick={handleTRANSPORT_AC}
+                CategoryName={TransportAcName}
+                CategoryCode={newTRANSPORT_AC}
+                tabIndex={3}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="POSTAGE_AC" style={{ marginRight: "10px" }}>Postage A/c</label>
+              <AccountMasterHelp
+                name="POSTAGE_AC"
+                 Ac_type=""
+                onAcCodeClick={handlePOSTAGE_AC}
+                CategoryName={PostageAcName}
+                CategoryCode={newPOSTAGE_AC}
+                tabIndex={4}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="SELF_AC">Self A/c</label>
-            <AccountMasterHelp
-              name="SELF_AC"
-              onAcCodeClick={handleSELF_AC}
-              CategoryName={SelfAc}
-              CategoryCode={newSELF_AC}
-              tabIndex={5}
-            />
-            <label htmlFor="AutoVoucher">Auto Generate Voucher:</label>
-            <input
-              type="text"
-              id="AutoVoucher"
-              Name="AutoVoucher"
-              value={formData.AutoVoucher}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SELF_AC" style={{ marginRight: "10px" }}>Self A/c</label>
+              <AccountMasterHelp
+                name="SELF_AC"
+                 Ac_type=""
+                onAcCodeClick={handleSELF_AC}
+                CategoryName={SelfAc}
+                CategoryCode={newSELF_AC}
+                tabIndex={5}
+              />
+            </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="GSTStateCode">GST State Code</label>
-            <AccountMasterHelp
-              name="GSTStateCode"
-              onAcCodeClick={handleGSTStateCode}
-              CategoryName={GSTStateCodeName}
-              CategoryCode={newGSTStateCode}
-              tabIndex={12}
-            />
-            <label htmlFor="CGSTAc">Sale CGST A/c</label>
-            <AccountMasterHelp
-              name="CGSTAc"
-              onAcCodeClick={handleCGSTAc}
-              CategoryName={SaleCGSTAcName}
-              CategoryCode={newCGSTAc}
-              tabIndex={13}
-            />
-          </div>
+            <Grid item xs={12} sm={3} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="AutoVoucher" style={{ marginRight: "10px" }}>
+                Auto Generate Voucher:
+              </label>
+              <div>
+                <select
+                  id="AutoVoucher"
+                  name="AutoVoucher"
+                  value={formData.AutoVoucher}
+                  onChange={handleChange}
+                  style={{ width: "100%", padding: "8px", fontSize: "14px" }}
+                >
+                  <option value="Y">Yes</option>
+                  <option value="N">No</option>
+                </select>
+              </div>
+            </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="SGSTAc">Sale SGST A/c</label>
-            <AccountMasterHelp
-              name="SGSTAc"
-              onAcCodeClick={handleSGSTAc}
-              CategoryName={SaleSGSTAcName}
-              CategoryCode={newSGSTAc}
-              tabIndex={14}
-            />
-            <label htmlFor="IGSTAc">Sale IGST A/c</label>
-            <AccountMasterHelp
-              name="IGSTAc"
-              onAcCodeClick={handleIGSTAc}
-              CategoryName={SaleIGSTAcName}
-              CategoryCode={newIGSTAc}
-              tabIndex={15}
-            />
-          </div>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="PurchaseCGSTAc">Purchase CGST A/c</label>
-            <AccountMasterHelp
-              name="PurchaseCGSTAc"
-              onAcCodeClick={handlePurchaseCGSTAc}
-              CategoryName={PurchaseCGSTAcName}
-              CategoryCode={newPurchaseCGSTAc}
-              tabIndex={16}
-            />
-            <label htmlFor="PurchaseSGSTAc">Purchase SGST A/c</label>
-            <AccountMasterHelp
-              name="PurchaseSGSTAc"
-              onAcCodeClick={handlePurchaseSGSTAc}
-              CategoryName={PurchaseSGSTAcName}
-              CategoryCode={newPurchaseSGSTAc}
-              tabIndex={17}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="GSTStateCode" style={{ marginRight: "10px" }}>GST State Code</label>
+              <AccountMasterHelp
+                name="GSTStateCode"
+                 Ac_type=""
+                onAcCodeClick={handleGSTStateCode}
+                CategoryName={GSTStateCodeName}
+                CategoryCode={newGSTStateCode}
+                tabIndex={12}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="CGSTAc" style={{ marginRight: "10px" }}>Sale CGST A/c</label>
+              <AccountMasterHelp
+                name="CGSTAc"
+                 Ac_type=""
+                onAcCodeClick={handleCGSTAc}
+                CategoryName={SaleCGSTAcName}
+                CategoryCode={newCGSTAc}
+                tabIndex={13}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="PurchaseIGSTAc">Purchase IGST A/c</label>
-            <AccountMasterHelp
-              name="PurchaseIGSTAc"
-              onAcCodeClick={handlePurchaseIGSTAc}
-              CategoryName={PurchaseIGSTAcName}
-              CategoryCode={newPurchaseIGSTAc}
-              tabIndex={18}
-            />
-            <label htmlFor="RoundOff">Round off</label>
-            <AccountMasterHelp
-              name="RoundOff"
-              onAcCodeClick={handleRoundOff}
-              CategoryName={RoundOffAcName}
-              CategoryCode={newRoundOff}
-              tabIndex={19}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SGSTAc" style={{ marginRight: "10px" }}>Sale SGST A/c</label>
+              <AccountMasterHelp
+                name="SGSTAc"
+                 Ac_type=""
+                onAcCodeClick={handleSGSTAc}
+                CategoryName={SaleSGSTAcName}
+                CategoryCode={newSGSTAc}
+                tabIndex={14}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="IGSTAc" style={{ marginRight: "10px" }}>Sale IGST A/c</label>
+              <AccountMasterHelp
+                name="IGSTAc"
+                 Ac_type=""
+                onAcCodeClick={handleIGSTAc}
+                CategoryName={SaleIGSTAcName}
+                CategoryCode={newIGSTAc}
+                tabIndex={15}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="Transport_RCM_GSTRate">Transport RCM GSTRate</label>
-            <AccountMasterHelp
-              name="Transport_RCM_GSTRate"
-              onAcCodeClick={handleTransport_RCM_GSTRate}
-              CategoryName={TransportRCMGSTAcName}
-              CategoryCode={newTransport_RCM_GSTRate}
-              tabIndex={20}
-            />
-            <label htmlFor="CGST_RCM_Ac">CGST RCM Ac</label>
-            <AccountMasterHelp
-              name="CGST_RCM_Ac"
-              onAcCodeClick={handleCGST_RCM_Ac}
-              CategoryName={CGST_RCMAcName}
-              CategoryCode={newCGST_RCM_Ac}
-              tabIndex={21}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseCGSTAc" style={{ marginRight: "10px" }}>Purchase CGST A/c</label>
+              <AccountMasterHelp
+                name="PurchaseCGSTAc"
+                 Ac_type=""
+                onAcCodeClick={handlePurchaseCGSTAc}
+                CategoryName={PurchaseCGSTAcName}
+                CategoryCode={newPurchaseCGSTAc}
+                tabIndex={16}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseSGSTAc" style={{ marginRight: "10px" }}>Purchase SGST A/c</label>
+              <AccountMasterHelp
+                name="PurchaseSGSTAc"
+                 Ac_type=""
+                onAcCodeClick={handlePurchaseSGSTAc}
+                CategoryName={PurchaseSGSTAcName}
+                CategoryCode={newPurchaseSGSTAc}
+                tabIndex={17}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="SGST_RCM_Ac">SGST RCM Ac</label>
-            <AccountMasterHelp
-              name="SGST_RCM_Ac"
-              onAcCodeClick={handleSGST_RCM_Ac}
-              CategoryName={SGST_RCMAcName}
-              CategoryCode={newSGST_RCM_Ac}
-              tabIndex={22}
-            />
-            <label htmlFor="IGST_RCM_Ac">IGST RCM Ac</label>
-            <AccountMasterHelp
-              name="IGST_RCM_Ac"
-              onAcCodeClick={handleIGST_RCM_Ac}
-              CategoryName={IGST_RCMAcName}
-              CategoryCode={newIGST_RCM_Ac}
-              tabIndex={23}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseIGSTAc" style={{ marginRight: "10px" }}>Purchase IGST A/c</label>
+              <AccountMasterHelp
+                name="PurchaseIGSTAc"
+                 Ac_type=""
+                onAcCodeClick={handlePurchaseIGSTAc}
+                CategoryName={PurchaseIGSTAcName}
+                CategoryCode={newPurchaseIGSTAc}
+                tabIndex={18}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="RoundOff" style={{ marginRight: "10px" }}>Round off</label>
+              <AccountMasterHelp
+                name="RoundOff"
+                 Ac_type=""
+                onAcCodeClick={handleRoundOff}
+                CategoryName={RoundOffAcName}
+                CategoryCode={newRoundOff}
+                tabIndex={19}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="Freight_Ac">Freight A/C</label>
-            <AccountMasterHelp
-              name="Freight_Ac"
-              onAcCodeClick={handleFreight_Ac}
-              CategoryName={FreightAcName}
-              CategoryCode={newFreight_Ac}
-              tabIndex={24}
-            />
-            <label htmlFor="TCS">SALE TCS %:</label>
-            <input
-              type="text"
-              id="TCS"
-              Name="TCS"
-              value={formData.TCS}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="Transport_RCM_GSTRate" style={{ marginRight: "10px" }}>Transport RCM GSTRate</label>
+              <AccountMasterHelp
+                name="Transport_RCM_GSTRate"
+                 Ac_type=""
+                onAcCodeClick={handleTransport_RCM_GSTRate}
+                CategoryName={TransportRCMGSTAcName}
+                CategoryCode={newTransport_RCM_GSTRate}
+                tabIndex={20}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="CGST_RCM_Ac" style={{ marginRight: "10px" }}>CGST RCM Ac</label>
+              <AccountMasterHelp
+                name="CGST_RCM_Ac"
+                 Ac_type=""
+                onAcCodeClick={handleCGST_RCM_Ac}
+                CategoryName={CGST_RCMAcName}
+                CategoryCode={newCGST_RCM_Ac}
+                tabIndex={21}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="PurchaseTCSAc">Purchase TCS A/c</label>
-            <AccountMasterHelp
-              name="PurchaseTCSAc"
-              onAcCodeClick={handlePurchaseTCSAc}
-              CategoryName={PurchaseTCS_AcName}
-              CategoryCode={newPurchaseTCSAc}
-              tabIndex={26}
-            />
-            <label htmlFor="SaleTCSAc">Sale TCS A/c</label>
-            <AccountMasterHelp
-              name="SaleTCSAc"
-              onAcCodeClick={handleSaleTCSAc}
-              CategoryName={SaleTCS_AcName}
-              CategoryCode={newSaleTCSAc}
-              tabIndex={27}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SGST_RCM_Ac" style={{ marginRight: "10px" }}>SGST RCM Ac</label>
+              <AccountMasterHelp
+                name="SGST_RCM_Ac"
+                 Ac_type=""
+                onAcCodeClick={handleSGST_RCM_Ac}
+                CategoryName={SGST_RCMAcName}
+                CategoryCode={newSGST_RCM_Ac}
+                tabIndex={22}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="IGST_RCM_Ac" style={{ marginRight: "10px" }}>IGST RCM Ac</label>
+              <AccountMasterHelp
+                name="IGST_RCM_Ac"
+                 Ac_type=""
+                onAcCodeClick={handleIGST_RCM_Ac}
+                CategoryName={IGST_RCMAcName}
+                CategoryCode={newIGST_RCM_Ac}
+                tabIndex={23}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="OTHER_AMOUNT_AC">Other A/c</label>
-            <AccountMasterHelp
-              name="OTHER_AMOUNT_AC"
-              onAcCodeClick={handleOTHER_AMOUNT_AC}
-              CategoryName={OtherAcName}
-              CategoryCode={newOTHER_AMOUNT_AC}
-              tabIndex={29}
-            />
-            <label htmlFor="MarketSase">Market Sase A/c</label>
-            <AccountMasterHelp
-              name="MarketSase"
-              onAcCodeClick={handleMarketSase}
-              CategoryName={MarketSaseAcName}
-              CategoryCode={newMarketSase}
-              tabIndex={30}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="Freight_Ac" style={{ marginRight: "10px" }}>Freight A/C</label>
+              <AccountMasterHelp
+                name="Freight_Ac"
+                 Ac_type=""
+                onAcCodeClick={handleFreight_Ac}
+                CategoryName={FreightAcName}
+                CategoryCode={newFreight_Ac}
+                tabIndex={24}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TCS" style={{ marginRight: "10px" }}>SALE TCS %:</label>
+              <input
+                type="text"
+                id="TCS"
+                name="TCS"
+                value={formData.TCS}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="SuperCost">Supercost A/c</label>
-            <AccountMasterHelp
-              name="SuperCost"
-              onAcCodeClick={handleSuperCost}
-              CategoryName={SupercostAcName}
-              CategoryCode={newSuperCost}
-              tabIndex={31}
-            />
-            <label htmlFor="Packing">Packing A/c</label>
-            <AccountMasterHelp
-              Name="Packing"
-              onAcCodeClick={handlePacking}
-              CategoryName={PackingAcName}
-              CategoryCode={newPacking}
-              tabIndex={32}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseTCSAc" style={{ marginRight: "10px" }}>Purchase TCS A/c</label>
+              <AccountMasterHelp
+                name="PurchaseTCSAc"
+                 Ac_type=""
+                onAcCodeClick={handlePurchaseTCSAc}
+                CategoryName={PurchaseTCS_AcName}
+                CategoryCode={newPurchaseTCSAc}
+                tabIndex={26}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SaleTCSAc" style={{ marginRight: "10px" }}>Sale TCS A/c</label>
+              <AccountMasterHelp
+                name="SaleTCSAc"
+                 Ac_type=""
+                onAcCodeClick={handleSaleTCSAc}
+                CategoryName={SaleTCS_AcName}
+                CategoryCode={newSaleTCSAc}
+                tabIndex={27}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="Hamali">Hamali A/c</label>
-            <AccountMasterHelp
-              name="Hamali"
-              onAcCodeClick={handleHamali}
-              CategoryName={HamaliAcName}
-              CategoryCode={newHamali}
-              tabIndex={33}
-            />
-            <label htmlFor="TransportTDS_Ac">Transport TDS A/c</label>
-            <AccountMasterHelp
-              name="TransportTDS_Ac"
-              onAcCodeClick={handleTransportTDS_Ac}
-              CategoryName={TransportTDS_AcName}
-              CategoryCode={newTransportTDS_Ac}
-              tabIndex={34}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="OTHER_AMOUNT_AC" style={{ marginRight: "10px" }}>Other A/c</label>
+              <AccountMasterHelp
+                name="OTHER_AMOUNT_AC"
+                 Ac_type=""
+                onAcCodeClick={handleOTHER_AMOUNT_AC}
+                CategoryName={OtherAcName}
+                CategoryCode={newOTHER_AMOUNT_AC}
+                tabIndex={29}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="MarketSase" style={{ marginRight: "10px" }}>Market Sase A/c</label>
+              <AccountMasterHelp
+                name="MarketSase"
+                 Ac_type=""
+                onAcCodeClick={handleMarketSase}
+                CategoryName={MarketSaseAcName}
+                CategoryCode={newMarketSase}
+                tabIndex={30}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="TransportTDS_AcCut">
-              Transport TDS Cut by Us A/c
-            </label>
-            <AccountMasterHelp
-              name="TransportTDS_AcCut"
-              onAcCodeClick={handleTransportTDS_AcCut}
-              CategoryName={TransportTDS_CutAcName}
-              CategoryCode={newTransportTDS_AcCut}
-              tabIndex={35}
-            />
-            <label htmlFor="Mill_Payment_date">Mill Payment Date:</label>
-            <input
-              type="text"
-              id="Mill_Payment_date"
-              Name="Mill_Payment_date"
-              value={formData.Mill_Payment_date}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SuperCost" style={{ marginRight: "10px" }}>Supercost A/c</label>
+              <AccountMasterHelp
+                name="SuperCost"
+                 Ac_type=""
+                onAcCodeClick={handleSuperCost}
+                CategoryName={SupercostAcName}
+                CategoryCode={newSuperCost}
+                tabIndex={31}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="Packing" style={{ marginRight: "10px" }}>Packing A/c</label>
+              <AccountMasterHelp
+                Name="Packing"
+                 Ac_type=""
+                onAcCodeClick={handlePacking}
+                CategoryName={PackingAcName}
+                CategoryCode={newPacking}
+                tabIndex={32}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="dispatchType">Dispatch Type:</label>
-            <input
-              id="dispatchType"
-              Name="dispatchType"
-              value={formData.dispatchType}
-              onChange={handleChange}
-            />
-            <label htmlFor="ReturnSaleCGST">Return Sale CGST</label>
-            <AccountMasterHelp
-              name="ReturnSaleCGST"
-              onAcCodeClick={handleReturnSaleCGST}
-              CategoryName={ReturnSaleCGST_AcName}
-              CategoryCode={newReturnSaleCGST}
-              tabIndex={38}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="Hamali" style={{ marginRight: "10px" }}>Hamali A/c</label>
+              <AccountMasterHelp
+                name="Hamali"
+                 Ac_type=""
+                onAcCodeClick={handleHamali}
+                CategoryName={HamaliAcName}
+                CategoryCode={newHamali}
+                tabIndex={33}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TransportTDS_Ac" style={{ marginRight: "10px" }}>Transport TDS A/c</label>
+              <AccountMasterHelp
+                name="TransportTDS_Ac"
+                 Ac_type=""
+                onAcCodeClick={handleTransportTDS_Ac}
+                CategoryName={TransportTDS_AcName}
+                CategoryCode={newTransportTDS_Ac}
+                tabIndex={34}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="ReturnSaleSGST">Return Sale SGST</label>
-            <AccountMasterHelp
-              name="ReturnSaleSGST"
-              onAcCodeClick={handleReturnSaleSGST}
-              CategoryName={ReturnSaleSGSTAc_Name}
-              CategoryCode={newReturnSaleSGST}
-              tabIndex={39}
-            />
-            <label htmlFor="ReturnSaleIGST">Return Sale IGST</label>
-            <AccountMasterHelp
-              name="ReturnSaleIGST"
-              onAcCodeClick={handleReturnSaleIGST}
-              CategoryName={ReturnSaleIGSTName}
-              CategoryCode={newReturnSaleIGST}
-              tabIndex={40}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TransportTDS_AcCut" style={{ marginRight: "10px" }}>
+                Transport TDS Cut by Us A/c
+              </label>
+              <AccountMasterHelp
+                name="TransportTDS_AcCut"
+                 Ac_type=""
+                onAcCodeClick={handleTransportTDS_AcCut}
+                CategoryName={TransportTDS_CutAcName}
+                CategoryCode={newTransportTDS_AcCut}
+                tabIndex={35}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="Mill_Payment_date" style={{ marginRight: "10px" }}>Mill Payment Date:</label>
+              <input
+                type="text"
+                id="Mill_Payment_date"
+                name="Mill_Payment_date"
+                value={formData.Mill_Payment_date}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="ReturnPurchaseCGST">Return Purchase CGST</label>
-            <AccountMasterHelp
-              name="ReturnPurchaseCGST"
-              onAcCodeClick={handleReturnPurchaseCGST}
-              CategoryName={ReturnPurchaseCGSTName}
-              CategoryCode={newReturnPurchaseCGST}
-              tabIndex={41}
-            />
-            <label htmlFor="ReturnPurchaseSGST">Return Purchase SGST</label>
-            <AccountMasterHelp
-              name="ReturnPurchaseSGST"
-              onAcCodeClick={handleReturnPurchaseSGST}
-              CategoryName={ReturnPurchaseSGST}
-              CategoryCode={newReturnPurchaseSGST}
-              tabIndex={42}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="dispatchType" style={{ marginRight: "10px" }}>Dispatch Type:</label>
+              <select
+                id="dispatchType"
+                name="dispatchType"
+                value={formData.dispatchType}
+                onChange={handleChange}
+              >
+                <option value="C">Commission</option>
+                <option value="N">With GST Naka Delivery</option>
+                <option value="A">Naka Delivery without GST Rate</option>
+                <option value="D">DO</option>
+              </select>
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="ReturnSaleCGST" style={{ marginRight: "10px" }}>Return Sale CGST</label>
+              <AccountMasterHelp
+                name="ReturnSaleCGST"
+                 Ac_type=""
+                onAcCodeClick={handleReturnSaleCGST}
+                CategoryName={ReturnSaleCGST_AcName}
+                CategoryCode={newReturnSaleCGST}
+                tabIndex={38}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="ReturnPurchaseIGST">Return Purchase IGST</label>
-            <AccountMasterHelp
-              name="ReturnPurchaseIGST"
-              onAcCodeClick={handleReturnPurchaseIGST}
-              CategoryName={ReturnPurchaseIGSTName}
-              CategoryCode={newReturnPurchaseIGST}
-              tabIndex={43}
-            />
-            <label htmlFor="SaleTDSAc">Sale TDS Ac</label>
-            <AccountMasterHelp
-              name="SaleTDSAc"
-              onAcCodeClick={handleSaleTDSAc}
-              CategoryName={SaleTDSAcName}
-              CategoryCode={newSaleTDSAc}
-              tabIndex={44}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="ReturnSaleSGST" style={{ marginRight: "10px" }}>Return Sale SGST</label>
+              <AccountMasterHelp
+                name="ReturnSaleSGST"
+                 Ac_type=""
+                onAcCodeClick={handleReturnSaleSGST}
+                CategoryName={ReturnSaleSGSTAc_Name}
+                CategoryCode={newReturnSaleSGST}
+                tabIndex={39}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="ReturnSaleIGST" style={{ marginRight: "10px" }}>Return Sale IGST</label>
+              <AccountMasterHelp
+                name="ReturnSaleIGST"
+                 Ac_type=""
+                onAcCodeClick={handleReturnSaleIGST}
+                CategoryName={ReturnSaleIGSTName}
+                CategoryCode={newReturnSaleIGST}
+                tabIndex={40}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="PurchaseTDSAc">Purchase TDS Ac</label>
-            <AccountMasterHelp
-              name="PurchaseTDSAc"
-              onAcCodeClick={handlePurchaseTDSAc}
-              CategoryName={PurchaseTDSAcName}
-              CategoryCode={newPurchaseTDSAc}
-              tabIndex={45}
-            />
-            <label htmlFor="PurchaseTDSRate">Purchase TDS Rate:</label>
-            <input
-              type="text"
-              id="PurchaseTDSRate"
-              Name="PurchaseTDSRate"
-              value={formData.PurchaseTDSRate}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="ReturnPurchaseCGST" style={{ marginRight: "10px" }}>Return Purchase CGST</label>
+              <AccountMasterHelp
+                name="ReturnPurchaseCGST"
+                 Ac_type=""
+                onAcCodeClick={handleReturnPurchaseCGST}
+                CategoryName={ReturnPurchaseCGSTName}
+                CategoryCode={newReturnPurchaseCGST}
+                tabIndex={41}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="ReturnPurchaseSGST" style={{ marginRight: "10px" }}>Return Purchase SGST</label>
+              <AccountMasterHelp
+                name="ReturnPurchaseSGST"
+                 Ac_type=""
+                onAcCodeClick={handleReturnPurchaseSGST}
+                CategoryName={ReturnPurchaseSGST}
+                CategoryCode={newReturnPurchaseSGST}
+                tabIndex={42}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="SaleTDSRate">Sale TDS Rate:</label>
-            <input
-              type="text"
-              id="SaleTDSRate"
-              Name="SaleTDSRate"
-              value={formData.SaleTDSRate}
-              onChange={handleChange}
-            />
-            <label htmlFor="BalanceLimit">TCS SALE Balance Limit:</label>
-            <input
-              type="text"
-              id="BalanceLimit"
-              Name="BalanceLimit"
-              value={formData.BalanceLimit}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="ReturnPurchaseIGST" style={{ marginRight: "10px" }}>Return Purchase IGST</label>
+              <AccountMasterHelp
+                name="ReturnPurchaseIGST"
+                 Ac_type=""
+                onAcCodeClick={handleReturnPurchaseIGST}
+                CategoryName={ReturnPurchaseIGSTName}
+                CategoryCode={newReturnPurchaseIGST}
+                tabIndex={43}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SaleTDSAc" style={{ marginRight: "10px" }}>Sale TDS Ac</label>
+              <AccountMasterHelp
+                name="SaleTDSAc"
+                 Ac_type=""
+                onAcCodeClick={handleSaleTDSAc}
+                CategoryName={SaleTDSAcName}
+                CategoryCode={newSaleTDSAc}
+                tabIndex={44}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="RateDiffAc">Rate Diff Ac</label>
-            <AccountMasterHelp
-              name="RateDiffAc"
-              onAcCodeClick={handleRateDiffAc}
-              CategoryName={RateDiffAcName}
-              CategoryCode={newRateDiffAc}
-              tabIndex={49}
-            />
-            <label htmlFor="DODate">Do Date:</label>
-            <input
-              type="date"
-              id="DODate"
-              Name="DODate"
-              value={formData.DODate}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseTDSAc" style={{ marginRight: "10px" }}>Purchase TDS Ac</label>
+              <AccountMasterHelp
+                name="PurchaseTDSAc"
+                 Ac_type=""
+                onAcCodeClick={handlePurchaseTDSAc}
+                CategoryName={PurchaseTDSAcName}
+                CategoryCode={newPurchaseTDSAc}
+                tabIndex={45}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseTDSRate" style={{ marginRight: "10px" }}>Purchase TDS Rate:</label>
+              <input
+                type="text"
+                id="PurchaseTDSRate"
+                name="PurchaseTDSRate"
+                value={formData.PurchaseTDSRate}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="DOPages">DOPages:</label>
-            <input
-              type="text"
-              id="DOPages"
-              Name="DOPages"
-              value={formData.DOPages}
-              onChange={handleChange}
-            />
-            <label htmlFor="TCSPurchaseBalanceLimit">
-              TCS Purchase Balance Limit
-            </label>
-            <input
-              type="text"
-              id="TCSPurchaseBalanceLimit"
-              name="TCSPurchaseBalanceLimit"
-              value={formData.TCSPurchaseBalanceLimit}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="SaleTDSRate" style={{ marginRight: "10px" }}>Sale TDS Rate:</label>
+              <input
+                type="text"
+                id="SaleTDSRate"
+                name="SaleTDSRate"
+                value={formData.SaleTDSRate}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="BalanceLimit" style={{ marginRight: "10px" }}>TCS SALE Balance Limit:</label>
+              <input
+                type="text"
+                id="BalanceLimit"
+                name="BalanceLimit"
+                value={formData.BalanceLimit}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="TDSPurchaseBalanceLimit">
-              TDS Purchase Balance Limit
-            </label>
-            <input
-              type="text"
-              id="TDSPurchaseBalanceLimit"
-              name="TDSPurchaseBalanceLimit"
-              value={formData.TDSPurchaseBalanceLimit}
-              onChange={handleChange}
-            />
-            <label htmlFor="PurchaseSaleTcs">Purchase TCS %:</label>
-            <input
-              type="text"
-              id="PurchaseSaleTcs"
-              name="PurchaseSaleTcs"
-              value={formData.PurchaseSaleTcs}
-              onChange={handleChange}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="RateDiffAc" style={{ marginRight: "10px" }}>Rate Diff Ac</label>
+              <AccountMasterHelp
+                name="RateDiffAc"
+                 Ac_type=""
+                onAcCodeClick={handleRateDiffAc}
+                CategoryName={RateDiffAcName}
+                CategoryCode={newRateDiffAc}
+                tabIndex={49}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="DODate" style={{ marginRight: "10px" }}>Do Date:</label>
+              <input
+                type="date"
+                id="DODate"
+                name="DODate"
+                value={formData.DODate}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="TCSTDSSaleBalanceLimit">
-              TDS SALE Balance Limit
-            </label>
-            <input
-              type="text"
-              id="TCSTDSSaleBalanceLimit"
-              name="TCSTDSSaleBalanceLimit"
-              value={formData.TCSTDSSaleBalanceLimit}
-              onChange={handleChange}
-            />
-            <label htmlFor="DepreciationAC">Depreciation A/c</label>
-            <AccountMasterHelp
-              name="DepreciationAC"
-              onAcCodeClick={handleDepreciationAC}
-              CategoryName={DepreciationAcName}
-              CategoryCode={newDepreciationAC}
-              tabIndex={58}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="DOPages" style={{ marginRight: "10px" }}>DOPages:</label>
+              <input
+                type="text"
+                id="DOPages"
+                name="DOPages"
+                value={formData.DOPages}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TCSPurchaseBalanceLimit" style={{ marginRight: "10px" }}>TCS Purchase Balance Limit:</label>
+              <input
+                type="text"
+                id="TCSPurchaseBalanceLimit"
+                name="TCSPurchaseBalanceLimit"
+                value={formData.TCSPurchaseBalanceLimit}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="InterestRate">Interest TDS Rate:</label>
-            <input
-              type="text"
-              id="InterestRate"
-              name="InterestRate"
-              value={formData.InterestRate}
-              onChange={handleChange}
-            />
-            <label htmlFor="InterestTDSAc">Interest TDS Ac</label>
-            <AccountMasterHelp
-              name="InterestTDSAc"
-              onAcCodeClick={handleInterestTDSAc}
-              CategoryName={InterestTDS_AcName}
-              CategoryCode={newInterestTDSAc}
-              tabIndex={60}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TDSPurchaseBalanceLimit" style={{ marginRight: "10px" }}>TDS Purchase Balance Limit:</label>
+              <input
+                type="text"
+                id="TDSPurchaseBalanceLimit"
+                name="TDSPurchaseBalanceLimit"
+                value={formData.TDSPurchaseBalanceLimit}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="PurchaseSaleTcs" style={{ marginRight: "10px" }}>Purchase TCS %:</label>
+              <input
+                type="text"
+                id="PurchaseSaleTcs"
+                name="PurchaseSaleTcs"
+                value={formData.PurchaseSaleTcs}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
 
-          <div className="CompanyParameters-form-group">
-            <label htmlFor="BankPaymentAc">Bank Payment Ac</label>
-            <AccountMasterHelp
-              name="BankPaymentAc"
-              onAcCodeClick={handleBankPaymentAc}
-              CategoryName={BankPaymentAcName}
-              CategoryCode={newBankPaymentAc}
-              tabIndex={61}
-            />
-          </div>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="TCSTDSSaleBalanceLimit" style={{ marginRight: "10px" }}>TDS SALE Balance Limit:</label>
+              <input
+                type="text"
+                id="TCSTDSSaleBalanceLimit"
+                name="TCSTDSSaleBalanceLimit"
+                value={formData.TCSTDSSaleBalanceLimit}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="DepreciationAC" style={{ marginRight: "10px" }}>Depreciation A/c</label>
+              <AccountMasterHelp
+                name="DepreciationAC"
+                 Ac_type=""
+                onAcCodeClick={handleDepreciationAC}
+                CategoryName={DepreciationAcName}
+                CategoryCode={newDepreciationAC}
+                tabIndex={58}
+              />
+            </Grid>
+          </Grid>
 
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="InterestRate" style={{ marginRight: "10px" }}>Interest TDS Rate:</label>
+              <input
+                type="text"
+                id="InterestRate"
+                name="InterestRate"
+                value={formData.InterestRate}
+                onChange={handleChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="InterestTDSAc" style={{ marginRight: "10px" }}>Interest TDS Ac</label>
+              <AccountMasterHelp
+                name="InterestTDSAc"
+                 Ac_type=""
+                onAcCodeClick={handleInterestTDSAc}
+                CategoryName={InterestTDS_AcName}
+                CategoryCode={newInterestTDSAc}
+                tabIndex={60}
+              />
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} display="flex" alignItems="center" sx={{ mb: 2 }}>
+              <label htmlFor="BankPaymentAc" style={{ marginRight: "10px" }}>Bank Payment Ac</label>
+              <AccountMasterHelp
+                name="BankPaymentAc"
+                 Ac_type=""
+                onAcCodeClick={handleBankPaymentAc}
+                CategoryName={BankPaymentAcName}
+                CategoryCode={newBankPaymentAc}
+                tabIndex={61}
+              />
+            </Grid>
+          </Grid>
           <div className="button-container">
-            <button type="submit">Save Settings</button>
+            <button type="submit">Update</button>
           </div>
         </form>
       </div>

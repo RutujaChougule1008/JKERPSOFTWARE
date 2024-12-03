@@ -383,7 +383,7 @@ def delete_data_SugarPurchase():
                 'TRAN_TYPE': tran_type,
             }
 
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")

@@ -57,6 +57,8 @@ function CompanyCreation() {
     Signature: null,
     LogoFileName: "",
     SignatureFileName: "",
+    bankdetail:"",
+    dbbackup:""
   };
   // Define state variable to hold form data
   const [formData, setFormData] = useState(initialFormData);
@@ -66,6 +68,7 @@ function CompanyCreation() {
   //Records Double CLiked
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
 
   useEffect(() => {
     fetchLastCompany_Code();
@@ -665,6 +668,7 @@ function CompanyCreation() {
           handleBack={handleBack}
           backButtonEnabled={backButtonEnabled}
           addButtonRef={addButtonRef}
+          permissions={permissions}
         />
         <NavigationButtons
           handleFirstButtonClick={handleFirstButtonClick}
@@ -982,6 +986,32 @@ function CompanyCreation() {
                   />
                 </Grid>
               </Grid>
+              <Grid container spacing={2}>
+              <Grid item xs={12} sm={8}>
+                  <TextField
+                    label="Bank Details"
+                    variant="outlined"
+                    name="bankdetail"
+                    value={formData.bankdetail}
+                    onChange={handleInputChange}
+                    fullWidth
+                    required
+                    disabled={!isEditing && addOneButtonEnabled}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="BackUp Folder"
+                    variant="outlined"
+                    name="dbbackup"
+                    value={formData.dbbackup}
+                    onChange={handleInputChange}
+                    fullWidth
+                    required
+                    disabled={!isEditing && addOneButtonEnabled}
+                  />
+                </Grid>
+                </Grid>
             </Box>
           </form>
         </div>

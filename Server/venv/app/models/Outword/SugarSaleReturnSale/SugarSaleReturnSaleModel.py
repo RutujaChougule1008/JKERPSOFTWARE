@@ -64,6 +64,8 @@ class SugarSaleReturnSaleHead(db.Model):
     QRCode = db.Column(db.Text, nullable=True)
     IsDeleted = db.Column(db.Integer, nullable=True)
     gstid = db.Column(db.Integer, nullable=True)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)
 
     details = db.relationship('SugarSaleReturnSaleDetail', backref='sugarSaleReturnSaleHead', lazy=True)
 

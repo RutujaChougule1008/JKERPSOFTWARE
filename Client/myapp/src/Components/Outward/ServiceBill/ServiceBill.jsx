@@ -10,6 +10,7 @@ import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./ServiceBill.css";
+import { useRecordLocking } from "../../../hooks/useRecordLocking";
 import { HashLoader } from "react-spinners";
 import { TextField, Grid } from '@mui/material';
 
@@ -66,6 +67,7 @@ const ServiceBill = () => {
 
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
   const navigate = useNavigate();
   const setFocusTaskdate = useRef(null);
   const [isHandleChange, setIsHandleChange] = useState(false);
@@ -124,6 +126,15 @@ const ServiceBill = () => {
   const [broker, setBroker] = useState("");
   const [GstRate, setGstRate] = useState(0.0);
   const [matchStatus, setMatchStatus] = useState(null);
+
+   //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
+   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(
+    formData.Doc_No,
+    undefined,
+    companyCode,
+    Year_Code,
+    "service_bill"
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -208,15 +219,44 @@ const ServiceBill = () => {
     setLastTenderDetails([]);
   };
 
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
+  const handleEdit = async () => {
+    axios
+      .get(
+        `${API_URL}/getservicebillByid?doc_no=${formData.Doc_No}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+      )
+      .then((response) => {
+        const data = response.data;
+
+        console.log(data);
+
+        const isLockedNew = data.service_bill_head.LockedRecord;
+        const isLockedByUserNew = data.service_bill_head.LockedUser;
+
+        if (isLockedNew) {
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord();
+        }
+        setFormData({
+          ...formData,
+          ...data.service_bill_head,
+        });
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert(
+          "This record is already deleted! Showing the previous record.",
+          error
+        );
+      });
   };
 
   const handleSaveOrUpdate = async () => {
@@ -254,6 +294,7 @@ const ServiceBill = () => {
         const response = await axios.put(updateApiUrl, requestData);
 
         toast.success("Data updated successfully!");
+        unlockRecord();
         setTimeout(() => {
           window.location.reload();
         }, 1000);
@@ -286,6 +327,19 @@ const ServiceBill = () => {
   };
 
   const handleDelete = async () => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/getservicebillByid?doc_no=${formData.Doc_No}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+      );
+
+      const data = response.data;
+      const isLockedNew = data.service_bill_head.LockedRecord;
+      const isLockedByUserNew = data.service_bill_head.LockedUser;
+
+      if (isLockedNew) {
+        window.alert(`This record is locked by ${isLockedByUserNew}`);
+        return;
+      }
     const isConfirmed = window.confirm(
       `Are you sure you want to delete this Task No ${formData.Doc_No}?`
     );
@@ -298,7 +352,6 @@ const ServiceBill = () => {
       setSaveButtonEnabled(false);
       setCancelButtonEnabled(false);
       setIsLoading(true);
-      try {
         const deleteApiUrl = `${API_URL}/delete_data_by_rbid?rbid=${newSaleid}&Company_Code=${companyCode}&doc_no=${formData.Doc_No}&Year_Code=${Year_Code}`;
         const response = await axios.delete(deleteApiUrl);
 
@@ -312,14 +365,16 @@ const ServiceBill = () => {
             response.statusText
           );
         }
-      } catch (error) {
-        console.error("Error during API call:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
+      }  else {
       console.log("Deletion cancelled");
     }
+    
+  }
+  catch (error) {
+    console.error("Error during API call:", error);
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   const handleCancel = async () => {
@@ -363,7 +418,7 @@ const ServiceBill = () => {
         }));
         setLastTenderData(last_head_data || {});
         setLastTenderDetails(enrichedDetails);
-
+        unlockRecord();
       } else {
         console.error("Failed to fetch last data:", response.status, response.statusText);
       }
@@ -545,7 +600,7 @@ const ServiceBill = () => {
     setCancelButtonClicked(true);
     try {
       const response = await axios.get(
-        `${API_URL}/getservicebillByid?doc_no=${selectedRecord.service_bill_head_data.Doc_No}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+        `${API_URL}/getservicebillByid?doc_no=${selectedRecord.Doc_No}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
       );
       if (response.status === 200) {
         const { service_bill_head, service_bill_details, service_labels } = response.data;
@@ -1125,6 +1180,7 @@ const ServiceBill = () => {
             cancelButtonEnabled={cancelButtonEnabled}
             handleBack={handleBack}
             backButtonEnabled={backButtonEnabled}
+            permissions={permissions}
           />
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}

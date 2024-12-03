@@ -13,6 +13,7 @@ import logging
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -93,16 +94,14 @@ def process_gledger_entries(detailData, headData, gledger_entries, order_code):
 @app.route(API_URL + "/getdata-receiptpayment", methods=["GET"])
 def getdata_receiptpayment():
     try:
-        # Extract query parameters
         Company_Code = request.args.get('Company_Code')
         Year_Code = request.args.get('Year_Code')
         tran_type = request.args.get('tran_type')
 
-        # Validate required parameters
         if not all([Company_Code, Year_Code, tran_type]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # SQL query to fetch data
+
         query = """
         SELECT        creditac.Ac_Name_E AS creditacname, dbo.nt_1_transactdetail.credit_ac, dbo.nt_1_transactdetail.amount, dbo.nt_1_transacthead.tran_type, dbo.nt_1_transacthead.doc_no, dbo.nt_1_transacthead.doc_date, 
                          dbo.nt_1_transactdetail.narration, dbo.nt_1_transacthead.tranid, dbo.nt_1_transactdetail.da, debitac.Ac_Name_E AS debitName, dbo.nt_1_transactdetail.debit_ac
@@ -119,7 +118,6 @@ FROM            dbo.nt_1_accountmaster AS debitac RIGHT OUTER JOIN
             dbo.nt_1_transacthead.doc_no DESC
         """
 
-        # Execute the query
         results = db.session.execute(
             text(query),
             {
@@ -130,7 +128,6 @@ FROM            dbo.nt_1_accountmaster AS debitac RIGHT OUTER JOIN
         )
         rows = results.fetchall()
 
-        # Format the response
         all_records_data = []
         for row in rows:
             record = dict(row._mapping)
@@ -138,7 +135,6 @@ FROM            dbo.nt_1_accountmaster AS debitac RIGHT OUTER JOIN
                 record["doc_date"] = record["doc_date"].strftime('%Y-%m-%d')
             all_records_data.append(record)
 
-        # Check if data exists
         if not all_records_data:
             return jsonify({"error": "No records found"}), 404
 
@@ -365,7 +361,7 @@ def delete_data_by_tranid():
                 'TRAN_TYPE': tran_type,
             }
 
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")    

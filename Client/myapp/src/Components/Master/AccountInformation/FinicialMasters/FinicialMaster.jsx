@@ -40,6 +40,7 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
   const type = location.state?.type;
 
   const initialFormData = {
@@ -391,6 +392,7 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
             cancelButtonEnabled={cancelButtonEnabled}
             handleBack={handleBack}
             backButtonEnabled={backButtonEnabled}
+            permissions={permissions}
           />
           <div>
             <NavigationButtons

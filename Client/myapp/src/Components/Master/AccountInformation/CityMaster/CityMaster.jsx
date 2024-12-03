@@ -42,6 +42,7 @@ const CityMaster = ({ isPopup = false }, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
 
   const initialFormData = {
     city_code: "",
@@ -117,6 +118,7 @@ const CityMaster = ({ isPopup = false }, ref) => {
     setIsEditing(true);
     fetchLastCityCode();
     setFormData(initialFormData);
+    gstStateName=""
   };
 
   const handleSaveOrUpdate = () => {
@@ -432,6 +434,7 @@ const CityMaster = ({ isPopup = false }, ref) => {
             cancelButtonEnabled={cancelButtonEnabled}
             handleBack={handleBack}
             backButtonEnabled={backButtonEnabled}
+            permissions={permissions}
           />
           <div>
             <NavigationButtons
@@ -541,7 +544,7 @@ const CityMaster = ({ isPopup = false }, ref) => {
                 disabled={!isEditing && addOneButtonEnabled}
               >
                 {states.map((state) => (
-                  <MenuItem key={state.State_Code} value={state.State_Code}>
+                  <MenuItem key={state.State_Code} value={state.State_Name}>
                     {state.State_Name}
                   </MenuItem>
                 ))}

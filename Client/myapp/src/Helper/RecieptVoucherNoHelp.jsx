@@ -7,6 +7,7 @@ import "../App.css";
 
 const CompanyCode = sessionStorage.getItem("Company_Code");
 const YearCode = sessionStorage.getItem("Year_Code");
+const API_URL = process.env.REACT_APP_API;
 
 var lActiveInputFeild = "";
 
@@ -28,7 +29,7 @@ const RecieptVoucherNoHelp = ({ onAcCodeClick, name, VoucherNo, tabIndexHelp, di
     const fetchData = useCallback(async () => {
         debugger
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/RecieptVoucherNo?CompanyCode=${CompanyCode}&Tran_Type=${Tran_Type}&FilterType=${FilterType}&Accode=${Accode}&Year_Code=${YearCode}`);
+            const response = await axios.get(`${API_URL}/RecieptVoucherNo?CompanyCode=${CompanyCode}&Tran_Type=${Tran_Type}&FilterType=${FilterType}&Accode=${Accode}&Year_Code=${YearCode}`);
             const data = response.data.last_details_data;
             
             setPopupContent(data);
@@ -44,7 +45,7 @@ const RecieptVoucherNoHelp = ({ onAcCodeClick, name, VoucherNo, tabIndexHelp, di
     const fetchTenderDetails = async (Tran_Type,VoucherNo,Autoid) => {
         try {
            debugger
-            const url = `http://localhost:8080/api/sugarian/getRecieptVoucherNo_Data?CompanyCode=${CompanyCode}&Tran_Type=${Tran_Type}&FilterType=${FilterType}&Autoid=${Autoid}&Year_Code=${YearCode}&VoucherNo=${VoucherNo}`;
+            const url = `${API_URL}/getRecieptVoucherNo_Data?CompanyCode=${CompanyCode}&Tran_Type=${Tran_Type}&FilterType=${FilterType}&Autoid=${Autoid}&Year_Code=${YearCode}&VoucherNo=${VoucherNo}`;
             const response = await axios.get(url);
             const details = response.data;
             console.log("Tender Details1:", details);

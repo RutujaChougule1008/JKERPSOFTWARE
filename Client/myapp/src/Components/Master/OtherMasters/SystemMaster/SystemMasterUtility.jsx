@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import PageNotFound from "../../../../Common/PageNotFound/PageNotFound";
 
 import {
     Table,
@@ -14,7 +15,8 @@ import {
     Select,
     MenuItem,
     Grid,
-    Paper
+    Paper,
+    Typography
 } from "@mui/material";
 import Pagination from "../../../../Common/UtilityCommon/Pagination";
 import SearchBar from "../../../../Common/UtilityCommon/SearchBar";
@@ -25,15 +27,39 @@ const API_URL = process.env.REACT_APP_API;
 
 
 function SystemMasterUtility() {
+
+    const companyCode = sessionStorage.getItem('Company_Code');
+    const Year_Code = sessionStorage.getItem('Year_Code');
+    const uid = sessionStorage.getItem('uid');
     const [fetchedData, setFetchedData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [perPage, setPerPage] = useState(15);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [filterValue, setFilterValue] = useState("G");
+    const [canView, setCanView] = useState(null);
+    const [permissionsData, setPermissionData] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
+
+        const checkPermissions = async () => {
+            try {
+                const userCheckUrl = `${API_URL}/get_user_permissions?Company_Code=${companyCode}&Year_Code=${Year_Code}&Program_Name=/syetem-masterutility&uid=${uid}`;
+                const response = await axios.get(userCheckUrl);
+                setPermissionData(response.data?.UserDetails);
+                if (response.data?.UserDetails?.canView === 'Y') {
+                    setCanView(true);
+                    fetchData();
+                } else {
+                    setCanView(false);
+                }
+            } catch (error) {
+                console.error("Error fetching user permissions:", error);
+                setCanView(false);
+            }
+        };
+
         const fetchData = async () => {
             const companyCode = sessionStorage.getItem('Company_Code');
             try {
@@ -44,8 +70,7 @@ function SystemMasterUtility() {
                 console.error("Error fetching data:", error);
             }
         };
-
-        fetchData();
+        checkPermissions();
     }, []);
 
 
@@ -109,50 +134,61 @@ function SystemMasterUtility() {
     }
 
     return (
-        <div className="App container">
+        <div >
+             <h5 className="mt-4 mb-4 text-center custom-heading">System Master</h5>
             <Grid container spacing={3}>
-                <Grid item xs={0}>
-                    <Button variant="contained" style={{ marginTop: "20px" }} onClick={handleClick}>
-                        Add
-                    </Button>
-                </Grid>
-                <Grid item xs={0}>
-                    <Button variant="contained" style={{ marginTop: "20px" }} onClick={handleBack}>
-                        Back
-                    </Button>
-                </Grid>
+           
+            <Grid container spacing={3} alignItems="center">
+    <Grid item xs="auto" ml={4}>
+        <Button variant="contained" style={{ marginTop: "5vh" }} onClick={handleClick}>
+            Add
+        </Button>
+    </Grid>
+    <Grid item xs="auto">
+        <Button variant="contained" style={{ marginTop: "5vh" }} onClick={handleBack}>
+            Back
+        </Button>
+    </Grid>
+    
 
-                <Grid item xs={12} sm={12}>
-                    <SearchBar
-                        value={searchTerm}
-                        onChange={handleSearchTermChange}
-                        onSearchClick={handleSearchClick}
-                    />
-                </Grid>
-                <Grid item xs={12} sm={8} style={{ marginTop: "-80px", marginLeft: "-150px" }}>
-                    <PerPageSelect value={perPage} onChange={handlePerPageChange} />
-                </Grid>
+    {/* PerPageSelect */}
+    <Grid item xs={2} sm={2} style={{ marginTop: "4vh" }}>
+        <PerPageSelect value={perPage} onChange={handlePerPageChange} />
+    </Grid>
 
-                <FormControl sx={{ marginLeft: "80px", width: "20%", marginTop: "-55px" }}>
-                    <InputLabel  >Filter by Type:</InputLabel>
-                    <Select
-                        labelId="filterSelect-label"
-                        id="filterSelect"
-                        value={filterValue}
-                        onChange={(e) => setFilterValue(e.target.value)}
-                    >
-                        <MenuItem value="G">Mobile Group</MenuItem>
-                        <MenuItem value="N">Narration</MenuItem>
-                        <MenuItem value="V">Vat</MenuItem>
-                        <MenuItem value="I">Item</MenuItem>
-                        <MenuItem value="S">Grade</MenuItem>
-                        <MenuItem value="Z">Season</MenuItem>
-                        <MenuItem value="U">Unit</MenuItem>
-                    </Select>
-                </FormControl>
+    {/* SearchBar */}
+    <Grid item xs={5} sm={5} style={{ marginTop: "5vh", marginLeft:"25vh" }}>
+        <SearchBar
+            value={searchTerm}
+            onChange={handleSearchTermChange}
+            onSearchClick={handleSearchClick}
+        />
+    </Grid>
+
+    {/* Filter by Type Select */}
+    <Grid item xs={2} sm={2} style={{ marginTop: "5vh" }}>
+        <FormControl fullWidth>
+            <InputLabel>Filter by Type:</InputLabel>
+            <Select
+                labelId="filterSelect-label"
+                id="filterSelect"
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+            >
+                <MenuItem value="G">Mobile Group</MenuItem>
+                <MenuItem value="N">Narration</MenuItem>
+                <MenuItem value="V">Vat</MenuItem>
+                <MenuItem value="I">Item</MenuItem>
+                <MenuItem value="S">Grade</MenuItem>
+                <MenuItem value="Z">Season</MenuItem>
+                <MenuItem value="U">Unit</MenuItem>
+            </Select>
+        </FormControl>
+    </Grid>
+</Grid>
 
                 <Grid item xs={12}>
-                    <Paper elevation={3}>
+                    <Paper elevation={20}>
                         <TableContainer>
                             <Table>
                                 <TableHead>

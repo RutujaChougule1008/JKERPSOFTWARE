@@ -8,7 +8,7 @@ import "../App.css";
 
 
 var lActiveInputFeild = "";
-
+const API_URL = process.env.REACT_APP_API;
 const UTRLotnoHelp = ({ onAcCodeClick, name, Tenderno, tabIndexHelp, disabledFeild, Millcode, onTenderDetailsFetched}) => {
 
     const API_URL = process.env.REACT_APP_API;
@@ -43,7 +43,7 @@ const UTRLotnoHelp = ({ onAcCodeClick, name, Tenderno, tabIndexHelp, disabledFei
     const fetchTenderDetails = async (tenderNo, tenderId) => {
         try {
            
-            const url = `http://localhost:8080/api/sugarian/getUTrLotno_Data?CompanyCode=${CompanyCode}&Tender_No=${tenderNo}`;
+            const url = `${API_URL}/getUTrLotno_Data?CompanyCode=${CompanyCode}&Tender_No=${tenderNo}`;
             const response = await axios.get(url);
             const details = response.data;
             onTenderDetailsFetched(details)

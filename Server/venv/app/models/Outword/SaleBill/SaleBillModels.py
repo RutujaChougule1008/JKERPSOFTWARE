@@ -77,6 +77,8 @@ class SaleBillHead(db.Model):
     QRCode=Column(String,nullable=True)
     Insured=Column(String(1),nullable=True)
     gstid=Column(Integer,nullable=True)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)
   
     details = db.relationship('SaleBillDetail', backref='Saleid', lazy=True)
 

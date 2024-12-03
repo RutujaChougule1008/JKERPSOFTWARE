@@ -7,6 +7,7 @@ import "../App.css";
 
 const CompanyCode = sessionStorage.getItem("Company_Code");
 var lActiveInputFeild = "";
+const API_URL = process.env.REACT_APP_API;
 
 const GradeMasterHelp = ({
   name,
@@ -28,7 +29,7 @@ const GradeMasterHelp = ({
   const fetchData = useCallback(async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/sugarian/system_master_help?CompanyCode=${CompanyCode}&SystemType=G`
+        `${API_URL}/system_master_help?CompanyCode=${CompanyCode}&SystemType=G`
       );
       const data = response.data;
       setPopupContent(data);

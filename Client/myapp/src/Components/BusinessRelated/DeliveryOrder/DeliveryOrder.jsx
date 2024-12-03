@@ -918,7 +918,6 @@ const DeliveryOrder = () => {
     //Calulate millamount
   };
 
-  console.log("carporatedata", CarporateState);
   const checkMatchStatus = async (ac_code, company_code, year_code) => {
     try {
       const { data } = await axios.get(

@@ -65,7 +65,6 @@ export const useRecordLocking = (recordId,tran_type,company_code,year_code,model
         }
     };
 
-
     useEffect(() => {
         const handleBeforeUnload = (event) => {
             event.preventDefault();

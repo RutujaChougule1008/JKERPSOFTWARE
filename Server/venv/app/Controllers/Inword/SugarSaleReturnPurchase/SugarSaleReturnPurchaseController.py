@@ -19,6 +19,7 @@ sugar_sale_return_purchase_detail_schemas = SugarPurchaseReturnDetailSchema(many
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 
 # Global SQL Query for nt_1_sugarpurchasereturn
 PURCHASE_RETURN_QUERY = '''
@@ -376,7 +377,7 @@ def delete_sugarpurchasereturn():
                 'TRAN_TYPE': tran_type,
             }
 
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to delete record in gLedger")

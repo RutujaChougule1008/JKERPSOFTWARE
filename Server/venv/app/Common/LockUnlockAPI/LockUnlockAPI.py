@@ -4,6 +4,12 @@ from app.models.Inword.PurchaseBill.PurchaseBillModels import SugarPurchase
 from app.models.Outword.SaleBill.SaleBillModels import SaleBillHead
 from app.models.Transactions.UTR.UTREntryModels import UTRHead
 from app.models.Transactions.ReceiptPayment.ReceiptPaymentModels import ReceiptPaymentHead
+from app.models.BusinessReleted.TenderPurchase.TenderPurchaseModels import TenderHead
+from app.models.Inword.SugarSaleReturnPurchase.SugarSaleReturnPurchaseModels import SugarPurchaseReturnHead
+from app.models.Outword.ServiceBill.ServiceBillModel import ServiceBillHead
+from app.models.Outword.SugarSaleReturnSale.SugarSaleReturnSaleModel import SugarSaleReturnSaleHead
+from app.models.Transactions.DebitCreditNote.DebitCreditNoteModels import DebitCreditNoteHead
+from app.models.Outword.CommissionBill.CommissionBillModel import CommissionBill
 from sqlalchemy import and_, func
 import os
 
@@ -35,6 +41,43 @@ MODEL_INFO = {
         "company_code_field": "company_code",
         "year_code_field": "year_code",
     },
+    "tender_purchase": {
+        "model": TenderHead,
+        "filter_field": "Tender_No",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    },
+     "sugar_sale_return_purchase": {
+        "model": SugarPurchaseReturnHead,
+        "filter_field": "doc_no",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    },
+     "sugar_sale_return_sale": {
+        "model": SugarSaleReturnSaleHead,
+        "filter_field": "doc_no",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    },
+      "DebitCredit_Note": {
+        "model": DebitCreditNoteHead,
+        "filter_field": ["doc_no", "tran_type"],
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    },
+     "service_bill": {
+        "model": ServiceBillHead,
+        "filter_field": "Doc_No",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    }
+    ,
+     "commission_bill": {
+        "model": CommissionBill,
+        "filter_field": "doc_no",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
+    }
 }
 
 @app.route(API_URL + "/record-lock", methods=["PUT"])

@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import os
 import requests
 API_URL = os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 # Import schemas from the schemas module
 from app.models.BusinessReleted.TenderPurchase.TenserPurchaseSchema import TenderHeadSchema, TenderDetailsSchema
 from app.utils.CommonGLedgerFunctions import fetch_auto_voucher_value
@@ -218,7 +219,17 @@ def insert_tender_head_detail():
             'deletedDetailIds': deletedDetailIds
         })
 
+
             cash_diff = headData.get('CashDiff', 0)
+            if cash_diff == 0:  
+                return jsonify({
+            "message": "Data processed successfully but no commission bill created due to zero CashDiff",
+            "head": tender_head_schema.dump(new_head),
+            "addedDetails": [tender_detail_schema.dump(detail) for detail in createdDetails],
+            "updatedDetails": updatedDetails,
+            "deletedDetailIds": deletedDetailIds
+        }), 201
+
             tran_type = "CV" if cash_diff < 0 else "LV"
 
             qntl = headData['Quantal'] 
@@ -422,11 +433,20 @@ def update_tender_purchase():
 
             db.session.commit()
 
+            cash_diff = headData.get('CashDiff', 0)
+            if cash_diff == 0:  
+                return jsonify({
+                "message": "Data Updated successfully",
+                "updatedHeadCount": updatedHeadCount,
+                "addedDetails": serialized_created_details,
+                "updatedDetails": updatedDetails,
+                "deletedDetailIds": deletedDetailIds
+            }), 200 
+
 
             qntl = float(headData['Quantal'])
             millRate = float(headData['Mill_Rate'])
             purchaseRate = float(headData['Purc_Rate'])
-            cash_diff = headData.get('CashDiff', 0)
 
             diffAmt = float(cash_diff)
             taxMillAmt = qntl * diffAmt

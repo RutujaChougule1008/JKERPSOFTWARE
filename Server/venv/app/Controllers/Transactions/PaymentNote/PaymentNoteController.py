@@ -8,11 +8,9 @@ from sqlalchemy import func
 import os
 import requests
 
-
-# Get the base URL from environment variables
 API_URL= os.getenv('API_URL')
 
-
+#common query to get all data from the database.
 PaymentNote_QUERY = '''
 SELECT BankOrCash.Ac_Name_E AS BankCashName, PaymentTo.Ac_Name_E AS PaymentToName
 FROM     dbo.PaymentNote INNER JOIN
@@ -21,22 +19,22 @@ FROM     dbo.PaymentNote INNER JOIN
 WHERE dbo.PaymentNote.pid =:pid
 '''
 
+#format dates
 def format_dates(paymentNote):
     return {
-        
         "doc_date": paymentNote.doc_date.strftime('%Y-%m-%d') if paymentNote.doc_date else None
-
     }
 
-@app.route(API_URL+"/getData_PaymentNote", methods=["GET"])
+#GET all data from the database.
+@app.route(API_URL + "/getData_PaymentNote", methods=["GET"])
 def getData_PaymentNote():
     try:
         Company_Code = request.args.get('Company_Code')
         Year_Code = request.args.get('Year_Code')
+        
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Use SQLAlchemy to find all records by Company_Code and Year_Code
         paymentNotesData = PaymentNote.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).all()
 
         if not paymentNotesData:
@@ -55,15 +53,11 @@ def getData_PaymentNote():
 
             paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
-            # Combine the data for this record
-            record_response = {
-                "payment_Note_Data": paymentNoteData,
-                "paymentNoteLabels": paymentNoteLabels
-            }
+            combined_data = paymentNoteData
+            combined_data["paymentNoteLabels"] = paymentNoteLabels
 
-            all_records_data.append(record_response)
+            all_records_data.append(combined_data)
 
-        # Prepare response data
         response = {
             "all_payment_notes_data": all_records_data
         }
@@ -73,8 +67,7 @@ def getData_PaymentNote():
         print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
-
-# # We have to get the data By the Particular doc_no AND tran_type
+# We have to get the data By the Particular doc_no AND tran_type
 @app.route(API_URL+"/PaymentNoteById", methods=["GET"])
 def getPaymentNoteById():
     try:
@@ -84,8 +77,6 @@ def getPaymentNoteById():
         if not all([Company_Code, Year_Code, doc_no]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-
-        # Use SQLAlchemy to find the record by Task_No
         paymentNoteDataById = PaymentNote.query.filter_by(doc_no=doc_no,Company_Code=Company_Code,Year_Code=Year_Code).first()
 
         if paymentNoteDataById is None:
@@ -95,29 +86,25 @@ def getPaymentNoteById():
 
         additional_data = db.session.execute(text(PaymentNote_QUERY), {'pid' : newpid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
       
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         paymentNoteById = {column.name: getattr(paymentNoteDataById, column.name) for column in paymentNoteDataById.__table__.columns}
         paymentNoteById.update(format_dates(paymentNoteDataById))
 
-        # Convert additional_data_rows to a list of dictionaries
         paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "payment_Note_Data_By_Id": paymentNoteById,
             "paymentNoteLabels": paymentNoteLabels
         }
-        # If record found, return it
         return jsonify(response), 200
 
     except Exception as e:
         print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
+#POST data from the database
 @app.route(API_URL + "/insert-PaymentNote", methods=["POST"])
 def insert_PaymentNote():
     try:
@@ -128,10 +115,8 @@ def insert_PaymentNote():
         Company_Code = new_record_data['Company_Code']
         Year_Code = new_record_data['Year_Code']
 
-       
         max_doc_no = db.session.query(func.max(PaymentNote.doc_no)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
-        
-        # Set the new doc_no
+
         if max_doc_no is not None:
             new_record_data['doc_no'] = max_doc_no + 1
         else:
@@ -148,7 +133,7 @@ def insert_PaymentNote():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
-
+#Update data from the database.
 @app.route(API_URL + "/update-PaymentNote", methods=["PUT"])
 def update_PaymentNote():
     try:
@@ -160,7 +145,6 @@ def update_PaymentNote():
         Year_Code = update_data['Year_Code']
         doc_no = update_data['doc_no']
 
-        # Find the existing record
         existing_record = PaymentNote.query.filter_by(doc_no=doc_no, Company_Code=Company_Code, Year_Code=Year_Code).first()
 
         if existing_record:
@@ -169,7 +153,6 @@ def update_PaymentNote():
 
             updated_data = {column.name: getattr(existing_record, column.name) for column in existing_record.__table__.columns}
             
-
             db.session.commit()
             return jsonify({'message': 'Record updated successfully', 'record': updated_data}), 200
         else:
@@ -178,7 +161,7 @@ def update_PaymentNote():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
-
+#Delete data from the database.
 @app.route(API_URL + "/delete-PaymentNote", methods=["DELETE"])
 def delete_PaymentNote():
     try:
@@ -208,7 +191,7 @@ def delete_PaymentNote():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
-
+#Navigation APIS
 @app.route(API_URL+"/getFirst_PaymentNote", methods=["GET"])
 def getFirst_PaymentNote():
     try:
@@ -217,31 +200,24 @@ def getFirst_PaymentNote():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-
-        # Use SQLAlchemy to find the record by Task_No
         first_PaymentNote = PaymentNote.query.filter_by(Company_Code=Company_Code,Year_Code=Year_Code).order_by(PaymentNote.doc_no.asc()).first()
 
         firstpid = first_PaymentNote.pid
 
         additional_data = db.session.execute(text(PaymentNote_QUERY), {'pid' : firstpid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
       
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         firstPaymentNoteData = {column.name: getattr(first_PaymentNote, column.name) for column in first_PaymentNote.__table__.columns}
         firstPaymentNoteData.update(format_dates(first_PaymentNote))
 
-        # Convert additional_data_rows to a list of dictionaries
         paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "firstPaymentNoteData": firstPaymentNoteData,
             "paymentNoteLabels": paymentNoteLabels
         }
-        # If record found, return it
         return jsonify(response), 200
 
     except Exception as e:
@@ -262,7 +238,6 @@ def getNext_PaymentNote():
         Company_Code = int(Company_Code)
         Year_Code = int(Year_Code)
 
-        # Use SQLAlchemy to find the next record by pid, Company_Code, and Year_Code
         next_PaymentNote = PaymentNote.query.filter(
             PaymentNote.doc_no > doc_no,
             PaymentNote.Company_Code == Company_Code,
@@ -276,15 +251,12 @@ def getNext_PaymentNote():
 
         additional_data = db.session.execute(text(PaymentNote_QUERY), {'pid': nextpid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
 
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         nextPaymentNoteData = {column.name: getattr(next_PaymentNote, column.name) for column in next_PaymentNote.__table__.columns}
         nextPaymentNoteData.update(format_dates(next_PaymentNote))
 
-        # Convert additional_data_rows to a list of dictionaries
         paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
         # Prepare response data
@@ -308,7 +280,6 @@ def getNextDocNo_PaymentNote():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Fetch the maximum document number for the given Company_Code and Year_Code
         max_doc_no = db.session.query(func.max(PaymentNote.doc_no)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
 
         if max_doc_no is None:
@@ -326,7 +297,6 @@ def getNextDocNo_PaymentNote():
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-
 @app.route(API_URL+"/getLast_PaymentNote", methods=["GET"])
 def getLast_PaymentNote():
     try:
@@ -335,7 +305,6 @@ def getLast_PaymentNote():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Use SQLAlchemy to find the last record by Company_Code and Year_Code
         last_PaymentNote = PaymentNote.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).order_by(PaymentNote.doc_no.desc()).first()
 
         if last_PaymentNote is None:
@@ -345,18 +314,14 @@ def getLast_PaymentNote():
 
         additional_data = db.session.execute(text(PaymentNote_QUERY), {'pid': lastpid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
 
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         lastPaymentNoteData = {column.name: getattr(last_PaymentNote, column.name) for column in last_PaymentNote.__table__.columns}
         lastPaymentNoteData.update(format_dates(last_PaymentNote))
 
-        # Convert additional_data_rows to a list of dictionaries
         paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "lastPaymentNoteData": lastPaymentNoteData,
             "paymentNoteLabels": paymentNoteLabels
@@ -381,7 +346,6 @@ def getPrevious_PaymentNote():
         Company_Code = int(Company_Code)
         Year_Code = int(Year_Code)
 
-        # Use SQLAlchemy to find the previous record by pid, Company_Code, and Year_Code
         previous_PaymentNote = PaymentNote.query.filter(
             PaymentNote.doc_no < doc_no,
             PaymentNote.Company_Code == Company_Code,
@@ -395,18 +359,14 @@ def getPrevious_PaymentNote():
 
         additional_data = db.session.execute(text(PaymentNote_QUERY), {'pid': previouspid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
 
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         previousPaymentNoteData = {column.name: getattr(previous_PaymentNote, column.name) for column in previous_PaymentNote.__table__.columns}
         previousPaymentNoteData.update(format_dates(previous_PaymentNote))
 
-        # Convert additional_data_rows to a list of dictionaries
         paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "previousPaymentNoteData": previousPaymentNoteData,
             "paymentNoteLabels": paymentNoteLabels

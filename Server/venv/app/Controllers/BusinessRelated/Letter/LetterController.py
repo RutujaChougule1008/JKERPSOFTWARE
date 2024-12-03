@@ -27,14 +27,6 @@ def insert_Letter():
         Company_Code = new_record_data['Company_Code']
         Year_Code = new_record_data['Year_Code']
 
-        # max_doc_no = db.session.query(func.max(Letter.DOC_NO)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
-
-        # # Set the new doc_no
-        # if max_doc_no is not None:
-        #     new_record_data['DOC_NO'] = max_doc_no + 1
-        # else:
-        #     new_record_data['DOC_NO'] = 1
-
         new_record = Letter(**new_record_data)
         db.session.add(new_record)
         db.session.commit()

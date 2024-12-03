@@ -26,6 +26,8 @@ class CompanyCreation(db.Model):
     Signature = db.Column(db.LargeBinary)
     LogoFileName = db.Column(db.String(50))
     SignatureFileName = db.Column(db.String(50))
+    bankdetail = db.Column(db.Text)
+    dbbackup = db.Column(db.String(50))
 
     # isLocked = db.Column(db.Boolean, nullable=False, default=False)
     # LockedbyUser = db.Column(db.String(50),default='')

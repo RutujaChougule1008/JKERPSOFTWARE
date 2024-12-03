@@ -31,8 +31,7 @@ function TableUtility({
     const [currentPage, setCurrentPage] = useState(1);
     const [canView, setCanView] = useState(null);
     const [permissionsData, setPermissionData] = useState({});
-    const [localDropdownValue, setLocalDropdownValue] = useState(dropdownValue); // Local dropdown state
-
+    const [localDropdownValue, setLocalDropdownValue] = useState(dropdownValue); 
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -73,9 +72,9 @@ function TableUtility({
         };
 
         checkPermissions();
-    }, [apiUrl, JSON.stringify(queryParams)]); // Refetch on `queryParams` change
+    }, [apiUrl, JSON.stringify(queryParams)]); 
 
-    // Update filteredData based on searchTerm and localDropdownValue
+
     useEffect(() => {
         const filtered = fetchedData.filter(post => {
             const searchTermLower = searchTerm.toLowerCase();

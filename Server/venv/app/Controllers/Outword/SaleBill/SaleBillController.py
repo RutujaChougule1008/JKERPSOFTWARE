@@ -23,27 +23,30 @@ saleBill_detail_schemas = SaleBillDetailSchema(many=True)
 
 #Common Query to GET the all lable from the database
 TASK_DETAILS_QUERY = '''
-SELECT accode.Ac_Code AS partyaccode, accode.Ac_Name_E AS partyname, accode.accoid AS partyacid, mill.Ac_Code AS millaccode, mill.Ac_Name_E AS millname, mill.accoid AS millacid, unit.Ac_Code AS unitaccode, 
-                  unit.Ac_Name_E AS unitname, broker.Ac_Code AS brokeraccode, broker.Ac_Name_E AS brokername, unit.accoid AS unitacid, broker.accoid AS brokeracid, item.systemid, item.System_Code, item.System_Name_E AS itemname, 
-                  dbo.nt_1_gstratemaster.Doc_no AS gstdocno, dbo.nt_1_gstratemaster.Rate AS gstrate, dbo.nt_1_gstratemaster.gstid AS gstdocid, dbo.Brand_Master.Code AS brandocno, dbo.Brand_Master.Marka AS brandname, 
-                  dbo.nt_1_sugarsaledetails.doc_no, dbo.nt_1_sugarsaledetails.detail_id, dbo.nt_1_sugarsaledetails.item_code, dbo.nt_1_sugarsaledetails.narration, dbo.nt_1_sugarsaledetails.Quantal, dbo.nt_1_sugarsaledetails.packing, 
-                  dbo.nt_1_sugarsaledetails.bags, dbo.nt_1_sugarsaledetails.rate, dbo.nt_1_sugarsaledetails.item_Amount, dbo.nt_1_sugarsaledetails.Company_Code, dbo.nt_1_sugarsaledetails.Year_Code, dbo.nt_1_sugarsaledetails.saledetailid, 
-                  dbo.nt_1_sugarsaledetails.saleid, dbo.nt_1_sugarsaledetails.ic, dbo.nt_1_sugarsaledetails.Brand_Code, dbo.nt_1_sugarsale.ac, dbo.nt_1_sugarsale.uc, dbo.nt_1_sugarsale.mc, dbo.nt_1_sugarsale.bk, dbo.nt_1_sugarsale.tc, 
-                  transport.Ac_Code AS transportaccode, transport.Ac_Name_E AS transportname, dbo.nt_1_sugarsale.Bill_To, dbo.nt_1_sugarsale.bt, billto.Ac_Code AS billtoaccode, billto.Ac_Name_E AS billtoname, billto.accoid AS billtoacid, 
-                  transport.accoid AS transportacid, dbo.nt_1_gstratemaster.GST_Name AS GSTName, accode.Mobile_No AS PartyMobNo, unit.Mobile_No AS UnitMobNo, transport.Mobile_No AS TransportMobNo, mill.Gst_No AS MillGSTNo
-FROM     dbo.nt_1_accountmaster AS accode RIGHT OUTER JOIN
-                  dbo.nt_1_accountmaster AS billto RIGHT OUTER JOIN
-                  dbo.nt_1_sugarsale ON billto.accoid = dbo.nt_1_sugarsale.bt LEFT OUTER JOIN
-                  dbo.nt_1_accountmaster AS broker INNER JOIN
-                  dbo.nt_1_accountmaster AS transport ON broker.Ac_Name_R = transport.Mobile_No ON dbo.nt_1_sugarsale.tc = transport.accoid AND dbo.nt_1_sugarsale.bk = broker.accoid ON accode.accoid = dbo.nt_1_sugarsale.ac LEFT OUTER JOIN
-                  dbo.nt_1_accountmaster AS unit ON dbo.nt_1_sugarsale.uc = unit.accoid LEFT OUTER JOIN
-                  dbo.nt_1_accountmaster AS mill ON dbo.nt_1_sugarsale.mc = mill.accoid LEFT OUTER JOIN
-                  dbo.nt_1_gstratemaster ON dbo.nt_1_sugarsale.gstid = dbo.nt_1_gstratemaster.gstid LEFT OUTER JOIN
-                  dbo.nt_1_systemmaster AS item RIGHT OUTER JOIN
-                  dbo.nt_1_sugarsaledetails ON item.systemid = dbo.nt_1_sugarsaledetails.ic LEFT OUTER JOIN
-                  dbo.Brand_Master ON dbo.nt_1_sugarsaledetails.Brand_Code = dbo.Brand_Master.Code ON dbo.nt_1_sugarsale.saleid = dbo.nt_1_sugarsaledetails.saleid
+SELECT        accode.Ac_Code AS partyaccode, accode.Ac_Name_E AS partyname, accode.accoid AS partyacid, mill.Ac_Code AS millaccode, mill.Ac_Name_E AS millname, mill.accoid AS millacid, unit.Ac_Code AS unitaccode, 
+                         unit.Ac_Name_E AS unitname, broker.Ac_Code AS brokeraccode, broker.Ac_Name_E AS brokername, unit.accoid AS unitacid, broker.accoid AS brokeracid, item.systemid, item.System_Code, item.System_Name_E AS itemname, 
+                         dbo.nt_1_gstratemaster.Doc_no AS gstdocno, dbo.nt_1_gstratemaster.Rate AS gstrate, dbo.nt_1_gstratemaster.gstid AS gstdocid, dbo.Brand_Master.Code AS brandocno, dbo.Brand_Master.Marka AS brandname, 
+                         dbo.nt_1_sugarsaledetails.doc_no, dbo.nt_1_sugarsaledetails.detail_id, dbo.nt_1_sugarsaledetails.item_code, dbo.nt_1_sugarsaledetails.narration, dbo.nt_1_sugarsaledetails.Quantal, dbo.nt_1_sugarsaledetails.packing, 
+                         dbo.nt_1_sugarsaledetails.bags, dbo.nt_1_sugarsaledetails.rate, dbo.nt_1_sugarsaledetails.item_Amount, dbo.nt_1_sugarsaledetails.Company_Code, dbo.nt_1_sugarsaledetails.Year_Code, 
+                         dbo.nt_1_sugarsaledetails.saledetailid, dbo.nt_1_sugarsaledetails.saleid, dbo.nt_1_sugarsaledetails.ic, dbo.nt_1_sugarsaledetails.Brand_Code, dbo.nt_1_sugarsale.ac, dbo.nt_1_sugarsale.uc, dbo.nt_1_sugarsale.mc, 
+                         dbo.nt_1_sugarsale.bk, dbo.nt_1_sugarsale.tc, transport.Ac_Code AS transportaccode, transport.Ac_Name_E AS transportname, dbo.nt_1_sugarsale.Bill_To, dbo.nt_1_sugarsale.bt, billto.Ac_Code AS billtoaccode, 
+                         billto.Ac_Name_E AS billtoname, billto.accoid AS billtoacid, transport.accoid AS transportacid, dbo.nt_1_gstratemaster.GST_Name AS GSTName, accode.Mobile_No AS PartyMobNo, unit.Mobile_No AS UnitMobNo, 
+                         transport.Mobile_No AS TransportMobNo, mill.Gst_No AS MillGSTNo
+FROM            dbo.nt_1_accountmaster AS accode RIGHT OUTER JOIN
+                         dbo.nt_1_accountmaster AS billto RIGHT OUTER JOIN
+                         dbo.nt_1_sugarsale ON billto.accoid = dbo.nt_1_sugarsale.bt LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS broker LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS transport ON broker.Ac_Name_R = transport.Mobile_No ON dbo.nt_1_sugarsale.tc = transport.accoid AND dbo.nt_1_sugarsale.bk = broker.accoid ON 
+                         accode.accoid = dbo.nt_1_sugarsale.ac LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS unit ON dbo.nt_1_sugarsale.uc = unit.accoid LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS mill ON dbo.nt_1_sugarsale.mc = mill.accoid LEFT OUTER JOIN
+                         dbo.nt_1_gstratemaster ON dbo.nt_1_sugarsale.gstid = dbo.nt_1_gstratemaster.gstid LEFT OUTER JOIN
+                         dbo.nt_1_systemmaster AS item RIGHT OUTER JOIN
+                         dbo.nt_1_sugarsaledetails ON item.systemid = dbo.nt_1_sugarsaledetails.ic LEFT OUTER JOIN
+                         dbo.Brand_Master ON dbo.nt_1_sugarsaledetails.Brand_Code = dbo.Brand_Master.Code ON dbo.nt_1_sugarsale.saleid = dbo.nt_1_sugarsaledetails.saleid
 WHERE        (item.System_Type = 'I') and dbo.nt_1_sugarsale.saleid=:saleid
 '''
+
 
 #Format Dated
 def format_dates(task):
@@ -441,7 +444,7 @@ def delete_data_by_saleid():
                 'TRAN_TYPE': "SB",
             }
 
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")

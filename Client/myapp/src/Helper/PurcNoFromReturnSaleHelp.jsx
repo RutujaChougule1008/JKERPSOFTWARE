@@ -37,7 +37,7 @@ const PurcNoFromReturnSaleHelp = ({
 
     const fetchAndOpenPopup = async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/PurcNoFromReturnSale?Company_Code=${CompanyCode}`);
+            const response = await axios.get(`${API_URL}/PurcNoFromReturnSale?Company_Code=${CompanyCode}`);
             const data = response.data;
             const filteredData = data.filter(item => {
                 const partyName = item.PartyName ? item.PartyName.toLowerCase() : "";
@@ -71,7 +71,7 @@ const PurcNoFromReturnSaleHelp = ({
         const { value } = event.target;
         setEnteredAcCode(value);
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/PurcNoFromReturnSale?Company_Code=${CompanyCode}`);
+            const response = await axios.get(`${API_URL}/PurcNoFromReturnSale?Company_Code=${CompanyCode}`);
             const data = response.data;
             setPopupContent(data);
             const matchingItem = data.find((item) => item.doc_no === parseInt(value, 10));

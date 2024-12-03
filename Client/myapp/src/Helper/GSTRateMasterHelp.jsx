@@ -6,6 +6,7 @@ import axios from "axios";
 import "../App.css";
 
 var lActiveInputFeild = "";
+const API_URL = process.env.REACT_APP_API;
 
 
 const GSTRateMasterHelp = ({ onAcCodeClick, name, GstRateName, GstRateCode, disabledFeild, tabIndexHelp }) => {
@@ -26,7 +27,7 @@ const GSTRateMasterHelp = ({ onAcCodeClick, name, GstRateName, GstRateCode, disa
     // Fetch data based on acType
     const fetchAndOpenPopup = async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/gst_rate_master?Company_Code=${CompanyCode}`);
+            const response = await axios.get(`${API_URL}/gst_rate_master?Company_Code=${CompanyCode}`);
             const data = response.data;
             const filteredData = data.filter(item =>
                 item.GST_Name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -93,7 +94,7 @@ const GSTRateMasterHelp = ({ onAcCodeClick, name, GstRateName, GstRateCode, disa
                 setEnteredAcName(matchingItem.GST_Name);
 
                 if (onAcCodeClick) {
-                    onAcCodeClick(matchingItem.Doc_no, matchingItem.Rate, matchingItem.GST_Name);
+                    onAcCodeClick(matchingItem.Doc_no, matchingItem.Rate,matchingItem.GST_Name,matchingItem.gstid);
                 }
             } else {
 
@@ -109,7 +110,7 @@ const GSTRateMasterHelp = ({ onAcCodeClick, name, GstRateName, GstRateCode, disa
             setEnteredAcName(item.GST_Name);
 
             if (onAcCodeClick) {
-                onAcCodeClick(item.Doc_no, item.Rate, enteredAcName, enteredAcCode);
+                onAcCodeClick(item.Doc_no, item.Rate, enteredAcName, item.gstid);
             }
         }
 

@@ -2,11 +2,11 @@ import traceback
 from flask import jsonify, request
 from app import app, db
 from app.models.Outword.CommissionBill.CommissionBillModel import CommissionBill
-from sqlalchemy.sql import text
+from sqlalchemy.sql import text, func, desc
 import os
 import requests
 
-from app.utils.CommonGLedgerFunctions import fetch_company_parameters,get_accoid,getSaleAc,get_acShort_Name
+from app.utils.CommonGLedgerFunctions import fetch_company_parameters,get_accoid,getSaleAc,get_acShort_Name, create_gledger_entry, send_gledger_entries
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
@@ -33,13 +33,164 @@ WHERE        itemcode.System_Type = 'I' and dbo.commission_bill.Tran_Type = :tra
 ''')
 
 def format_dates(input):
-    """Format the date from an input record."""
     return input.doc_date.strftime('%Y-%m-%d') if input.doc_date else None
+
+ordercode=0
+tran_type=''
+doc_no=0
+
+def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid,narration):
+        if amount != 0:
+            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid,ordercode,tran_type,doc_no,narration))
+
+def process_gledger_entries(new_Record_data,doc_no):
+    gledger_entries = [] 
+    ordercode = 0
+    bill_amount =float(new_Record_data['bill_amount'])
+    drcr=""
+    if bill_amount>0:
+        drcr="D"
+    else:
+        drcr="C"    
+
+    company_parameters = fetch_company_parameters(new_Record_data['Company_Code'], new_Record_data['Year_Code'])
+       
+    ac_code = company_parameters.RoundOff
+    accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+
+    dono=new_Record_data['link_no']
+    ac_code = new_Record_data['ac_code'] 
+    accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+    #add_gledger_entry(gledger_entries, new_Record_data, bill_amount, 'C', ac_code, accoid, new_Record_data["narration1"])
+    cgstamount=float(new_Record_data['cgst_amount'])
+    sgstamount=float(new_Record_data['sgst_amount'])
+    igstamount=float(new_Record_data['igst_amount'])
+    tcsamt=float(new_Record_data['TCS_Amt'])
+    tdsamt=float(new_Record_data['TDSAmount'])
+    tdsac=float(new_Record_data['TDS_Ac'])
+    resalecomm=float(new_Record_data['resale_commission'])
+
+    tcs_net_payable = float(new_Record_data['TCS_Net_Payable'])
+    # if tcs_net_payable > 0:
+    #     add_gledger_entry(gledger_entries, new_Record_data, tcs_net_payable, 'D', new_Record_data['ac_code'], accoid, new_Record_data["narration1"])
+        
+
+    if dono==0:
+        frieght_amount=float(new_Record_data['Frieght_amt'])
+        if frieght_amount>0:
+            ac_code = company_parameters.SGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, frieght_amount, 'C', ac_code, accoid, "")
+        else:
+            ac_code = company_parameters.Freight_Ac
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, frieght_amount, 'D', ac_code, accoid, "")
+          
+
+    if bill_amount>0:
+        ac_code = new_Record_data['ac_code']
+        accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+        add_gledger_entry(gledger_entries, new_Record_data, bill_amount, 'D', ac_code, accoid, new_Record_data["narration1"])
+
+        if cgstamount>0:
+            ac_code = company_parameters.CGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, cgstamount, 'C', ac_code, accoid, "")
+        if sgstamount >0:    
+            ac_code = company_parameters.SGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, sgstamount, 'C', ac_code, accoid, "")
+        if igstamount >0:    
+            ac_code = company_parameters.IGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, igstamount, 'C', ac_code, accoid, "")
+
+        if tcsamt >0:    
+            ac_code = company_parameters.SaleTCSAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'C', ac_code, accoid, "")
+
+            ac_code = new_Record_data['ac_code']
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'D', ac_code, accoid, "")
+            
+          
+    else:
+        ac_code = new_Record_data['ac_code']
+        accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+        add_gledger_entry(gledger_entries, new_Record_data, bill_amount, 'C', ac_code, accoid, new_Record_data["narration1"])
+
+        if cgstamount!=0:
+            ac_code = company_parameters.PurchaseCGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, cgstamount, 'D', ac_code, accoid, "")
+        if sgstamount !=0:    
+                
+            ac_code = company_parameters.PurchaseSGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, sgstamount, 'D', ac_code, accoid, "")
+        if igstamount !=0:    
+                
+            ac_code = company_parameters.PurchaseIGSTAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, igstamount, 'D', ac_code, accoid, "")
+        if tcsamt >0:    
+                
+            ac_code = company_parameters.SaleTCSAc
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'D', ac_code, accoid, "")
+
+            ac_code = new_Record_data.ac_code
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'C', ac_code, accoid, "",ordercode)
+
+    if tdsamt!=0 : 
+        if tdsamt>0:
+                
+            ac_code = new_Record_data['ac_code']
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'C', ac_code, accoid, "")
+
+                
+            accoid = get_accoid(tdsac, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'D', tdsac, accoid, "")
+        else:
+                
+            ac_code = new_Record_data['ac_code']
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'D', ac_code, accoid, "")
+
+                
+            accoid = get_accoid(tdsac, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'C', tdsac, accoid, "")
+
+    if float(resalecomm) != 0:
+        if float(resalecomm) > 0:
+            drcr="C"      
+        else:
+            drcr="D"  
+            
+        ac_code=company_parameters.COMMISSION_AC    
+        accoid = get_accoid(tdsac, new_Record_data['Company_Code'])
+        add_gledger_entry(gledger_entries, new_Record_data, resalecomm, drcr, ac_code, accoid, "")    
+        
+    commission_amount=float(new_Record_data['commission_amount'])
+    if commission_amount !=0:
+        if commission_amount>0:
+                
+            ac_code=company_parameters.RateDiffAc    
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, commission_amount, 'C', ac_code, accoid, "")  
+        else:
+                
+            ac_code=company_parameters.RateDiffAc    
+            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
+            add_gledger_entry(gledger_entries, new_Record_data, commission_amount, 'D', ac_code, accoid, "")
+    return gledger_entries 
 
 @app.route(API_URL + "/getall-CommissionBill", methods=["GET"])
 def get_CommissionBillallData():
     try:
-        # Extract Company_Code, Year_Code, and Tran_Type from query parameters
         company_code = request.args.get('Company_Code')
         year_code = request.args.get('Year_Code')
         tran_type = request.args.get('Tran_Type')
@@ -54,10 +205,8 @@ def get_CommissionBillallData():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code, Year_Code, or Tran_Type parameter'}), 400
 
-        # Fetch records by Company_Code, Year_Code, and Tran_Type
-        records = CommissionBill.query.filter_by(Company_Code=company_code, Year_Code=year_code, Tran_Type=tran_type).all()
+        records = CommissionBill.query.filter_by(Company_Code=company_code, Year_Code=year_code, Tran_Type=tran_type).order_by(desc(CommissionBill.doc_no)).all()
 
-        # Prepare response data
         result_list = []
         for record in records:
             record_data = {column.name: getattr(record, column.name) for column in record.__table__.columns}
@@ -71,9 +220,9 @@ def get_CommissionBillallData():
             })
             account_info = account_details.first()
 
-            # If account_info exists, iterate and update record_data
+            
             if account_info:
-                result_keys = account_details.keys()  # Fetch column names from the SQL result
+                result_keys = account_details.keys()  
                 for key, value in zip(result_keys, account_info):
                     record_data[key] = value if value is not None else ""
 
@@ -84,10 +233,30 @@ def get_CommissionBillallData():
         print(e)
         return jsonify({'error': 'internal server error'}), 500
 
+@app.route(API_URL + "/get-next-doc-no-commissionBill", methods=["GET"])
+def get_next_doc_no_commissionBill():
+    try:
+        company_code = request.args.get('Company_Code')
+        year_code = request.args.get('Year_Code')
+        tranType = request.args.get('Tran_Type')
+        if not company_code or not year_code:
+            return jsonify({"error": "Missing 'Company_Code' or 'Year_Code' parameter"}), 400
+
+        max_doc_no = db.session.query(func.max(CommissionBill.doc_no)).filter_by(Company_Code=company_code, Year_Code=year_code, Tran_Type = tranType).scalar()
+        next_doc_no = max_doc_no + 1 if max_doc_no else 1
+        response = {
+            "next_doc_no": next_doc_no
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
 @app.route("/api/sugarian/get-CommissionBill-lastRecord", methods=["GET"])
 def get_CommissionBill_lastRecord():
     try:
-        # Extract and validate query parameters
+        
         company_code = request.args.get('Company_Code')
         tran_type = request.args.get('Tran_Type')
         year_code = request.args.get('Year_Code')
@@ -101,40 +270,27 @@ def get_CommissionBill_lastRecord():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code, Tran_Type, or Year_Code parameter'}), 400
 
-        # Fetch the last record matching criteria
         last_Record = CommissionBill.query.filter_by(Company_Code=company_code, Tran_Type=tran_type, Year_Code=year_code).order_by(CommissionBill.doc_no.desc()).first()
         if last_Record is None:
-            response_data = {
-                'Company_Code': company_code,
-                'Tran_Type': tran_type,
-                'Year_Code': year_code,
-                'doc_no': 0  # Default to 1 if no record exists
-            }
-            return jsonify(response_data), 200
+            return jsonify({'error': 'No Record Found', 'message': str(e)}), 404
 
-        # Execute additional SQL query
         account_details = db.session.execute(sql_query, {'doc_no': last_Record.doc_no, 'company_code': company_code, 'year_code': year_code, 'tran_type': tran_type})
-        account_info = account_details.first()  # Get the first result, if any
-
-        # Prepare response data
+        account_info = account_details.first()  
         last_Record_data = {column.name: getattr(last_Record, column.name) for column in last_Record.__table__.columns}
         last_Record_data['doc_date'] = format_dates(last_Record)
-
-        # If account_info exists, iterate and update last_Record_data
         if account_info:
-            result_keys = account_details.keys()  # Fetch column names from the SQL result
+            result_keys = account_details.keys() 
             for key, value in zip(result_keys, account_info):
                 last_Record_data[key] = value if value is not None else ""
 
         return jsonify(last_Record_data)
     except Exception as e:
-        print(e)  # For debugging, better to log error
+        print(e) 
         return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
 
 @app.route(API_URL+"/get-CommissionBillSelectedRecord", methods=["GET"])
 def get_CommissionBillSelectedRecord():
     try:
-        # Extract selected Code and Company_Code from query parameters
         selected_code = request.args.get('doc_no')
         company_code = request.args.get('Company_Code')
         tran_type = request.args.get('Tran_Type')
@@ -151,20 +307,20 @@ def get_CommissionBillSelectedRecord():
         except ValueError:
             return jsonify({'error': 'Invalid selected_Record, Company_Code, or tran_type parameter'}), 400
 
-        # Fetch group by selected_Record and Company_Code
+    
         Record = CommissionBill.query.filter_by(doc_no=selected_code, Company_Code=company_code, Tran_Type=tran_type, Year_Code=year_code).first()
 
         if Record is None:
             return jsonify({'error': 'Selected Record not found'}), 404
         
         account_details = db.session.execute(sql_query, {'doc_no': selected_code, 'company_code': company_code, 'year_code': year_code, 'tran_type': Record.Tran_Type})
-        account_info = account_details.first()  # Assuming there is only one or zero result
+        account_info = account_details.first() 
 
         selected_Record_data = {column.name: getattr(Record, column.name) if getattr(Record, column.name) is not None else "" for column in Record.__table__.columns}
         selected_Record_data['doc_date'] = format_dates(Record)
 
         if account_info:
-            result_keys = account_details.keys()  # This fetches column names from the SQL result
+            result_keys = account_details.keys() 
             for key, value in zip(result_keys, account_info):
                 selected_Record_data[key] = value if value is not None else ""
 
@@ -176,40 +332,7 @@ def get_CommissionBillSelectedRecord():
 # Create a new group API
 @app.route(API_URL + "/create-RecordCommissionBill", methods=["POST"])
 def create_CommissionBill():
-    def create_gledger_entry(data, amount, drcr, ac_code, accoid,narration):
-        return {
-            "TRAN_TYPE": new_Record_data['Tran_Type'],
-            "DOC_NO": new_Record_data["doc_no"],
-            "DOC_DATE": data['doc_date'],
-            "AC_CODE": ac_code,
-            "AMOUNT": amount,
-            "COMPANY_CODE": new_Record_data['Company_Code'],
-            "YEAR_CODE": new_Record_data['Year_Code'],
-            "ORDER_CODE": 12,
-            "DRCR": drcr,
-            "UNIT_Code": 0,
-            "NARRATION": narration,
-            "TENDER_ID": 0,
-            "TENDER_ID_DETAIL": 0,
-            "VOUCHER_ID": 0,
-            "DRCR_HEAD": 0,
-            "ADJUSTED_AMOUNT": 0,
-            "Branch_Code": 1,
-            "SORT_TYPE": new_Record_data['Tran_Type'],
-            "SORT_NO": new_Record_data['doc_no'],
-            "vc": 0,
-            "progid": 0,
-            "tranid": 0,
-            "saleid": 0,
-            "ac": accoid
-        }
-
-    def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid,narration):
-        if amount != 0:
-            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid,narration))
-    
     try:
-        # Extract parameters from query
         company_code = request.args.get('Company_Code')
         tran_type = request.args.get('Tran_Type')
         year_code = request.args.get('Year_Code')
@@ -224,10 +347,8 @@ def create_CommissionBill():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code, Tran_Type, or Year_Code parameter'}), 400
 
-        # Fetch the maximum doc_no for the given Company_Code
         max_record = db.session.query(db.func.max(CommissionBill.doc_no)).filter_by(Company_Code=company_code, Tran_Type=tran_type, Year_Code=year_code).scalar() or 0
 
-        # Create a new CommissionBill entry with the generated doc_no
         new_Record_data = request.json
         new_Record_data['doc_no'] = max_record + 1 
         new_Record_data['Company_Code'] = company_code
@@ -235,173 +356,15 @@ def create_CommissionBill():
         new_Record_data['Year_Code'] = year_code
 
         new_Record = CommissionBill(**new_Record_data)
-        
-
-
-        #gledger effect of CommissionBill
-        company_parameters = fetch_company_parameters(new_Record_data['Company_Code'], new_Record_data['Year_Code'])
-        
-        gledger_entries = []
-        bill_amount =new_Record.bill_amount
-        drcr=""
-        if bill_amount>0:
-            drcr="D"
-        else:
-            drcr="C"    
-
-       
-        ac_code = company_parameters.RoundOff
-        accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-        def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid, narration):
-              
-            if float(amount) != 0:
-                entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid,new_Record_data["narration1"]))
-
-        dono=new_Record_data['link_no']
-        ac_code = new_Record_data['ac_code']
-        accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-        #add_gledger_entry(gledger_entries, new_Record_data, bill_amount, 'C', ac_code, accoid, new_Record_data["narration1"])
-        cgstamount=new_Record_data['cgst_amount']
-        sgstamount=new_Record_data['sgst_amount']
-        igstamount=new_Record_data['igst_amount']
-        tcsamt=new_Record_data['TCS_Amt']
-        tdsamt=new_Record_data['TDSAmount']
-        tdsac=new_Record_data['TDS_Ac']
-        resalecomm=new_Record_data['resale_commission']
-
-        tcs_net_payable = new_Record_data['TCS_Net_Payable']
-        # if tcs_net_payable > 0:
-        #     add_gledger_entry(gledger_entries, new_Record_data, tcs_net_payable, 'D', new_Record_data['ac_code'], accoid, new_Record_data["narration1"])
-        
-
-        if dono==0:
-            frieght_amount=new_Record_data['Frieght_amt']
-            if frieght_amount>0:
-                ac_code = company_parameters.SGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, frieght_amount, 'C', ac_code, accoid, "")
-            else:
-                ac_code = company_parameters.Freight_Ac
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, frieght_amount, 'D', ac_code, accoid, "")
-          
-
-        if bill_amount>0:
-            ac_code = new_Record_data['ac_code']
-            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-            add_gledger_entry(gledger_entries, new_Record_data, bill_amount, 'D', ac_code, accoid, new_Record_data["narration1"])
-
-            if cgstamount>0:
-                ac_code = company_parameters.CGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, cgstamount, 'C', ac_code, accoid, "")
-            if sgstamount >0:    
-                ac_code = company_parameters.SGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, sgstamount, 'C', ac_code, accoid, "")
-            if igstamount >0:    
-                ac_code = company_parameters.IGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, igstamount, 'C', ac_code, accoid, "")
-
-            if tcsamt >0:    
-                ac_code = company_parameters.SaleTCSAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'C', ac_code, accoid, "")
-
-                ac_code = new_Record_data['ac_code']
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'D', ac_code, accoid, "")
-            
-          
-        else:
-            ac_code = new_Record_data['ac_code']
-            accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-            add_gledger_entry(gledger_entries, new_Record_data, bill_amount, 'C', ac_code, accoid, new_Record_data["narration1"])
-
-            if cgstamount!=0:
-                ac_code = company_parameters.PurchaseCGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, cgstamount, 'D', ac_code, accoid, "")
-            if sgstamount !=0:    
-                
-                ac_code = company_parameters.PurchaseSGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, sgstamount, 'D', ac_code, accoid, "")
-            if igstamount !=0:    
-                
-                ac_code = company_parameters.PurchaseIGSTAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, igstamount, 'D', ac_code, accoid, "")
-            if tcsamt >0:    
-                
-                ac_code = company_parameters.SaleTCSAc
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'D', ac_code, accoid, "")
-
-                ac_code = new_Record_data.ac_code
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'C', ac_code, accoid, "",ordercode)
-
-        if tdsamt!=0 : 
-            if tdsamt>0:
-                
-                ac_code = new_Record_data['ac_code']
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'C', ac_code, accoid, "")
-
-                
-                accoid = get_accoid(tdsac, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'D', tdsac, accoid, "")
-            else:
-                
-                ac_code = new_Record_data['ac_code']
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'D', ac_code, accoid, "")
-
-                
-                accoid = get_accoid(tdsac, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'C', tdsac, accoid, "")
-
-        if float(resalecomm) != 0:
-            if resalecomm  >0:
-                drcr="C"      
-            else:
-                drcr="D"  
-            
-            ac_code=company_parameters.COMMISSION_AC    
-            accoid = get_accoid(tdsac, new_Record_data['Company_Code'])
-            add_gledger_entry(gledger_entries, new_Record_data, resalecomm, drcr, ac_code, accoid, "")    
-        
-        commission_amount=new_Record_data['commission_amount']
-        if commission_amount !=0:
-            if commission_amount>0:
-                
-                ac_code=company_parameters.RateDiffAc    
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, commission_amount, 'C', ac_code, accoid, "")  
-            else:
-                
-                ac_code=company_parameters.RateDiffAc    
-                accoid = get_accoid(ac_code, new_Record_data['Company_Code'])
-                add_gledger_entry(gledger_entries, new_Record_data, commission_amount, 'D', ac_code, accoid, "") 
 
         db.session.add(new_Record)
         db.session.commit()
 
-        # Fetch the commisionid of the newly created record
         commisionid = new_Record.commissionid
 
-        query_params = {
-            'Company_Code': new_Record_data['Company_Code'],
-            'DOC_NO': new_Record_data['doc_no'],
-            'Year_Code': new_Record_data['Year_Code'],
-            'TRAN_TYPE': new_Record_data['Tran_Type']
-        }
+        gledger_entries = process_gledger_entries(new_Record_data,new_Record_data['doc_no'])
 
-        print("gledger_entries", gledger_entries)
-
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = send_gledger_entries(new_Record_data, gledger_entries,tran_type)
 
         if response.status_code == 201:
             db.session.commit()
@@ -417,7 +380,6 @@ def create_CommissionBill():
             }
         }), 201
     except Exception as e:
-        print("Traceback",traceback.format_exc())
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
@@ -425,40 +387,8 @@ def create_CommissionBill():
 # Update a group API
 @app.route(API_URL+"/update-CommissionBill", methods=["PUT"])
 def update_CommissionBill():
-    def create_gledger_entry(data, amount, drcr, ac_code, accoid,narration,ordercode):
-        return {
-            "TRAN_TYPE": tran_type,
-            "DOC_NO": new_Record_data.doc_no,
-            "DOC_DATE": data.doc_date,
-            "AC_CODE": ac_code,
-            "AMOUNT": amount,
-            "COMPANY_CODE": new_Record_data.Company_Code,
-            "YEAR_CODE": new_Record_data.Year_Code,
-            "ORDER_CODE":  ordercode,
-            "DRCR": drcr,
-            "UNIT_Code": 0,
-            "NARRATION": narration,
-            "TENDER_ID": 0,
-            "TENDER_ID_DETAIL": 0,
-            "VOUCHER_ID": 0,
-            "DRCR_HEAD": 0,
-            "ADJUSTED_AMOUNT": 0,
-            "Branch_Code": 1,
-            "SORT_TYPE": tran_type,
-            "SORT_NO": new_Record_data.doc_no,
-            "vc": 0,
-            "progid": 0,
-            "tranid": 0,
-            "saleid": 0,
-            "ac": accoid
-        }
-
-    def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid,narration,ordercode):
-        if amount > 0:
-            entries.append(create_gledger_entry(data, amount, drcr, ac_code, accoid,narration,ordercode))
     
     try:
-        # Extract Company_Code and selected record from query parameters
         company_code = request.args.get('Company_Code')
         tran_type = request.args.get('Tran_Type')
         year_code = request.args.get('Year_Code')
@@ -473,13 +403,11 @@ def update_CommissionBill():
             year_code = int(year_code)
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code, selected_code, tran_type, or year code parameter'}), 400
-        print('tran_type',tran_type)
-        # Fetch the record to update
+
         update_Record_data = CommissionBill.query.filter_by(Company_Code=company_code, doc_no=selected_code, Tran_Type=tran_type, Year_Code=year_code).first()
         if update_Record_data is None:
             return jsonify({'error': 'Record not found'}), 404
 
-        # Update selected record data
         update_data = request.json
         for key, value in update_data.items():
             setattr(update_Record_data, key, value)
@@ -487,168 +415,11 @@ def update_CommissionBill():
         new_Record_data=update_Record_data
         new_Record=update_data
 
-        print(new_Record_data.Company_Code)
-                #gledger effect of CommissionBill
-        company_parameters = fetch_company_parameters(new_Record_data.Company_Code, new_Record_data.Year_Code)
-        
-        gledger_entries = []
-        bill_amount = float(new_Record_data.bill_amount)
-        drcr=""
-        if bill_amount>0:
-            drcr="D"
-        else:
-            drcr="C"    
-        ac_code = company_parameters.RoundOff
-        accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-        ordercode=0
-        def add_gledger_entry(entries, data, amount, drcr, ac_code, accoid, narration,ordercode):
-            ordercode=ordercode+1
-            if amount != 0:
-                entries.append(create_gledger_entry(data, abs(amount), drcr, ac_code, accoid,new_Record_data.narration1,ordercode))
-    
-        dono=new_Record_data.link_no
-        ac_code = new_Record_data.ac_code
-        accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-        add_gledger_entry(gledger_entries, new_Record_data, bill_amount, drcr, ac_code, accoid, new_Record_data.narration1,ordercode)
-        cgstamount=float(new_Record_data.cgst_amount)
-        sgstamount=float(new_Record_data.sgst_amount)
-        igstamount=float(new_Record_data.igst_amount)
-        tcsamt=float(new_Record_data.TCS_Amt)
-        tdsamt=float(new_Record_data.TDSAmount)
-        tdsac=float(new_Record_data.TDS_Ac)
-        resalecomm=float(new_Record_data.resale_commission)
-
-        ordercode=0
-        tcs_net_payable = new_Record_data.TCS_Net_Payable
-        # if tcs_net_payable > 0:
-        #     ordercode=ordercode+1
-        #     add_gledger_entry(gledger_entries, new_Record_data, tcs_net_payable, 'D', new_Record_data.ac_code, accoid, new_Record_data.narration1, ordercode)
-       
-
-        if dono==0:
-            frieght_amount=float(new_Record_data.Frieght_amt)
-            if frieght_amount>0:
-                ordercode=ordercode+1
-                ac_code = company_parameters.SGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, frieght_amount, 'C', ac_code, accoid, "",ordercode)
-            else:
-                ordercode=ordercode+1
-                ac_code = company_parameters.Freight_Ac
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, frieght_amount, 'D', ac_code, accoid, "",ordercode)
-          
-
-        if bill_amount>0:
-            if cgstamount>0:
-                ordercode=ordercode+1
-                ac_code = company_parameters.CGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, cgstamount, 'C', ac_code, accoid, "",ordercode)
-            if sgstamount >0:    
-                ordercode=ordercode+1
-                ac_code = company_parameters.SGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, sgstamount, 'C', ac_code, accoid, "",ordercode)
-            if igstamount >0:    
-                ordercode=ordercode+1
-                ac_code = company_parameters.IGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, igstamount, 'C', ac_code, accoid, "",ordercode)
-            if tcsamt >0:    
-                ac_code = company_parameters.SaleTCSAc
-                ordercode=ordercode+1
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'C', ac_code, accoid, "",ordercode)
-
-                ac_code = new_Record_data.ac_code
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                ordercode=ordercode+1
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'D', ac_code, accoid, "",ordercode)
-            
-          
-        else:
-            if cgstamount!=0:
-                ordercode=ordercode+1
-                ac_code = company_parameters.PurchaseCGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, cgstamount, 'D', ac_code, accoid, "",ordercode)
-            if sgstamount !=0:    
-                ordercode=ordercode+1
-                ac_code = company_parameters.PurchaseSGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, sgstamount, 'D', ac_code, accoid, "",ordercode)
-            if igstamount !=0:    
-                ordercode=ordercode+1
-                ac_code = company_parameters.PurchaseIGSTAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, igstamount, 'D', ac_code, accoid, "",ordercode)
-            if tcsamt > 0:    
-                ordercode=ordercode+1
-                ac_code = company_parameters.SaleTCSAc
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'D', ac_code, accoid, "",ordercode)
-
-                ac_code = new_Record_data.ac_code
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                ordercode=ordercode+1
-                add_gledger_entry(gledger_entries, new_Record_data, tcsamt, 'C', ac_code, accoid, "",ordercode)
-
-        if tdsamt!=0 : 
-            if tdsamt>0:
-                ordercode=ordercode+1
-                ac_code = new_Record_data.ac_code
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'C', ac_code, accoid, "",ordercode)
-
-                ordercode=ordercode+1
-                accoid = get_accoid(tdsac, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'D', tdsac, accoid, "",ordercode)
-            else:
-                ordercode=ordercode+1
-                ac_code = new_Record_data.ac_code
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'D', ac_code, accoid, "",ordercode)
-
-                ordercode=ordercode+1
-                accoid = get_accoid(tdsac, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, tdsamt, 'C', tdsac, accoid, "",ordercode)
-
-        if resalecomm != 0:
-            if resalecomm  >0:
-                drcr="C"      
-            else:
-                drcr="D"  
-            ordercode=ordercode+1
-            ac_code=company_parameters.COMMISSION_AC    
-            accoid = get_accoid(tdsac, new_Record_data.Company_Code)
-            add_gledger_entry(gledger_entries, new_Record_data, resalecomm, drcr, ac_code, accoid, "",ordercode)    
-        
-        commission_amount=float(new_Record_data.commission_amount)
-        if commission_amount !=0:
-            if commission_amount>0:
-                ordercode=ordercode+1
-                ac_code=company_parameters.RateDiffAc    
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, commission_amount, 'C', ac_code, accoid, "",ordercode)  
-            else:
-                ordercode=ordercode+1
-                ac_code=company_parameters.RateDiffAc    
-                accoid = get_accoid(ac_code, new_Record_data.Company_Code)
-                add_gledger_entry(gledger_entries, new_Record_data, commission_amount, 'D', ac_code, accoid, "",ordercode) 
-
-    
-
         db.session.commit()
 
-        query_params = {
-            'Company_Code': new_Record_data.Company_Code,
-            'DOC_NO': new_Record_data.doc_no,
-            'Year_Code': new_Record_data.Year_Code,
-            'TRAN_TYPE': tran_type
-        }
+        gledger_entries = process_gledger_entries(new_Record,new_Record['doc_no'])
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = send_gledger_entries(new_Record, gledger_entries,tran_type)
 
         if response.status_code == 201:
             db.session.commit()
@@ -661,18 +432,13 @@ def update_CommissionBill():
             'record': update_data
         })
     except Exception as e:
-        print("Traceback",traceback.format_exc())
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
-
-
 
 # Delete a group API
 @app.route(API_URL+"/delete-CommissionBill", methods=["DELETE"])
 def delete_CommissionBill():
     try:
-        # Extract Company_Code and doc_no from query parameters
         company_code = request.args.get('Company_Code')
         tran_type = request.args.get('Tran_Type')
         year_code = request.args.get('Year_Code')
@@ -688,7 +454,6 @@ def delete_CommissionBill():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code, selected_code, tran_type, or year code parameter'}), 400
 
-        # Fetch the record to delete
         Deleted_Record = CommissionBill.query.filter_by(Company_Code=company_code, doc_no=selected_code, Tran_Type=tran_type, Year_Code=year_code).first()
         if Deleted_Record is None:
             return jsonify({'error': 'Record not found'}), 404

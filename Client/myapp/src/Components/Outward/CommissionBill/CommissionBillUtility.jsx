@@ -15,22 +15,28 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
+import PageNotFound from "../../../Common/PageNotFound/PageNotFound";
 import Pagination from "../../../Common/UtilityCommon/Pagination";
 import SearchBar from "../../../Common/UtilityCommon/SearchBar";
 import PerPageSelect from "../../../Common/UtilityCommon/PerPageSelect";
 import axios from "axios";
 
-const companyCode = sessionStorage.getItem("Company_Code");
-const yearCode = sessionStorage.getItem("Year_Code");
+
 
 function CommissionBillUtility() {
+  const companyCode = sessionStorage.getItem("Company_Code");
+  const yearCode = sessionStorage.getItem("Year_Code");
+  const uid = sessionStorage.getItem('uid');
   const apiURL = process.env.REACT_APP_API;
+  
   const [fetchedData, setFetchedData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [perPage, setPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [filterValue, setFilterValue] = useState("");
+  const [canView, setCanView] = useState(null);
+  const [permissionsData, setPermissionData] = useState({});
   const [tranType, setTranType] = useState(sessionStorage.getItem("Tran_Type") || "LV");
   const navigate = useNavigate();
 
@@ -47,6 +53,22 @@ function CommissionBillUtility() {
   }
 
   useEffect(() => {
+    const checkPermissions = async () => {
+      try {
+          const userCheckUrl = `${apiURL}/get_user_permissions?Company_Code=${companyCode}&Year_Code=${yearCode}&Program_Name=/CommissionBill-utility&uid=${uid}`;
+          const response = await axios.get(userCheckUrl);
+          setPermissionData(response.data?.UserDetails);
+          if (response.data?.UserDetails?.canView === 'Y') {
+              setCanView(true);
+              fetchData();
+          } else {
+              setCanView(false);
+          }
+      } catch (error) {
+          console.error("Error fetching user permissions:", error);
+          setCanView(false);
+      }
+  };
     const fetchData = async () => {
       try {
         const apiUrl = `${apiURL}/getall-CommissionBill?Year_Code=${yearCode}&Company_Code=${companyCode}&Tran_Type=${tranType}`;
@@ -57,7 +79,7 @@ function CommissionBillUtility() {
       }
     };
 
-    fetchData();
+    checkPermissions();
   }, [tranType]);
 
   useEffect(() => {
@@ -76,6 +98,10 @@ function CommissionBillUtility() {
     setFilteredData(filtered);
     setCurrentPage(1);
   }, [searchTerm, filterValue, fetchedData]);
+
+  if (canView === false) {
+    return <PageNotFound />;
+}
 
   const handleSearchTermChange = (event) => {
     const term = event.target.value;
@@ -103,7 +129,7 @@ function CommissionBillUtility() {
   };
 
   const handleClick = () => {
-    navigate("/commission-bill",{ state: { tranType } });
+    navigate("/commission-bill",{ state: { tranType, permissionsData } });
     window.location.reload()
     
   };
@@ -120,6 +146,7 @@ function CommissionBillUtility() {
         state: {
           selectedRecord,
           tranType,
+          permissionsData
         },
       });
     } else {
@@ -139,7 +166,7 @@ function CommissionBillUtility() {
   };
 
   return (
-    <div className="App container">
+    <div>
       <Grid container spacing={3}>
         <Grid item xs={0}>
           <Button variant="contained" style={{ marginTop: "20px" }} onClick={handleClick}>
@@ -151,18 +178,11 @@ function CommissionBillUtility() {
             Back
           </Button>
         </Grid>
-        <Grid item xs={12} sm={12}>
-          <SearchBar
-            value={searchTerm}
-            onChange={handleSearchTermChange}
-            onSearchClick={handleSearchClick}
-          />
+        <Grid item xs={0} sx={{mt:"3px" }}>
+        <PerPageSelect value={perPage} onChange={handlePerPageChange} />
         </Grid>
-        <Grid item xs={12} sm={8} style={{ marginTop: "-80px", marginLeft: "-150px" }}>
-          <PerPageSelect value={perPage} onChange={handlePerPageChange} />
-        </Grid>
-        <Grid item xs={12} sm={3} style={{ marginTop: "-80px", marginLeft: "-150px" }}>
-          <FormControl fullWidth>
+        <Grid item xs={1} sx={{width:"60px"}} >
+          <FormControl >
             <InputLabel id="tran-type-label">Tran Type</InputLabel>
             <Select
               labelId="tran-type-label"
@@ -174,6 +194,13 @@ function CommissionBillUtility() {
               <MenuItem value="CV">CV</MenuItem>
             </Select>
           </FormControl>
+        </Grid>
+        <Grid item xs={8}>
+          <SearchBar
+            value={searchTerm}
+            onChange={handleSearchTermChange}
+            onSearchClick={handleSearchClick}
+          />
         </Grid>
         <Grid item xs={12}>
           <Paper elevation={3}>

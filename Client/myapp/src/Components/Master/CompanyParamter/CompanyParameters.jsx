@@ -159,279 +159,57 @@ const CompanyParameters = () => {
     bpid: "",
     Edit_Sale_Rate: "",
   };
-  const handleCOMMISSION_AC = (code) => {
+
+  //Common Function to set the record Data
+  const handleAccountCodeChange = (key, code) => {
     setAccountCode(code);
-    setFormData({
-      ...formData,
-      COMMISSION_AC: code,
-    });
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      [key]: code,
+    }));
   };
-  const handleINTEREST_AC = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      INTEREST_AC: code,
-    });
-  };
-  const handleTRANSPORT_AC = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      TRANSPORT_AC: code,
-    });
-  };
-  const handlePOSTAGE_AC = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      POSTAGE_AC: code,
-    });
-  };
-  const handleSELF_AC = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      SELF_AC: code,
-    });
-  };
-  const handleGSTStateCode = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      GSTStateCode: code,
-    });
-  };
-  const handleCGSTAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      CGSTAc: code,
-    });
-  };
-  const handleSGSTAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      SGSTAc: code,
-    });
-  };
-  const handleIGSTAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      IGSTAc: code,
-    });
-  };
-  const handlePurchaseCGSTAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      PurchaseCGSTAc: code,
-    });
-  };
-  const handlePurchaseSGSTAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      PurchaseSGSTAc: code,
-    });
-  };
-  const handlePurchaseIGSTAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      PurchaseIGSTAc: code,
-    });
-  };
-  const handleRoundOff = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      RoundOff: code,
-    });
-  };
-  const handleTransport_RCM_GSTRate = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      Transport_RCM_GSTRate: code,
-    });
-  };
-  const handleCGST_RCM_Ac = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      CGST_RCM_Ac: code,
-    });
-  };
-  const handleSGST_RCM_Ac = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      SGST_RCM_Ac: code,
-    });
-  };
-  const handleIGST_RCM_Ac = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      IGST_RCM_Ac: code,
-    });
-  };
-  const handleFreight_Ac = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      Freight_Ac: code,
-    });
-  };
-  const handlePurchaseTCSAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      PurchaseTCSAc: code,
-    });
-  };
-  const handleSaleTCSAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      SaleTCSAc: code,
-    });
-  };
-  const handleOTHER_AMOUNT_AC = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      OTHER_AMOUNT_AC: code,
-    });
-  };
-  const handleMarketSase = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      MarketSase: code,
-    });
-  };
-  const handleSuperCost = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      SuperCost: code,
-    });
-  };
-  const handlePacking = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      Packing: code,
-    });
-  };
-  const handleHamali = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      Hamali: code,
-    });
-  };
-  const handleTransportTDS_Ac = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      TransportTDS_Ac: code,
-    });
-  };
-  const handleTransportTDS_AcCut = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      TransportTDS_AcCut: code,
-    });
-  };
-  const handleReturnSaleCGST = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      ReturnSaleCGST: code,
-    });
-  };
-  const handleReturnSaleSGST = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      ReturnSaleSGST: code,
-    });
-  };
-  const handleReturnSaleIGST = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      ReturnSaleIGST: code,
-    });
-  };
-  const handleReturnPurchaseCGST = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      ReturnPurchaseCGST: code,
-    });
-  };
-  const handleReturnPurchaseSGST = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      ReturnPurchaseSGST: code,
-    });
-  };
-  const handleReturnPurchaseIGST = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      ReturnPurchaseIGST: code,
-    });
-  };
-  const handleSaleTDSAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      SaleTDSAc: code,
-    });
-  };
-  const handlePurchaseTDSAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      PurchaseTDSAc: code,
-    });
-  };
-  const handleRateDiffAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      RateDiffAc: code,
-    });
-  };
-  const handleDepreciationAC = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      DepreciationAC: code,
-    });
-  };
-  const handleInterestTDSAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      InterestTDSAc: code,
-    });
-  };
-  const handleBankPaymentAc = (code) => {
-    setAccountCode(code);
-    setFormData({
-      ...formData,
-      BankPaymentAc: code,
-    });
-  };
+
+  //Handle individual function to manage the account master
+  const handleCOMMISSION_AC = (code) => handleAccountCodeChange('COMMISSION_AC', code);
+  const handleINTEREST_AC = (code) => handleAccountCodeChange('INTEREST_AC', code);
+  const handleTRANSPORT_AC = (code) => handleAccountCodeChange('TRANSPORT_AC', code);
+  const handlePOSTAGE_AC = (code) => handleAccountCodeChange('POSTAGE_AC', code);
+  const handleSELF_AC = (code) => handleAccountCodeChange('SELF_AC', code);
+  const handleGSTStateCode = (code) => handleAccountCodeChange('GSTStateCode', code);
+  const handleCGSTAc = (code) => handleAccountCodeChange('CGSTAc', code);
+  const handleSGSTAc = (code) => handleAccountCodeChange('SGSTAc', code);
+  const handleIGSTAc = (code) => handleAccountCodeChange('IGSTAc', code);
+  const handlePurchaseCGSTAc = (code) => handleAccountCodeChange('PurchaseCGSTAc', code);
+  const handlePurchaseSGSTAc = (code) => handleAccountCodeChange('PurchaseSGSTAc', code);
+  const handlePurchaseIGSTAc = (code) => handleAccountCodeChange('PurchaseIGSTAc', code);
+  const handleRoundOff = (code) => handleAccountCodeChange('RoundOff', code);
+  const handleTransport_RCM_GSTRate = (code) => handleAccountCodeChange('Transport_RCM_GSTRate', code);
+  const handleCGST_RCM_Ac = (code) => handleAccountCodeChange('CGST_RCM_Ac', code);
+  const handleSGST_RCM_Ac = (code) => handleAccountCodeChange('SGST_RCM_Ac', code);
+  const handleIGST_RCM_Ac = (code) => handleAccountCodeChange('IGST_RCM_Ac', code);
+  const handleFreight_Ac = (code) => handleAccountCodeChange('Freight_Ac', code);
+  const handlePurchaseTCSAc = (code) => handleAccountCodeChange('PurchaseTCSAc', code);
+  const handleSaleTCSAc = (code) => handleAccountCodeChange('SaleTCSAc', code);
+  const handleOTHER_AMOUNT_AC = (code) => handleAccountCodeChange('OTHER_AMOUNT_AC', code);
+  const handleMarketSase = (code) => handleAccountCodeChange('MarketSase', code);
+  const handleSuperCost = (code) => handleAccountCodeChange('SuperCost', code);
+  const handlePacking = (code) => handleAccountCodeChange('Packing', code);
+  const handleHamali = (code) => handleAccountCodeChange('Hamali', code);
+  const handleTransportTDS_Ac = (code) => handleAccountCodeChange('TransportTDS_Ac', code);
+  const handleTransportTDS_AcCut = (code) => handleAccountCodeChange('TransportTDS_AcCut', code);
+  const handleReturnSaleCGST = (code) => handleAccountCodeChange('ReturnSaleCGST', code);
+  const handleReturnSaleSGST = (code) => handleAccountCodeChange('ReturnSaleSGST', code);
+  const handleReturnSaleIGST = (code) => handleAccountCodeChange('ReturnSaleIGST', code);
+  const handleReturnPurchaseCGST = (code) => handleAccountCodeChange('ReturnPurchaseCGST', code);
+  const handleReturnPurchaseSGST = (code) => handleAccountCodeChange('ReturnPurchaseSGST', code);
+  const handleReturnPurchaseIGST = (code) => handleAccountCodeChange('ReturnPurchaseIGST', code);
+  const handleSaleTDSAc = (code) => handleAccountCodeChange('SaleTDSAc', code);
+  const handlePurchaseTDSAc = (code) => handleAccountCodeChange('PurchaseTDSAc', code);
+  const handleRateDiffAc = (code) => handleAccountCodeChange('RateDiffAc', code);
+  const handleDepreciationAC = (code) => handleAccountCodeChange('DepreciationAC', code);
+  const handleInterestTDSAc = (code) => handleAccountCodeChange('InterestTDSAc', code);
+  const handleBankPaymentAc = (code) => handleAccountCodeChange('BankPaymentAc', code);
+
   const [formData, setFormData] = useState(initialFormData);
 
   // Handle change for all inputs
@@ -581,7 +359,7 @@ const CompanyParameters = () => {
               <label htmlFor="INTEREST_AC" style={{ marginRight: "10px" }}>Interest A/c</label>
               <AccountMasterHelp
                 name="INTEREST_AC"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleINTEREST_AC}
                 CategoryName={InterestAcName}
                 CategoryCode={newINTEREST_AC}
@@ -595,7 +373,7 @@ const CompanyParameters = () => {
               <label htmlFor="TRANSPORT_AC" style={{ marginRight: "10px" }}>Transport A/c</label>
               <AccountMasterHelp
                 name="TRANSPORT_AC"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleTRANSPORT_AC}
                 CategoryName={TransportAcName}
                 CategoryCode={newTRANSPORT_AC}
@@ -606,7 +384,7 @@ const CompanyParameters = () => {
               <label htmlFor="POSTAGE_AC" style={{ marginRight: "10px" }}>Postage A/c</label>
               <AccountMasterHelp
                 name="POSTAGE_AC"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePOSTAGE_AC}
                 CategoryName={PostageAcName}
                 CategoryCode={newPOSTAGE_AC}
@@ -620,7 +398,7 @@ const CompanyParameters = () => {
               <label htmlFor="SELF_AC" style={{ marginRight: "10px" }}>Self A/c</label>
               <AccountMasterHelp
                 name="SELF_AC"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleSELF_AC}
                 CategoryName={SelfAc}
                 CategoryCode={newSELF_AC}
@@ -653,7 +431,7 @@ const CompanyParameters = () => {
               <label htmlFor="GSTStateCode" style={{ marginRight: "10px" }}>GST State Code</label>
               <AccountMasterHelp
                 name="GSTStateCode"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleGSTStateCode}
                 CategoryName={GSTStateCodeName}
                 CategoryCode={newGSTStateCode}
@@ -664,7 +442,7 @@ const CompanyParameters = () => {
               <label htmlFor="CGSTAc" style={{ marginRight: "10px" }}>Sale CGST A/c</label>
               <AccountMasterHelp
                 name="CGSTAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleCGSTAc}
                 CategoryName={SaleCGSTAcName}
                 CategoryCode={newCGSTAc}
@@ -678,7 +456,7 @@ const CompanyParameters = () => {
               <label htmlFor="SGSTAc" style={{ marginRight: "10px" }}>Sale SGST A/c</label>
               <AccountMasterHelp
                 name="SGSTAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleSGSTAc}
                 CategoryName={SaleSGSTAcName}
                 CategoryCode={newSGSTAc}
@@ -689,7 +467,7 @@ const CompanyParameters = () => {
               <label htmlFor="IGSTAc" style={{ marginRight: "10px" }}>Sale IGST A/c</label>
               <AccountMasterHelp
                 name="IGSTAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleIGSTAc}
                 CategoryName={SaleIGSTAcName}
                 CategoryCode={newIGSTAc}
@@ -703,7 +481,7 @@ const CompanyParameters = () => {
               <label htmlFor="PurchaseCGSTAc" style={{ marginRight: "10px" }}>Purchase CGST A/c</label>
               <AccountMasterHelp
                 name="PurchaseCGSTAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePurchaseCGSTAc}
                 CategoryName={PurchaseCGSTAcName}
                 CategoryCode={newPurchaseCGSTAc}
@@ -714,7 +492,7 @@ const CompanyParameters = () => {
               <label htmlFor="PurchaseSGSTAc" style={{ marginRight: "10px" }}>Purchase SGST A/c</label>
               <AccountMasterHelp
                 name="PurchaseSGSTAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePurchaseSGSTAc}
                 CategoryName={PurchaseSGSTAcName}
                 CategoryCode={newPurchaseSGSTAc}
@@ -728,7 +506,7 @@ const CompanyParameters = () => {
               <label htmlFor="PurchaseIGSTAc" style={{ marginRight: "10px" }}>Purchase IGST A/c</label>
               <AccountMasterHelp
                 name="PurchaseIGSTAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePurchaseIGSTAc}
                 CategoryName={PurchaseIGSTAcName}
                 CategoryCode={newPurchaseIGSTAc}
@@ -739,7 +517,7 @@ const CompanyParameters = () => {
               <label htmlFor="RoundOff" style={{ marginRight: "10px" }}>Round off</label>
               <AccountMasterHelp
                 name="RoundOff"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleRoundOff}
                 CategoryName={RoundOffAcName}
                 CategoryCode={newRoundOff}
@@ -753,7 +531,7 @@ const CompanyParameters = () => {
               <label htmlFor="Transport_RCM_GSTRate" style={{ marginRight: "10px" }}>Transport RCM GSTRate</label>
               <AccountMasterHelp
                 name="Transport_RCM_GSTRate"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleTransport_RCM_GSTRate}
                 CategoryName={TransportRCMGSTAcName}
                 CategoryCode={newTransport_RCM_GSTRate}
@@ -764,7 +542,7 @@ const CompanyParameters = () => {
               <label htmlFor="CGST_RCM_Ac" style={{ marginRight: "10px" }}>CGST RCM Ac</label>
               <AccountMasterHelp
                 name="CGST_RCM_Ac"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleCGST_RCM_Ac}
                 CategoryName={CGST_RCMAcName}
                 CategoryCode={newCGST_RCM_Ac}
@@ -778,7 +556,7 @@ const CompanyParameters = () => {
               <label htmlFor="SGST_RCM_Ac" style={{ marginRight: "10px" }}>SGST RCM Ac</label>
               <AccountMasterHelp
                 name="SGST_RCM_Ac"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleSGST_RCM_Ac}
                 CategoryName={SGST_RCMAcName}
                 CategoryCode={newSGST_RCM_Ac}
@@ -789,7 +567,7 @@ const CompanyParameters = () => {
               <label htmlFor="IGST_RCM_Ac" style={{ marginRight: "10px" }}>IGST RCM Ac</label>
               <AccountMasterHelp
                 name="IGST_RCM_Ac"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleIGST_RCM_Ac}
                 CategoryName={IGST_RCMAcName}
                 CategoryCode={newIGST_RCM_Ac}
@@ -803,7 +581,7 @@ const CompanyParameters = () => {
               <label htmlFor="Freight_Ac" style={{ marginRight: "10px" }}>Freight A/C</label>
               <AccountMasterHelp
                 name="Freight_Ac"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleFreight_Ac}
                 CategoryName={FreightAcName}
                 CategoryCode={newFreight_Ac}
@@ -827,7 +605,7 @@ const CompanyParameters = () => {
               <label htmlFor="PurchaseTCSAc" style={{ marginRight: "10px" }}>Purchase TCS A/c</label>
               <AccountMasterHelp
                 name="PurchaseTCSAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePurchaseTCSAc}
                 CategoryName={PurchaseTCS_AcName}
                 CategoryCode={newPurchaseTCSAc}
@@ -838,7 +616,7 @@ const CompanyParameters = () => {
               <label htmlFor="SaleTCSAc" style={{ marginRight: "10px" }}>Sale TCS A/c</label>
               <AccountMasterHelp
                 name="SaleTCSAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleSaleTCSAc}
                 CategoryName={SaleTCS_AcName}
                 CategoryCode={newSaleTCSAc}
@@ -852,7 +630,7 @@ const CompanyParameters = () => {
               <label htmlFor="OTHER_AMOUNT_AC" style={{ marginRight: "10px" }}>Other A/c</label>
               <AccountMasterHelp
                 name="OTHER_AMOUNT_AC"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleOTHER_AMOUNT_AC}
                 CategoryName={OtherAcName}
                 CategoryCode={newOTHER_AMOUNT_AC}
@@ -863,7 +641,7 @@ const CompanyParameters = () => {
               <label htmlFor="MarketSase" style={{ marginRight: "10px" }}>Market Sase A/c</label>
               <AccountMasterHelp
                 name="MarketSase"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleMarketSase}
                 CategoryName={MarketSaseAcName}
                 CategoryCode={newMarketSase}
@@ -877,7 +655,7 @@ const CompanyParameters = () => {
               <label htmlFor="SuperCost" style={{ marginRight: "10px" }}>Supercost A/c</label>
               <AccountMasterHelp
                 name="SuperCost"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleSuperCost}
                 CategoryName={SupercostAcName}
                 CategoryCode={newSuperCost}
@@ -888,7 +666,7 @@ const CompanyParameters = () => {
               <label htmlFor="Packing" style={{ marginRight: "10px" }}>Packing A/c</label>
               <AccountMasterHelp
                 Name="Packing"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePacking}
                 CategoryName={PackingAcName}
                 CategoryCode={newPacking}
@@ -902,7 +680,7 @@ const CompanyParameters = () => {
               <label htmlFor="Hamali" style={{ marginRight: "10px" }}>Hamali A/c</label>
               <AccountMasterHelp
                 name="Hamali"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleHamali}
                 CategoryName={HamaliAcName}
                 CategoryCode={newHamali}
@@ -913,7 +691,7 @@ const CompanyParameters = () => {
               <label htmlFor="TransportTDS_Ac" style={{ marginRight: "10px" }}>Transport TDS A/c</label>
               <AccountMasterHelp
                 name="TransportTDS_Ac"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleTransportTDS_Ac}
                 CategoryName={TransportTDS_AcName}
                 CategoryCode={newTransportTDS_Ac}
@@ -929,7 +707,7 @@ const CompanyParameters = () => {
               </label>
               <AccountMasterHelp
                 name="TransportTDS_AcCut"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleTransportTDS_AcCut}
                 CategoryName={TransportTDS_CutAcName}
                 CategoryCode={newTransportTDS_AcCut}
@@ -967,7 +745,7 @@ const CompanyParameters = () => {
               <label htmlFor="ReturnSaleCGST" style={{ marginRight: "10px" }}>Return Sale CGST</label>
               <AccountMasterHelp
                 name="ReturnSaleCGST"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleReturnSaleCGST}
                 CategoryName={ReturnSaleCGST_AcName}
                 CategoryCode={newReturnSaleCGST}
@@ -981,7 +759,7 @@ const CompanyParameters = () => {
               <label htmlFor="ReturnSaleSGST" style={{ marginRight: "10px" }}>Return Sale SGST</label>
               <AccountMasterHelp
                 name="ReturnSaleSGST"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleReturnSaleSGST}
                 CategoryName={ReturnSaleSGSTAc_Name}
                 CategoryCode={newReturnSaleSGST}
@@ -992,7 +770,7 @@ const CompanyParameters = () => {
               <label htmlFor="ReturnSaleIGST" style={{ marginRight: "10px" }}>Return Sale IGST</label>
               <AccountMasterHelp
                 name="ReturnSaleIGST"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleReturnSaleIGST}
                 CategoryName={ReturnSaleIGSTName}
                 CategoryCode={newReturnSaleIGST}
@@ -1006,7 +784,7 @@ const CompanyParameters = () => {
               <label htmlFor="ReturnPurchaseCGST" style={{ marginRight: "10px" }}>Return Purchase CGST</label>
               <AccountMasterHelp
                 name="ReturnPurchaseCGST"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleReturnPurchaseCGST}
                 CategoryName={ReturnPurchaseCGSTName}
                 CategoryCode={newReturnPurchaseCGST}
@@ -1017,7 +795,7 @@ const CompanyParameters = () => {
               <label htmlFor="ReturnPurchaseSGST" style={{ marginRight: "10px" }}>Return Purchase SGST</label>
               <AccountMasterHelp
                 name="ReturnPurchaseSGST"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleReturnPurchaseSGST}
                 CategoryName={ReturnPurchaseSGST}
                 CategoryCode={newReturnPurchaseSGST}
@@ -1031,7 +809,7 @@ const CompanyParameters = () => {
               <label htmlFor="ReturnPurchaseIGST" style={{ marginRight: "10px" }}>Return Purchase IGST</label>
               <AccountMasterHelp
                 name="ReturnPurchaseIGST"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleReturnPurchaseIGST}
                 CategoryName={ReturnPurchaseIGSTName}
                 CategoryCode={newReturnPurchaseIGST}
@@ -1042,7 +820,7 @@ const CompanyParameters = () => {
               <label htmlFor="SaleTDSAc" style={{ marginRight: "10px" }}>Sale TDS Ac</label>
               <AccountMasterHelp
                 name="SaleTDSAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleSaleTDSAc}
                 CategoryName={SaleTDSAcName}
                 CategoryCode={newSaleTDSAc}
@@ -1056,7 +834,7 @@ const CompanyParameters = () => {
               <label htmlFor="PurchaseTDSAc" style={{ marginRight: "10px" }}>Purchase TDS Ac</label>
               <AccountMasterHelp
                 name="PurchaseTDSAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handlePurchaseTDSAc}
                 CategoryName={PurchaseTDSAcName}
                 CategoryCode={newPurchaseTDSAc}
@@ -1103,7 +881,7 @@ const CompanyParameters = () => {
               <label htmlFor="RateDiffAc" style={{ marginRight: "10px" }}>Rate Diff Ac</label>
               <AccountMasterHelp
                 name="RateDiffAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleRateDiffAc}
                 CategoryName={RateDiffAcName}
                 CategoryCode={newRateDiffAc}
@@ -1183,7 +961,7 @@ const CompanyParameters = () => {
               <label htmlFor="DepreciationAC" style={{ marginRight: "10px" }}>Depreciation A/c</label>
               <AccountMasterHelp
                 name="DepreciationAC"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleDepreciationAC}
                 CategoryName={DepreciationAcName}
                 CategoryCode={newDepreciationAC}
@@ -1207,7 +985,7 @@ const CompanyParameters = () => {
               <label htmlFor="InterestTDSAc" style={{ marginRight: "10px" }}>Interest TDS Ac</label>
               <AccountMasterHelp
                 name="InterestTDSAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleInterestTDSAc}
                 CategoryName={InterestTDS_AcName}
                 CategoryCode={newInterestTDSAc}
@@ -1221,7 +999,7 @@ const CompanyParameters = () => {
               <label htmlFor="BankPaymentAc" style={{ marginRight: "10px" }}>Bank Payment Ac</label>
               <AccountMasterHelp
                 name="BankPaymentAc"
-                 Ac_type=""
+                Ac_type=""
                 onAcCodeClick={handleBankPaymentAc}
                 CategoryName={BankPaymentAcName}
                 CategoryCode={newBankPaymentAc}

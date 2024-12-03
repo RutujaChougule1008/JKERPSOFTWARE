@@ -17,6 +17,7 @@ service_bill_detail_schemas = ServiceBillDetailSchema(many=True)
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 
 SERVICE_BILL_DETAILS_QUERY = '''
 SELECT customer.Ac_Name_E AS partyname, tdsac.Ac_Name_E AS millname, item.System_Name_E AS itemname,  dbo.nt_1_gstratemaster.GST_Name, item.System_Code as Item_Code
@@ -112,39 +113,37 @@ def getdata_servicebill():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        records = ServiceBillHead.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).all()
+        query = ('''SELECT        customer.Ac_Name_E AS partyname, tdsac.Ac_Name_E AS millname, item.System_Name_E AS itemname, dbo.nt_1_gstratemaster.GST_Name, item.System_Code AS Item_Code, dbo.nt_1_rentbillhead.Doc_No, 
+                         dbo.nt_1_rentbillhead.Date, dbo.nt_1_rentbillhead.Customer_Code, dbo.nt_1_rentbillhead.GstRateCode, dbo.nt_1_rentbillhead.Total, dbo.nt_1_rentbilldetails.Item_Code AS Expr1, dbo.nt_1_rentbillhead.Final_Amount, 
+                         dbo.nt_1_rentbillhead.TDS_Per, dbo.nt_1_rentbillhead.ackno, dbo.nt_1_rentbillhead.IsDeleted, dbo.nt_1_rentbillhead.rbid
+FROM            dbo.nt_1_rentbillhead LEFT OUTER JOIN
+                         dbo.nt_1_gstratemaster ON dbo.nt_1_rentbillhead.gstid = dbo.nt_1_gstratemaster.gstid LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS tdsac ON dbo.nt_1_rentbillhead.ta = tdsac.accoid LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS customer ON dbo.nt_1_rentbillhead.cc = customer.accoid LEFT OUTER JOIN
+                         dbo.nt_1_rentbilldetails LEFT OUTER JOIN
+                         dbo.nt_1_systemmaster AS item ON dbo.nt_1_rentbilldetails.ic = item.systemid ON dbo.nt_1_rentbillhead.rbid = dbo.nt_1_rentbilldetails.rbid
 
-        if not records:
-            return jsonify({"error": "No records found"}), 404
+                 where  (item.System_Type = 'I') and dbo.nt_1_rentbillhead.Company_Code = :company_code and dbo.nt_1_rentbillhead.Year_Code = :year_code order by dbo.nt_1_rentbillhead.Doc_No desc
+                                 '''
+            )
+        additional_data = db.session.execute(text(query), {"company_code": Company_Code, "year_code": Year_Code})
 
-        all_records_data = []
+        additional_data_rows = additional_data.fetchall()
+        
+        all_data = [dict(row._mapping) for row in additional_data_rows]
 
-        for record in records:
-            service_bill_head_data = {column.name: getattr(record, column.name) for column in record.__table__.columns}
-            service_bill_head_data.update(format_dates(record))
-
-            rbid = record.rbid
-            additional_data = db.session.execute(text(SERVICE_BILL_DETAILS_QUERY), {"rbid": rbid})
-            additional_data_rows = additional_data.fetchall()
-
-            service_labels = [dict(row._mapping) for row in additional_data_rows]
-
-            detail_records = ServiceBillDetail.query.filter_by(rbid=rbid).all()
-            detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
-
-            record_response = {
-                "service_bill_head_data": service_bill_head_data,
-                "service_labels": service_labels,
-                "service_bill_details": detail_data
-            }
-
-            all_records_data.append(record_response)
+        for data in all_data:
+            if 'Date' in data:
+                data['Date'] = data['Date'].strftime('%Y-%m-%d') if data['Date'] else None
+ 
         response = {
-            "all_data_servicebill": all_records_data
+            "all_data": all_data
         }
+
         return jsonify(response), 200
 
     except Exception as e:
+        print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 # Get data by the particular doc_no
@@ -236,7 +235,7 @@ def insert_servicebill():
             'TRAN_TYPE': trans_type
         }
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = requests.post(API_URL_SERVER+"/create-Record-gLedger", params=query_params, json=gledger_entries)
 
         if response.status_code == 201:
             db.session.commit()
@@ -312,7 +311,7 @@ def update_servicebill():
             'TRAN_TYPE': trans_type
         }
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = requests.post(API_URL_SERVER+"/create-Record-gLedger", params=query_params, json=gledger_entries)
 
         if response.status_code == 201:
             db.session.commit()
@@ -358,7 +357,7 @@ def delete_data_by_rbid():
                 'TRAN_TYPE': "",
             }
 
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")

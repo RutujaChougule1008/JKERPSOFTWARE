@@ -61,7 +61,7 @@ class SugarPurchase(db.Model):
     Retail_Stock = db.Column(db.String(1), nullable=True)
     gstid = db.Column(db.Integer, nullable=True)
     LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
-    LockedUser = db.Column(String(50),default='',nullable=True)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)
     
     details = db.relationship('SugarPurchaseDetail', backref='purchase', lazy=True)
 

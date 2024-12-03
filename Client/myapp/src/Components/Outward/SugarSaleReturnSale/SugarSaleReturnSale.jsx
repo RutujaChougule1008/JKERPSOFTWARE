@@ -10,6 +10,7 @@ import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./SugarSaleReturnSale.css";
+import { useRecordLocking } from "../../../hooks/useRecordLocking";
 import { HashLoader } from "react-spinners";
 import PurcNoFromReturnSaleHelp from "../../../Helper/PurcNoFromReturnSaleHelp";
 import { TextField, Grid } from '@mui/material';
@@ -79,6 +80,7 @@ const SugarSaleReturnSale = () => {
   const [saleBillDataDetails, setSaleBillDataDetials] = useState({});
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
   const navigate = useNavigate();
   const setFocusTaskdate = useRef(null);
   const [isHandleChange, setIsHandleChange] = useState(false);
@@ -165,6 +167,15 @@ const SugarSaleReturnSale = () => {
   const [GstRate, setGstRate] = useState(0.0);
   const [matchStatus, setMatchStatus] = useState(null);
   const [type, setType] = useState("");
+
+  //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
+  const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(
+    formData.doc_no,
+    undefined,
+    companyCode,
+    Year_Code,
+    "sugar_sale_return_sale"
+  );
 
   const formatTruckNumber = (value) => {
     const cleanedValue = value.replace(/\s+/g, '').toUpperCase();
@@ -271,16 +282,46 @@ const SugarSaleReturnSale = () => {
     setFormErrors({})
   };
 
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
+  const handleEdit = async () => {
+    axios
+      .get(
+        `${API_URL}/getsugarsalereturnByid?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+      )
+      .then((response) => {
+        const data = response.data;
+
+        console.log(data);
+
+        const isLockedNew = data.last_head_data.LockedRecord;
+        const isLockedByUserNew = data.last_head_data.LockedUser;
+
+        if (isLockedNew) {
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord();
+        }
+        setFormData({
+          ...formData,
+          ...data.last_head_data,
+        });
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert(
+          "This record is already deleted! Showing the previous record.",
+          error
+        );
+      });
   };
+
 
   const handleSaveOrUpdate = async () => {
     setIsEditing(true);
@@ -346,6 +387,7 @@ const SugarSaleReturnSale = () => {
         const updateApiUrl = `${API_URL}/update-sugarsalereturn?srid=${newsrid}`;
         const response = await axios.put(updateApiUrl, requestData);
         toast.success("Data updated successfully!");
+        unlockRecord();
         setTimeout(() => {
           window.location.reload();
         }, 1000);
@@ -375,6 +417,19 @@ const SugarSaleReturnSale = () => {
   };
 
   const handleDelete = async () => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/getsugarsalereturnByid?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+      );
+
+      const data = response.data;
+      const isLockedNew = data.last_head_data.LockedRecord;
+      const isLockedByUserNew = data.last_head_data.LockedUser;
+
+      if (isLockedNew) {
+        window.alert(`This record is locked by ${isLockedByUserNew}`);
+        return;
+      }
     const isConfirmed = window.confirm(
       `Are you sure you want to delete this Task No ${formData.doc_no}?`
     );
@@ -387,7 +442,6 @@ const SugarSaleReturnSale = () => {
       setSaveButtonEnabled(false);
       setCancelButtonEnabled(false);
       setIsLoading(true);
-      try {
         const deleteApiUrl = `${API_URL}/delete-sugarsalereturn?srid=${newsrid}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${formData.Tran_Type}`;
         const response = await axios.delete(deleteApiUrl);
 
@@ -401,14 +455,16 @@ const SugarSaleReturnSale = () => {
             response.statusText
           );
         }
-      } catch (error) {
-        console.error("Error during API call:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
+      }  else {
       console.log("Deletion cancelled");
     }
+    
+  }
+  catch (error) {
+    console.error("Error during API call:", error);
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   const handleCancel = async () => {
@@ -470,6 +526,7 @@ const SugarSaleReturnSale = () => {
         setLastTenderData(last_head_data || {});
         setType(last_head_data.Tran_Type)
         setLastTenderDetails(enrichedDetails);
+        unlockRecord();
       } else {
         console.error(
           "Failed to fetch last data:",
@@ -1587,6 +1644,7 @@ const SugarSaleReturnSale = () => {
             cancelButtonEnabled={cancelButtonEnabled}
             handleBack={handleBack}
             backButtonEnabled={backButtonEnabled}
+            permissions={permissions}
           />
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}

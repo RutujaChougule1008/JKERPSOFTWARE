@@ -56,6 +56,8 @@ class SugarPurchaseReturnHead(db.Model):
     TDS_Amt = db.Column(db.Numeric(18, 2), nullable=True)
     QRCode = db.Column(db.Text, nullable=True)
     gstid = db.Column(db.Integer, nullable=True)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)
 
     details = db.relationship('SugarPurchaseReturnDetail', backref='sugarPurchaseReturnHead', lazy=True)
 

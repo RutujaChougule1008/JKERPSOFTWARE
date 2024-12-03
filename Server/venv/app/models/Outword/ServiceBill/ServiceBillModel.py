@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, Date, Numeric
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, Date, Numeric, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from app import db
@@ -43,6 +43,9 @@ class ServiceBillHead(db.Model):
     QRCode = Column(Text, nullable=True)
     IsDeleted = Column(Integer, nullable=True)
     gstid = Column(Integer,nullable=True)
+    orderid = Column(Integer,nullable=True)
+    LockedRecord = Column(Boolean, nullable=False, default=False)
+    LockedUser = Column(String(50),default='',nullable=True)
 
     details = db.relationship('ServiceBillDetail', backref='servicebillhead', lazy=True)
 

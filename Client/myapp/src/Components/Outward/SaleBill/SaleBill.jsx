@@ -11,11 +11,10 @@ import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "./SaleBill.css";
 import { HashLoader } from "react-spinners";
-import { z } from "zod";
 import SaleBillReport from './SaleBillReport'
 import EWayBillReport from "./EWayBillReport/EWayBillReport";
+import { useRecordLocking } from '../../../hooks/useRecordLocking';
 
 //Global Variables
 var newSaleid = "";
@@ -91,6 +90,7 @@ const SaleBill = () => {
   const setFocusTaskdate = useRef(null);
   const [isHandleChange, setIsHandleChange] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
 
   const initialFormData = {
     doc_no: "",
@@ -178,6 +178,10 @@ const SaleBill = () => {
   const [broker, setBroker] = useState("");
   const [GstRate, setGstRate] = useState(0.0);
   const [matchStatus, setMatchStatus] = useState(null);
+
+
+  // Manage the lock-unlock record at the same time multiple users edit the same record.
+  const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no, undefined, companyCode, Year_Code, "sugar_sale");
 
   const validateNumericInput = (e) => {
     e.target.value = e.target.value.replace(/[^0-9.]/g, '');
@@ -275,6 +279,7 @@ const SaleBill = () => {
       });
   };
 
+  //handle record Add.
   const handleAddOne = async () => {
     setAddOneButtonEnabled(false);
     setSaveButtonEnabled(true);
@@ -303,20 +308,43 @@ const SaleBill = () => {
     transportCode = "";
     billToName = "";
     billToCode = "";
+    gstName = "";
     setLastTenderDetails([]);
   };
 
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
+  //handle Edit record functionality.
+  const handleEdit = async () => {
+    axios.get(`${API_URL}/SaleBillByid?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`)
+      .then((response) => {
+        const data = response.data;
+        const isLockedNew = data.last_head_data.LockedRecord;
+        const isLockedByUserNew = data.last_head_data.LockedUser;
+
+        if (isLockedNew) {
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord()
+        }
+        setFormData({
+          ...formData,
+          ...data.last_head_data
+        });
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert("This record is already deleted! Showing the previous record.");
+      });
   };
 
+  // Record save and update functionality
   const handleSaveOrUpdate = async () => {
     setIsEditing(true);
     setIsLoading(true);
@@ -357,6 +385,7 @@ const SaleBill = () => {
         const updateApiUrl = `${API_URL}/update-SaleBill?saleid=${newSaleid}`;
         const response = await axios.put(updateApiUrl, requestData);
 
+        await unlockRecord();
         toast.success("Data updated successfully!");
         setTimeout(() => {
           window.location.reload();
@@ -389,44 +418,89 @@ const SaleBill = () => {
     }
   };
 
+  // Record delete functionality
   const handleDelete = async () => {
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete this Task No ${formData.doc_no}?`
-    );
-    if (isConfirmed) {
-      setIsEditMode(false);
-      setAddOneButtonEnabled(true);
-      setEditButtonEnabled(true);
-      setDeleteButtonEnabled(true);
-      setBackButtonEnabled(true);
-      setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
-      setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/SaleBillByid?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`);
 
-      try {
+      const data = response.data;
+      const isLockedNew = data.last_head_data.LockedRecord;
+      const isLockedByUserNew = data.last_head_data.LockedUser;
+
+      if (isLockedNew) {
+        window.alert(`This record is locked by ${isLockedByUserNew}`);
+        return;
+      }
+
+      const isConfirmed = window.confirm(`Are you sure you want to delete this record ${formData.doc_no}?`);
+
+      if (isConfirmed) {
+        setIsEditMode(false);
+        setAddOneButtonEnabled(true);
+        setEditButtonEnabled(true);
+        setDeleteButtonEnabled(true);
+        setBackButtonEnabled(true);
+        setSaveButtonEnabled(false);
+        setCancelButtonEnabled(false);
+        setIsLoading(true);
+
         const deleteApiUrl = `${API_URL}/delete_data_by_saleid?saleid=${newSaleid}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}`;
         const response = await axios.delete(deleteApiUrl);
 
         if (response.status === 200) {
-          toast.success("Data delete successfully!!");
-          handleCancel();
+          if (response.data) {
+            toast.success('Data deleted successfully!');
+            handleCancel();
+          }
         } else {
-          console.error(
-            "Failed to delete tender:",
-            response.status,
-            response.statusText
-          );
+          console.error("Failed to delete record:");
         }
-      } catch (error) {
-        console.error("Error during API call:", error);
-      } finally {
-        setIsLoading(false);
+      } else {
+        console.log("Deletion cancelled");
       }
-    } else {
-      console.log("Deletion cancelled");
+    } catch (error) {
+      console.error("Error during API call:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  //Common Feilds that we haev to set the record on the navigations.
+  const NavigationSetFields = (headData, detailData) => {
+    const details = detailData[0];
+
+    newSaleid = headData.saleid;
+    partyName = details.partyname;
+    partyCode = headData.Ac_Code;
+    unitName = details.unitname;
+    unitCode = details.unitaccode;
+    billToName = details.billtoname;
+    billToCode = headData.Bill_To;
+    gstrate = details.gstrate;
+    gstRateCode = headData.GstRateCode;
+    millName = details.millname;
+    millCode = headData.mill_code;
+    itemName = details.itemname;
+    item_Code = details.System_Code;
+    brandName = details.brandname;
+    brandCode = details.brandocno;
+    brokerCode = details.brokeraccode;
+    brokerName = details.brokername;
+    transportCode = details.transportaccode;
+    transportName = details.transportname;
+    millgstno = details.MillGSTNo;
+    gstName = details.GSTName;
+
+    setFormData((prevData) => ({
+      ...prevData,
+      ...headData,
+    }));
+
+    setLastTenderData(headData || {});
+    setLastTenderDetails(detailData || []);
+  };
+
+  // handle cancel get last record data and set to
   const handleCancel = async () => {
     setIsEditing(false);
     setIsEditMode(false);
@@ -444,37 +518,10 @@ const SaleBill = () => {
       );
       if (response.status === 200) {
         const data = response.data;
-        newSaleid = data.last_head_data.saleid;
-        partyName = data.last_details_data[0].partyname;
-        partyCode = data.last_head_data.Ac_Code;
-        unitName = data.last_details_data[0].unitname;
-        unitCode = data.last_details_data[0].unitaccode;
-        billToName = data.last_details_data[0].billtoname;
-        billToCode = data.last_head_data.Bill_To;
-        gstrate = data.last_details_data[0].gstrate;
-        gstRateCode = data.last_head_data.GstRateCode;
-        gstName = data.last_details_data[0].GSTName;
-        millName = data.last_details_data[0].millname;
-        millCode = data.last_head_data.mill_code;
-        itemName = data.last_details_data[0].itemname;
-        item_Code = data.last_details_data[0].System_Code;
-        brandName = data.last_details_data[0].brandname;
-        brandCode = data.last_details_data[0].brandocno;
-        brokerCode = data.last_details_data[0].brokeraccode;
-        brokerName = data.last_details_data[0].brokername;
-        transportCode = data.last_details_data[0].transportaccode;
-        transportName = data.last_details_data[0].transportname;
-        PartyMobNo = data.last_details_data[0].PartyMobNo;
-        TransportMobNo = data.last_details_data[0].TransportMobNo;
-        UnitMobNo = data.last_details_data[0].UnitMobNo;
-        millgstno = data.last_details_data[0].MillGSTNo;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
+        NavigationSetFields(data.last_head_data, data.last_details_data);
         setIsChecked(true);
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+
+        unlockRecord();
       } else {
         console.error(
           "Failed to fetch last data:",
@@ -487,11 +534,12 @@ const SaleBill = () => {
     }
   };
 
+  // handle back button to navigate to the dashboard page.
   const handleBack = () => {
     navigate("/SaleBill-utility");
   };
 
-
+  // Navigation Funtionality 
   const handleFirstButtonClick = async () => {
     try {
       const response = await axios.get(
@@ -499,33 +547,7 @@ const SaleBill = () => {
       );
       if (response.status === 200) {
         const data = response.data;
-        newSaleid = data.first_head_data.saleid;
-        partyName = data.first_details_data[0].partyname;
-        partyCode = data.first_head_data.Ac_Code;
-        unitName = data.first_details_data[0].unitname;
-        unitCode = data.first_details_data[0].unitaccode;
-        billToName = data.first_details_data[0].billtoname;
-        billToCode = data.first_head_data.Bill_To;
-        gstrate = data.first_details_data[0].gstrate;
-        gstRateCode = data.first_head_data.GstRateCode;
-        millName = data.first_details_data[0].millname;
-        millCode = data.first_head_data.mill_code;
-        itemName = data.first_details_data[0].itemname;
-        item_Code = data.first_details_data[0].System_Code;
-        brandName = data.first_details_data[0].brandName;
-        brandCode = data.first_details_data[0].brandCode;
-        brokerCode = data.first_details_data[0].brokeraccode;
-        brokerName = data.first_details_data[0].brokername;
-        transportCode = data.first_details_data[0].transportaccode;
-        transportName = data.first_details_data[0].transportname;
-        millgstno = data.first_details_data[0].MillGSTNo;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.first_head_data,
-        }));
-
-        setLastTenderData(data.first_head_data || {});
-        setLastTenderDetails(data.first_details_data || []);
+        NavigationSetFields(data.first_head_data, data.first_details_data);
       } else {
         console.error(
           "Failed to fetch first tender data:",
@@ -545,33 +567,7 @@ const SaleBill = () => {
       );
       if (response.status === 200) {
         const data = response.data;
-        newSaleid = data.last_head_data.saleid;
-        partyName = data.last_details_data[0].partyname;
-        partyCode = data.last_head_data.Ac_Code;
-        unitName = data.last_details_data[0].unitname;
-        unitCode = data.last_details_data[0].unitaccode;
-        billToName = data.last_details_data[0].billtoname;
-        billToCode = data.last_head_data.Bill_To;
-        gstrate = data.last_details_data[0].gstrate;
-        gstRateCode = data.last_head_data.GstRateCode;
-        millName = data.last_details_data[0].millname;
-        millCode = data.last_head_data.mill_code;
-        itemName = data.last_details_data[0].itemname;
-        item_Code = data.last_details_data[0].System_Code;
-        brandName = data.last_details_data[0].brandName;
-        brandCode = data.last_details_data[0].brandCode;
-        brokerCode = data.last_details_data[0].brokeraccode;
-        brokerName = data.last_details_data[0].brokername;
-        transportCode = data.last_details_data[0].transportaccode;
-        transportName = data.last_details_data[0].transportname;
-        millgstno = data.last_details_data[0].MillGSTNo;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
-
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        NavigationSetFields(data.last_head_data, data.last_details_data);
       } else {
         console.error(
           "Failed to fetch last tender data:",
@@ -591,33 +587,7 @@ const SaleBill = () => {
       );
       if (response.status === 200) {
         const data = response.data;
-        newSaleid = data.next_head_data.saleid;
-        partyName = data.next_details_data[0].partyname;
-        partyCode = data.next_head_data.Ac_Code;
-        unitName = data.next_details_data[0].unitname;
-        unitCode = data.next_details_data[0].unitaccode;
-        billToName = data.next_details_data[0].billtoname;
-        billToCode = data.next_head_data.Bill_To;
-        gstrate = data.next_details_data[0].gstrate;
-        gstRateCode = data.next_head_data.GstRateCode;
-        millName = data.next_details_data[0].millname;
-        millCode = data.next_head_data.mill_code;
-        itemName = data.next_details_data[0].itemname;
-        item_Code = data.next_details_data[0].System_Code;
-        brandName = data.next_details_data[0].brandName;
-        brandCode = data.next_details_data[0].brandCode;
-        brokerCode = data.next_details_data[0].brokeraccode;
-        brokerName = data.next_details_data[0].brokername;
-        transportCode = data.next_details_data[0].transportaccode;
-        transportName = data.next_details_data[0].transportname;
-        millgstno = data.next_details_data[0].MillGSTNo;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.next_head_data,
-        }));
-
-        setLastTenderData(data.next_head_data || {});
-        setLastTenderDetails(data.next_details_data || []);
+        NavigationSetFields(data.next_head_data, data.next_details_data);
       } else {
         console.error(
           "Failed to fetch next tender data:",
@@ -638,32 +608,7 @@ const SaleBill = () => {
 
       if (response.status === 200) {
         const data = response.data;
-        newSaleid = data.previous_head_data.saleid;
-        partyName = data.previous_details_data[0].partyname;
-        partyCode = data.previous_head_data.Ac_Code;
-        unitName = data.previous_details_data[0].unitname;
-        unitCode = data.previous_details_data[0].unitaccode;
-        billToName = data.previous_details_data[0].billtoname;
-        billToCode = data.previous_head_data.Bill_To;
-        gstrate = data.previous_details_data[0].gstrate;
-        gstRateCode = data.previous_head_data.GstRateCode;
-        millName = data.previous_details_data[0].millname;
-        millCode = data.previous_head_data.mill_code;
-        itemName = data.previous_details_data[0].itemname;
-        item_Code = data.previous_details_data[0].System_Code;
-        brandName = data.previous_details_data[0].brandName;
-        brandCode = data.previous_details_data[0].brandCode;
-        brokerCode = data.previous_details_data[0].brokeraccode;
-        brokerName = data.previous_details_data[0].brokername;
-        transportCode = data.previous_details_data[0].transportaccode;
-        transportName = data.previous_details_data[0].transportname;
-        millgstno = data.previous_details_data[0].MillGSTNo;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.previous_head_data,
-        }));
-        setLastTenderData(data.previous_head_data || {});
-        setLastTenderDetails(data.previous_details_data || []);
+        NavigationSetFields(data.previous_head_data, data.previous_details_data);
       } else {
         console.error(
           "Failed to fetch previous tender data:",
@@ -675,6 +620,7 @@ const SaleBill = () => {
       console.error("Error during API call:", error);
     }
   };
+
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -773,7 +719,6 @@ const SaleBill = () => {
         transportName = data.last_details_data[0].transportname;
         millgstno = data.last_details_data[0].MillGSTNo;
 
-        console.log("brandName", brandName)
         setFormData({
           ...formData,
           ...data.last_head_data,
@@ -1097,11 +1042,11 @@ const SaleBill = () => {
     }
 
     updatedFormData = await calculateDependentValues(
-      "GstRateCode", // Pass the name of the field being changed
-      gstRate, // Pass the correct gstRate
+      "GstRateCode", 
+      gstRate, 
       updatedFormData,
       matchStatus,
-      gstRate // Pass gstRate explicitly to calculateDependentValues
+      gstRate 
     );
 
     setFormData(updatedFormData);
@@ -1158,11 +1103,11 @@ const SaleBill = () => {
     }
 
     updatedFormData = await calculateDependentValues(
-      "GstRateCode", // Pass the name of the field being changed
-      gstRate, // Pass the correct gstRate
+      "GstRateCode", 
+      gstRate,
       updatedFormData,
       matchStatus,
-      gstRate // Pass gstRate explicitly to calculateDependentValues
+      gstRate 
     );
 
     setFormData(updatedFormData);
@@ -1209,11 +1154,11 @@ const SaleBill = () => {
     }
 
     updatedFormData = await calculateDependentValues(
-      "GstRateCode", // Pass the name of the field being changed
-      gstRate, // Pass the correct gstRate
+      "GstRateCode",
+      gstRate, 
       updatedFormData,
       matchStatus,
-      gstRate // Pass gstRate explicitly to calculateDependentValues
+      gstRate 
     );
 
     setFormData(updatedFormData);
@@ -1292,13 +1237,6 @@ const SaleBill = () => {
         Year_Code
       );
       setMatchStatus(matchStatusResult);
-
-      // if (matchStatusResult === "TRUE") {
-      //   toast.success("GST State Codes match!");
-      // } else {
-      //   toast.warn("GST State Codes do not match.");
-      // }
-
       let gstRate = GstRate;
 
       if (!gstRate || gstRate === 0) {
@@ -1308,8 +1246,6 @@ const SaleBill = () => {
 
         gstRate = igstRate > 0 ? igstRate : cgstRate + sgstRate;
       }
-
-      // Perform the calculation after setting BillFrom
       updatedFormData = await calculateDependentValues(
         "GstRateCode",
         GstRate,
@@ -1354,18 +1290,20 @@ const SaleBill = () => {
     });
   };
 
-  const handleGstCode = async (code, Rate) => {
+  const handleGstCode = async (code, Rate, name, gstId) => {
     setGstCode(code);
     let rate = parseFloat(Rate);
     setFormData({
       ...formData,
       GstRateCode: code,
+      gstid: gstId
     });
     setGstRate(rate);
 
     const updatedFormData = {
       ...formData,
       GstRateCode: code,
+      gstid: gstId
     };
 
     try {
@@ -1376,13 +1314,12 @@ const SaleBill = () => {
       );
       setMatchStatus(matchStatusResult);
 
-      // Calculate the dependent values based on the match status
       const newFormData = await calculateDependentValues(
         "GstRateCode",
         rate,
         updatedFormData,
-        matchStatusResult, // Use the matchStatusResult
-        rate // Explicitly pass the gstRate
+        matchStatusResult,
+        rate 
       );
 
       setFormData(newFormData);
@@ -1851,7 +1788,6 @@ const SaleBill = () => {
                 marginRight: "10px",
               }}
             >
-
               <button
                 className="btn btn-primary"
                 onClick={() => openPopup("add")}
@@ -2212,57 +2148,74 @@ const SaleBill = () => {
 
         <div className="SaleBill-row">
           <Grid container spacing={2}>
-            <Grid item xs={6} md={1}>
-              <TextField
-                type="text"
-                fullWidth
-                label="SubTotal"
-                variant="outlined"
-                name="subTotal"
-                autoComplete="off"
-                value={formData.subTotal}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                disabled={!isEditing && addOneButtonEnabled}
-                inputProps={{
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
-                  onInput: validateNumericInput,
-                }}
-              />
-            </Grid>
 
-            <Grid container spacing={1} item xs={6} md={2}>
-              <Grid item xs={6}>
+            <Grid container spacing={1} alignItems="center" style={{ float: "right" }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">SubTotal:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
                 <TextField
-                  type="text"
+                  variant="outlined"
+                  name="subTotal"
+                  autoComplete="off"
+                  value={formData.subTotal}
+                  disabled={!isEditing && addOneButtonEnabled}
                   fullWidth
-                  label="LESS_FRT_RATE"
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.subTotal}
+                  helperText={formErrors.subTotal}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+            </Grid>
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Freight:</label>
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
                   name="LESS_FRT_RATE"
                   autoComplete="off"
                   value={formData.LESS_FRT_RATE}
                   onChange={handleChange}
                   onKeyDown={handleKeyDownCalculations}
                   disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.LESS_FRT_RATE}
+                  helperText={formErrors.LESS_FRT_RATE}
+                  size="small"
                   inputProps={{
+                    sx: { textAlign: 'right' },
                     inputMode: 'decimal',
                     pattern: '[0-9]*[.,]?[0-9]+',
                     onInput: validateNumericInput,
                   }}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={1}>
                 <TextField
-                  type="text"
-                  fullWidth
-                  label="freight"
+                  variant="outlined"
                   name="freight"
                   autoComplete="off"
                   value={formData.freight}
-                  onChange={handleChange}
                   onKeyDown={handleKeyDownCalculations}
+                  onChange={handleChange}
                   disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.freight}
+                  helperText={formErrors.freight}
+                  size="small"
                   inputProps={{
+                    sx: { textAlign: 'right' },
                     inputMode: 'decimal',
                     pattern: '[0-9]*[.,]?[0-9]+',
                     onInput: validateNumericInput,
@@ -2271,361 +2224,441 @@ const SaleBill = () => {
               </Grid>
             </Grid>
 
-            <Grid item xs={12} md={1}>
-
-              <TextField
-                type="text"
-                fullWidth
-                label='TaxableAmount'
-                name="TaxableAmount"
-                autoComplete="off"
-                value={formData.TaxableAmount}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                disabled={!isEditing && addOneButtonEnabled}
-                inputProps={{
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
-                  onInput: validateNumericInput,
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <Grid container spacing={2}>
-                <Grid item xs={6} >
-                  <TextField
-                    type="text"
-                    fullWidth
-                    name="CGSTRate"
-                    label="CGST Rate"
-                    autoComplete="off"
-                    value={formData.CGSTRate}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    name="CGSTAmount"
-                    label="CGST Amount"
-                    autoComplete="off"
-                    value={formData.CGSTAmount}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Taxable Amount:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="TaxableAmount"
+                  value={formData.TaxableAmount}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDownCalculations}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.TaxableAmount)}
+                  helperText={formErrors.TaxableAmount || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
               </Grid>
             </Grid>
 
-            <Grid item xs={12} md={2}>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    name="SGSTRate"
-                    label="SGST Rate"
-                    autoComplete="off"
-                    value={formData.SGSTRate}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    name="SGSTAmount"
-                    label="SGST Amount"
-                    autoComplete="off"
-                    value={formData.SGSTAmount}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">CGST:</label>
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+
+                  variant="outlined"
+                  name="CGSTRate"
+                  autoComplete="off"
+                  value={formData.CGSTRate}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.CGSTRate}
+                  helperText={formErrors.CGSTRate}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+
+                  variant="outlined"
+                  name="CGSTAmount"
+                  autoComplete="off"
+                  value={formData.CGSTAmount}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.CGSTAmount}
+                  helperText={formErrors.CGSTAmount}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
               </Grid>
             </Grid>
 
-            <Grid item xs={12} md={2}>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    name="IGSTRate"
-                    label="IGST Rate"
-                    autoComplete="off"
-                    value={formData.IGSTRate}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    name="IGSTAmount"
-                    label="IGST Amount"
-                    autoComplete="off"
-                    value={formData.IGSTAmount}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">SGST:</label>
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  name="SGSTRate"
+                  autoComplete="off"
+                  value={formData.SGSTRate}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.SGSTRate}
+                  helperText={formErrors.SGSTRate}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  name="SGSTAmount"
+                  autoComplete="off"
+                  value={formData.SGSTAmount}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.SGSTAmount}
+                  helperText={formErrors.SGSTAmount}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
               </Grid>
             </Grid>
 
-            <Grid item xs={12} md={2}>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    label='RateDiff'
-                    name="RateDiff"
-                    autoComplete="off"
-                    value={formData.RateDiff}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    label='RateDiffAmount'
-                    name="RateDiffAmount"
-                    autoComplete="off"
-                    value={calculateRateDiffAmount()}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">IGST:</label>
               </Grid>
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={1} item xs={12} mt={1}>
-            <Grid item xs={6} md={1}>
-              <TextField
-                type="text"
-                fullWidth
-                label='OTHER_AMT'
-                name="OTHER_AMT"
-                autoComplete="off"
-                value={formData.OTHER_AMT}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                disabled={!isEditing && addOneButtonEnabled}
-                inputProps={{
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
-                  onInput: validateNumericInput,
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={6} md={1}>
-              <TextField
-                type="text"
-                fullWidth
-                name="cash_advance"
-                label='cash_advance'
-                autoComplete="off"
-                value={formData.cash_advance}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                disabled={!isEditing && addOneButtonEnabled}
-                inputProps={{
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
-                  onInput: validateNumericInput,
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={6} md={1}>
-              <TextField
-                type="text"
-                fullWidth
-                name="RoundOff"
-                label='RoundOff'
-                autoComplete="off"
-                value={formData.RoundOff}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                disabled={!isEditing && addOneButtonEnabled}
-              />
-            </Grid>
-
-            <Grid item xs={6} md={2}>
-              <TextField
-                type="text"
-                fullWidth
-                label='Bill_Amount'
-                name="Bill_Amount"
-                autoComplete="off"
-                value={formData.Bill_Amount}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                style={{ color: "red", fontWeight: "bold" }}
-                disabled={!isEditing && addOneButtonEnabled}
-                inputProps={{
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
-                  onInput: validateNumericInput,
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <Grid container spacing={1}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    label='TCS_Rate'
-                    fullWidth
-                    name="TCS_Rate"
-                    autoComplete="off"
-                    value={formData.TCS_Rate}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    fullWidth
-                    label='TCS_Amt'
-                    name="TCS_Amt"
-                    autoComplete="off"
-                    value={formData.TCS_Amt}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  name="IGSTRate"
+                  autoComplete="off"
+                  value={formData.IGSTRate}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.IGSTRate}
+                  helperText={formErrors.IGSTRate}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  name="IGSTAmount"
+                  autoComplete="off"
+                  value={formData.IGSTAmount}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.IGSTAmount}
+                  helperText={formErrors.IGSTAmount}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
               </Grid>
             </Grid>
 
-            <Grid item xs={12} md={2}>
-              <TextField
-                type="text"
-                fullWidth
-                label='TCS_Net_Payable'
-                name="TCS_Net_Payable"
-                autoComplete="off"
-                style={{ color: "red", fontWeight: "bold" }}
-                value={formData.TCS_Net_Payable}
-                onChange={handleChange}
-                onKeyDown={handleKeyDownCalculations}
-                disabled={!isEditing && addOneButtonEnabled}
-                inputProps={{
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
-                  onInput: validateNumericInput,
-                }}
-              />
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">RateDiff:</label>
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="RateDiff"
+                  value={formData.RateDiff}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDownCalculations}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.RateDiff)}
+                  helperText={formErrors.RateDiff || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="RateDiffAmount"
+                  value={calculateRateDiffAmount()}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDownCalculations}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.RateDiffAmount)}
+                  helperText={formErrors.RateDiffAmount || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
             </Grid>
 
-            <Grid item xs={12} md={2}>
-              <Grid container spacing={1}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    label='TDS_Rate'
-                    fullWidth
-                    name="TDS_Rate"
-                    autoComplete="off"
-                    value={formData.TDS_Rate}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="text"
-                    label='TDS_Amt'
-                    fullWidth
-                    name="TDS_Amt"
-                    autoComplete="off"
-                    value={formData.TDS_Amt !== null ? formData.TDS_Amt : ""}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDownCalculations}
-                    disabled={!isEditing && addOneButtonEnabled}
-                    inputProps={{
-                      inputMode: 'decimal',
-                      pattern: '[0-9]*[.,]?[0-9]+',
-                      onInput: validateNumericInput,
-                    }}
-                  />
-                </Grid>
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Other +/-:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="OTHER_AMT"
+                  value={formData.OTHER_AMT}
+                  onKeyDown={handleKeyDownCalculations}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.OTHER_AMT)}
+                  helperText={formErrors.OTHER_AMT || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                  }}
+
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Cash Advance:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="cash_advance"
+                  value={formData.cash_advance}
+                  onKeyDown={handleKeyDownCalculations}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.cash_advance)}
+                  helperText={formErrors.cash_advance || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Round Off:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="RoundOff"
+                  value={formData.RoundOff}
+                  onKeyDown={handleKeyDownCalculations}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.RoundOff)}
+                  helperText={formErrors.RoundOff || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Bill Amount:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="Bill_Amount"
+                  value={formData.Bill_Amount}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.Bill_Amount)}
+                  helperText={formErrors.Bill_Amount || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">TCS:</label>
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="TCS_Rate"
+                  value={formData.TCS_Rate}
+                  onKeyDown={handleKeyDownCalculations}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.TCS_Rate)}
+                  helperText={formErrors.TCS_Rate || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="TCS_Amt"
+                  value={formData.TCS_Amt}
+                  onKeyDown={handleKeyDownCalculations}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.TCS_Amt)}
+                  helperText={formErrors.TCS_Amt || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">Net Payable:</label>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="TCS_Net_Payable"
+                  value={formData.TCS_Net_Payable}
+                  onChange={handleChange}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.TCS_Net_Payable)}
+                  helperText={formErrors.TCS_Net_Payable || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+              <Grid item xs={1}>
+                <label className="debitCreditNote-form-label">TDS:</label>
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="TDS_Rate"
+                  value={formData.TDS_Rate}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDownCalculations}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.TDS_Rate)}
+                  helperText={formErrors.TDS_Rate || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={1}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  name="TDS_Amt"
+                  value={formData.TDS_Amt}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDownCalculations}
+                  disabled={!isEditing && addOneButtonEnabled}
+                  error={Boolean(formErrors.TDS_Amt)}
+                  helperText={formErrors.TDS_Amt || ''}
+                  size="small"
+                  inputProps={{
+                    sx: { textAlign: 'right' },
+                    inputMode: 'decimal',
+                    pattern: '[0-9]*[.,]?[0-9]+',
+                    onInput: validateNumericInput,
+                  }}
+                />
               </Grid>
             </Grid>
           </Grid>

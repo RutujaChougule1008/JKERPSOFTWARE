@@ -12,8 +12,18 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./SugarSaleReturnPurchase.css";
 import { HashLoader } from "react-spinners";
+import { useRecordLocking } from "../../../hooks/useRecordLocking";
 import PuchNoFromReturnPurchaseHelp from "../../../Helper/PuchNoFromReturnPurchaseHelp";
-import { Grid, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography } from '@mui/material';
+import {
+  Grid,
+  TextField,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Typography,
+} from "@mui/material";
 
 //Global Variables
 var newPrid = "";
@@ -80,6 +90,7 @@ const SugarSaleReturnPurchase = () => {
   //In utility page record doubleClicked that recod show for edit functionality
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
   const navigate = useNavigate();
   const setFocusTaskdate = useRef(null);
   const [isHandleChange, setIsHandleChange] = useState(false);
@@ -158,10 +169,21 @@ const SugarSaleReturnPurchase = () => {
   const [matchStatus, setMatchStatus] = useState(null);
   const [type, setType] = useState("");
 
+  //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
+  const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(
+    formData.doc_no,
+    undefined,
+    companyCode,
+    Year_Code,
+    "sugar_sale_return_purchase"
+  );
+
   // Function to format the truck number
   const formatTruckNumber = (value) => {
-    const cleanedValue = value.replace(/\s+/g, '').toUpperCase();
-    return cleanedValue.length <= 10 ? cleanedValue : cleanedValue.substring(0, 10);
+    const cleanedValue = value.replace(/\s+/g, "").toUpperCase();
+    return cleanedValue.length <= 10
+      ? cleanedValue
+      : cleanedValue.substring(0, 10);
   };
 
   const handleChange = async (event) => {
@@ -198,7 +220,6 @@ const SugarSaleReturnPurchase = () => {
       setFormData(updatedFormData);
     }
   };
-
 
   //Handle Date Change
   const handleDateChange = (event, fieldName) => {
@@ -266,15 +287,44 @@ const SugarSaleReturnPurchase = () => {
     setPurchno("");
   };
 
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
+  const handleEdit = async () => {
+    axios
+      .get(
+        `${API_URL}/get-sugarpurchasereturn-by-id?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+      )
+      .then((response) => {
+        const data = response.data;
+
+        console.log(data);
+
+        const isLockedNew = data.last_head_data.LockedRecord;
+        const isLockedByUserNew = data.last_head_data.LockedUser;
+
+        if (isLockedNew) {
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord();
+        }
+        setFormData({
+          ...formData,
+          ...data.last_head_data,
+        });
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert(
+          "This record is already deleted! Showing the previous record.",
+          error
+        );
+      });
   };
 
   const handleSaveOrUpdate = async () => {
@@ -313,7 +363,7 @@ const SugarSaleReturnPurchase = () => {
       ...initialFormData,
       ...filteredFormData,
       GstRateCode: gstCode || gstRateCode,
-      Tran_Type: "PR" || type
+      Tran_Type: "PR" || type,
     };
 
     if (isEditMode) {
@@ -354,6 +404,7 @@ const SugarSaleReturnPurchase = () => {
         const updateApiUrl = `${API_URL}/update-sugarpurchasereturn?prid=${newPrid}`;
         const response = await axios.put(updateApiUrl, requestData);
         toast.success("Data updated successfully!");
+        unlockRecord();
         setTimeout(() => {
           window.location.reload();
         }, 1000);
@@ -390,19 +441,32 @@ const SugarSaleReturnPurchase = () => {
   };
 
   const handleDelete = async () => {
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete this Task No ${formData.doc_no}?`
-    );
-    if (isConfirmed) {
-      setIsEditMode(false);
-      setAddOneButtonEnabled(true);
-      setEditButtonEnabled(true);
-      setDeleteButtonEnabled(true);
-      setBackButtonEnabled(true);
-      setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
-      setIsLoading(true);
-      try {
+    try {
+      const response = await axios.get(
+        `${API_URL}/get-sugarpurchasereturn-by-id?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}`
+      );
+
+      const data = response.data;
+      const isLockedNew = data.last_head_data.LockedRecord;
+      const isLockedByUserNew = data.last_head_data.LockedUser;
+
+      if (isLockedNew) {
+        window.alert(`This record is locked by ${isLockedByUserNew}`);
+        return;
+      }
+      const isConfirmed = window.confirm(
+        `Are you sure you want to delete this Task No ${formData.doc_no}?`
+      );
+      if (isConfirmed) {
+        setIsEditMode(false);
+        setAddOneButtonEnabled(true);
+        setEditButtonEnabled(true);
+        setDeleteButtonEnabled(true);
+        setBackButtonEnabled(true);
+        setSaveButtonEnabled(false);
+        setCancelButtonEnabled(false);
+        setIsLoading(true);
+
         const deleteApiUrl = `${API_URL}/delete-sugarpurchasereturn?prid=${newPrid}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${formData.Tran_Type}`;
         const response = await axios.delete(deleteApiUrl);
 
@@ -416,13 +480,13 @@ const SugarSaleReturnPurchase = () => {
             response.statusText
           );
         }
-      } catch (error) {
-        console.error("Error during API call:", error);
-      } finally {
-        setIsLoading(false);
+      } else {
+        console.log("Deletion cancelled");
       }
-    } else {
-      console.log("Deletion cancelled");
+    } catch (error) {
+      console.error("Error during API call:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -482,7 +546,7 @@ const SugarSaleReturnPurchase = () => {
         setLastTenderData(last_head_data || {});
         setLastTenderDetails(enrichedDetails);
         setType(last_head_data.Tran_Type);
-        console.log("TYPE", last_head_data.Tran_Type);
+        unlockRecord();
       } else {
         console.error(
           "Failed to fetch last data:",
@@ -819,24 +883,6 @@ const SugarSaleReturnPurchase = () => {
     }
   };
 
-  useEffect(() => {
-    if (!isChecked) {
-      fetchCompanyGSTCode(companyCode);
-    }
-  }, [isChecked, companyCode]);
-
-  const fetchCompanyGSTCode = async (company_code) => {
-    try {
-      const { data } = await axios.get(
-        `http://localhost:8080/get_company_by_code?company_code=${company_code}`
-      );
-      setGstNo(data.GST);
-    } catch (error) {
-      console.error("Error:", error);
-      setGstNo("");
-    }
-  };
-
   const calculateTotalItemAmount = (users) => {
     return users
       .filter((user) => user.rowaction !== "delete" && user.rowaction !== "DNU")
@@ -978,8 +1024,8 @@ const SugarSaleReturnPurchase = () => {
     };
     const updatedUsers = isExisting
       ? users.map((user) =>
-        user.detail_id === details.detail_id ? newDetailData : user
-      )
+          user.detail_id === details.detail_id ? newDetailData : user
+        )
       : [...users, newDetailData];
     setUsers(updatedUsers);
     setLastTenderDetails(updatedUsers || []);
@@ -1027,7 +1073,6 @@ const SugarSaleReturnPurchase = () => {
           ic: detail.ic || existingUser?.ic || 0,
           rowaction: existingUser?.rowaction || "Normal",
           detail_id: detail.prdid,
-      
         };
       });
       setUsers(updatedUsers);
@@ -1431,7 +1476,7 @@ const SugarSaleReturnPurchase = () => {
       );
 
       setFormData(newFormData);
-    } catch (error) { }
+    } catch (error) {}
   };
 
   const handleBroker = (code, accoid) => {
@@ -1444,7 +1489,7 @@ const SugarSaleReturnPurchase = () => {
   };
 
   const validateNumericInput = (e) => {
-    e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+    e.target.value = e.target.value.replace(/[^0-9.]/g, "");
   };
 
   return (
@@ -1470,6 +1515,7 @@ const SugarSaleReturnPurchase = () => {
             cancelButtonEnabled={cancelButtonEnabled}
             handleBack={handleBack}
             backButtonEnabled={backButtonEnabled}
+            permissions={permissions}
           />
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
@@ -1506,7 +1552,7 @@ const SugarSaleReturnPurchase = () => {
               size="small"
             />
           </Grid>
-          <label style={{ marginLeft: '10px' }}>Purchase No</label>
+          <label style={{ marginLeft: "10px" }}>Purchase No</label>
           <div className="SugarSaleReturnPurchase-col">
             <div className="SugarSaleReturnPurchase-form-group">
               <PuchNoFromReturnPurchaseHelp
@@ -1734,7 +1780,6 @@ const SugarSaleReturnPurchase = () => {
               />
             </div>
           </div>
-
         </div>
 
         {isLoading && (
@@ -1746,7 +1791,7 @@ const SugarSaleReturnPurchase = () => {
         )}
 
         {/*detail part popup functionality and Validation part Grid view */}
-        <div >
+        <div>
           {showPopup && (
             <div className="modal" role="dialog" style={{ display: "block" }}>
               <div className="modal-dialog" role="document">
@@ -1945,8 +1990,8 @@ const SugarSaleReturnPurchase = () => {
                   <tr key={user.id}>
                     <td>
                       {user.rowaction === "add" ||
-                        user.rowaction === "update" ||
-                        user.rowaction === "Normal" ? (
+                      user.rowaction === "update" ||
+                      user.rowaction === "Normal" ? (
                         <>
                           <button
                             className="btn btn-warning"
@@ -2083,7 +2128,12 @@ const SugarSaleReturnPurchase = () => {
         <br></br>
 
         <div className="SugarSaleReturnPurchase-row">
-          <Grid container spacing={1} alignItems="center" style={{ float: "right" }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ float: "right" }}
+          >
             <Grid item xs={1}>
               <label className="debitCreditNote-form-label">Subtotal:</label>
             </Grid>
@@ -2101,15 +2151,20 @@ const SugarSaleReturnPurchase = () => {
                 helperText={formErrors.subTotal}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }} >
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
               <label className="debitCreditNote-form-label">Add Frt. Rs:</label>
             </Grid>
@@ -2126,9 +2181,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  sx: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  sx: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2146,17 +2201,24 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  sx: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  sx: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
-              <label className="SugarSaleReturnPurchase-form-label">CGST:</label>
+              <label className="SugarSaleReturnPurchase-form-label">
+                CGST:
+              </label>
             </Grid>
             <Grid item xs={1} sm={1}>
               <TextField
@@ -2171,9 +2233,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  sx: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  sx: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2191,17 +2253,24 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  sx: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  sx: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
-            <Grid item xs={1} >
-              <label className="SugarSaleReturnPurchase-form-label">SGST:</label>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
+            <Grid item xs={1}>
+              <label className="SugarSaleReturnPurchase-form-label">
+                SGST:
+              </label>
             </Grid>
             <Grid item xs={12} sm={1}>
               <TextField
@@ -2216,9 +2285,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2236,17 +2305,24 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
-            <Grid item xs={1} >
-              <label className="SugarSaleReturnPurchase-form-label">IGST:</label>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
+            <Grid item xs={1}>
+              <label className="SugarSaleReturnPurchase-form-label">
+                IGST:
+              </label>
             </Grid>
             <Grid item xs={12} sm={1}>
               <TextField
@@ -2261,9 +2337,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2281,18 +2357,25 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
 
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
-              <label className="SugarSaleReturnPurchase-form-label">Rate Diff:</label>
+              <label className="SugarSaleReturnPurchase-form-label">
+                Rate Diff:
+              </label>
             </Grid>
             <Grid item xs={12} sm={1}>
               <TextField
@@ -2307,9 +2390,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2327,15 +2410,20 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: "-6px" }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
               <label className="debitCreditNote-form-label">MISC:</label>
             </Grid>
@@ -2354,18 +2442,26 @@ const SugarSaleReturnPurchase = () => {
                 helperText={formErrors.OTHER_AMT}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
 
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: "-6px" }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
-              <label className="debitCreditNote-form-label"> Cash Advance:</label>
+              <label className="debitCreditNote-form-label">
+                {" "}
+                Cash Advance:
+              </label>
             </Grid>
             <Grid item xs={12} sm={2}>
               <TextField
@@ -2382,15 +2478,20 @@ const SugarSaleReturnPurchase = () => {
                 helperText={formErrors.cash_advance}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: "-6px" }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
               <label className="debitCreditNote-form-label">Round Off</label>
             </Grid>
@@ -2409,12 +2510,17 @@ const SugarSaleReturnPurchase = () => {
                 helperText={formErrors.RoundOff}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
+                  style: { textAlign: "right" },
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: "-6px" }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
               <label className="debitCreditNote-form-label">Bill Amount</label>
             </Grid>
@@ -2433,17 +2539,24 @@ const SugarSaleReturnPurchase = () => {
                 helperText={formErrors.Bill_Amount}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
-              <label className="SugarSaleReturnPurchase-form-label">TCS %:</label>
+              <label className="SugarSaleReturnPurchase-form-label">
+                TCS %:
+              </label>
             </Grid>
             <Grid item xs={12} sm={1}>
               <TextField
@@ -2458,9 +2571,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2478,17 +2591,24 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: '-6px' }}>
-            <Grid item xs={1} >
-              <label className="SugarSaleReturnPurchase-form-label">TDS %:</label>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
+            <Grid item xs={1}>
+              <label className="SugarSaleReturnPurchase-form-label">
+                TDS %:
+              </label>
             </Grid>
             <Grid item xs={12} sm={1}>
               <TextField
@@ -2503,9 +2623,9 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
@@ -2523,16 +2643,21 @@ const SugarSaleReturnPurchase = () => {
                 InputLabelProps={{ shrink: true }}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />
             </Grid>
           </Grid>
 
-          <Grid container spacing={1} alignItems="center" style={{ marginTop: "-6px" }}>
+          <Grid
+            container
+            spacing={1}
+            alignItems="center"
+            style={{ marginTop: "-6px" }}
+          >
             <Grid item xs={1}>
               <label className="debitCreditNote-form-label">Net Payable</label>
             </Grid>
@@ -2551,9 +2676,9 @@ const SugarSaleReturnPurchase = () => {
                 helperText={formErrors.TCS_Net_Payable}
                 size="small"
                 inputProps={{
-                  style: { textAlign: 'right' },
-                  inputMode: 'decimal',
-                  pattern: '[0-9]*[.,]?[0-9]+',
+                  style: { textAlign: "right" },
+                  inputMode: "decimal",
+                  pattern: "[0-9]*[.,]?[0-9]+",
                   onInput: validateNumericInput,
                 }}
               />

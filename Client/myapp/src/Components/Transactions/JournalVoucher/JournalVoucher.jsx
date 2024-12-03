@@ -93,6 +93,7 @@ const JournalVoucher = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
 
   const [formData, setFormData] = useState(initialFormData);
 
@@ -881,6 +882,7 @@ const JournalVoucher = () => {
           cancelButtonEnabled={cancelButtonEnabled}
           handleBack={handleBack}
           backButtonEnabled={backButtonEnabled}
+          permissions={permissions}
         />
         <div>
           {/* Navigation Buttons */}

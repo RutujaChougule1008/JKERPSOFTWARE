@@ -4,11 +4,14 @@ import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
+import { useRecordLocking } from "../../../hooks/useRecordLocking";
 import "react-toastify/dist/ReactToastify.css";
 import AccountMasterHelp from "../../../Helper/AccountMasterHelp";
 import ItemMasterHelp from "../../../Helper/SystemmasterHelp";
 import GSTRateMasterHelp from "../../../Helper/GSTRateMasterHelp";
 import "../CommissionBill/CommissionBill.css";
+import { HashLoader } from 'react-spinners';
+
 
 const companyCode = sessionStorage.getItem("Company_Code");
 const Year_Code = sessionStorage.getItem("Year_Code");
@@ -58,6 +61,7 @@ const CommissionBill = () => {
   const [item, setItem] = useState();
   const [supplierGSTStateCode, setSupplierGSTStateCode] = useState();
   const [matchStatus, setMatchStatus] = useState(null);
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -69,26 +73,13 @@ const CommissionBill = () => {
   const selectedVoucherNo = location.state?.selectedVoucherNo;
   const selectedVoucherType = location.state?.selectedVoucherType;
 
+  const permissions = location.state?.permissionsData;
+
   const TranTypeInputRef = useRef(null);
-  const isTDSRef = useRef(null);
-  const changeNoInputRef = useRef(null);
-
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    if (isNaN(date)) return null; // Handle invalid dates
-    let day = date.getDate();
-    let month = date.getMonth() + 1;
-    let year = date.getFullYear();
-
-    day = day < 10 ? "0" + day : day;
-    month = month < 10 ? "0" + month : month;
-
-    return `${year}-${month}-${day}`;
-  };
 
   const initialFormData = {
     doc_no: "",
-    doc_date: formatDate(new Date()),
+    doc_date: new Date().toISOString().split("T")[0],
     link_no: 0,
     link_type: "",
     link_id: 0,
@@ -155,26 +146,33 @@ const CommissionBill = () => {
 
   const [formData, setFormData] = useState(initialFormData);
 
-  useEffect(() => {
-    if (isEditing) {
-      if (TranTypeInputRef.current) {
-        TranTypeInputRef.current.focus();
-      }
-    } else if (cancelButtonClicked) {
-      if (changeNoInputRef.current) {
-        changeNoInputRef.current.focus();
-      }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "TDS") {
+      setFormData({
+        ...formData,
+        [name]: value, 
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
     }
-    if (formData.Tran_Type && !addOneButtonEnabled && !isEditing) {
-      fetchLastRecord(formData.Tran_Type);
-    }
-  }, [
-    isEditing,
-    cancelButtonClicked,
-    formData.Tran_Type,
-    !addOneButtonEnabled,
-    !isEditing,
-  ]);
+  };
+
+  //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
+  const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(
+    formData.doc_no,
+    tranType||selectedVoucherType,
+    companyCode,
+    Year_Code,
+    "commission_bill"
+  );
+
+  const validateNumericInput = (e) => {
+    e.target.value = e.target.value.replace(/[^0-9.]/g, "");
+  };
 
   const handleSelectKeyDown = (event, field) => {
     const options = {
@@ -216,24 +214,16 @@ const CommissionBill = () => {
       );
       return data.match_status;
     } catch (error) {
-      toast.error("Error checking GST State Code match.");
       console.error("Couldn't able to match GST State Code:", error);
       return error;
     }
   };
 
   const handleAcCode = async (code, accoid) => {
-    debugger;
     setSupplier(code);
     try {
-      // Fetch the match status from the API
       const matchStatus = await checkMatchStatus(code, companyCode, Year_Code);
       const match = matchStatus === "TRUE";
-
-      // Log the match status and any change in the GST rate
-      console.log("Match Status:", match, "Current GST Rate:", GstRate);
-
-      // Calculate new GST rates based on the match status
       const rate = parseFloat(GstRate) || 0;
       let newFormData = {
         ...formData,
@@ -245,7 +235,6 @@ const CommissionBill = () => {
         igst_rate: match ? 0 : rate,
       };
 
-      // Update match status and recalculate dependent GST amounts
       setMatchStatus(match);
       setFormData(newFormData);
       calculateAndSetGSTAmounts(newFormData);
@@ -255,7 +244,6 @@ const CommissionBill = () => {
     }
   };
   const calculateAndSetGSTAmounts = async (formData) => {
-    // Assuming `calculateGSTAmounts` needs to use the new rates to update other values
     const taxableAmount = parseFloat(formData.texable_amount) || 0;
     const cgstAmount = (taxableAmount * formData.cgst_rate) / 100;
     const sgstAmount = (taxableAmount * formData.sgst_rate) / 100;
@@ -267,8 +255,6 @@ const CommissionBill = () => {
       sgst_amount: sgstAmount,
       igst_amount: igstAmount,
     };
-
-    // Now updating the formData state with the new calculated values
     setFormData(updatedFormData);
   };
 
@@ -300,10 +286,9 @@ const CommissionBill = () => {
   };
 
   const handleGSTCode = async (code, Rate) => {
-    const rate = parseFloat(Rate) || 0; // Simplified since both conditions were identical
+    const rate = parseFloat(Rate) || 0;
 
     try {
-      // Check if the GST state codes match and then calculate the tax rates accordingly
       const sameState = await checkMatchStatus(
         formData.ac_code,
         companyCode,
@@ -322,11 +307,8 @@ const CommissionBill = () => {
       setGstRateCode(code);
       setGstRate(rate);
       setFormData(newFormData);
-
-      // Re-calculate dependent GST amounts using the updated rates
       calculateAndSetGSTAmounts(newFormData);
     } catch (error) {
-      // Log and display an error message
       console.error("Error handling GST Code change:", error);
       toast.error("Failed to update GST details. Please try again.");
     }
@@ -375,6 +357,7 @@ const CommissionBill = () => {
     }));
   };
 
+  //calculations
   const calculateBags = (qntl, packing) => {
     return (qntl / packing) * 100;
   };
@@ -452,26 +435,215 @@ const CommissionBill = () => {
     return billAmount;
   };
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
+  // const handleKeyDownCalculations = async (event) => {
+  //   if (event.key === "Tab") {
+  //     debugger;
+  //     const { name, value } = event.target;
+  //     let newFormData = { ...formData };
+
+  //     // Check if states match for GST calculations
+  //     const sameState = await checkMatchStatus(
+  //       formData.ac_code,
+  //       companyCode,
+  //       Year_Code
+  //     );
+  //     const parseNumber = (num) => parseFloat(num) || 0;
+  //     if (
+  //       [
+  //         "Frieght_Rate",
+  //         "qntl",
+  //         "sale_rate",
+  //         "texable_amount",
+  //         "mill_rate",
+  //         "resale_commission",
+  //         "BANK_COMMISSION",
+  //         "misc_amount",
+  //         "packing",
+  //         "purc_rate",
+  //       ].includes(name)
+  //     ) {
+  //       const freightRate = parseNumber(formData.Frieght_Rate);
+  //       const qntl = parseNumber(formData.qntl);
+  //       const saleRate = parseNumber(formData.sale_rate);
+  //       const millRate = parseNumber(formData.mill_rate);
+  //       const resaleCommission = parseNumber(formData.resale_commission);
+  //       const bankCommission = parseNumber(formData.BANK_COMMISSION);
+  //       const miscAmount = parseNumber(formData.misc_amount);
+  //       const purcRate = parseNumber(formData.purc_rate);
+        
+
+  //       const rDiffTenderRate = calculateRDiffTenderRate(
+  //         saleRate,
+  //         millRate,
+  //         purcRate
+  //       );
+  //       const tenderDiffRate = calculateTenderDiffRateAmount(
+  //         rDiffTenderRate,
+  //         qntl
+  //       );
+  //       const packing = parseInt(formData.packing) || 0;
+  //       const bag = calculateBags(qntl, packing);
+  //       const freightAmt = calculateFreight(freightRate, qntl);
+  //       const resaleRate = calculateResaleRate(resaleCommission, qntl);
+  //       const subtotal = calculateSubtotal(rDiffTenderRate, qntl, resaleRate);
+  //       const taxable = calculateTaxable(subtotal, freightAmt);
+
+  //       const tdsBase = formData.TDS ? parseNumber(formData.TDS) : taxable; 
+
+  //       const cgstRate = parseNumber(formData.cgst_rate);
+  //       const sgstRate = parseNumber(formData.sgst_rate);
+  //       const igstRate = parseNumber(formData.igst_rate);
+
+  //       const cgstAmount = sameState
+  //         ? calculateCGSTAmount(taxable, cgstRate)
+  //         : 0;
+  //       const sgstAmount = sameState
+  //         ? calculateSGSTAmount(taxable, sgstRate)
+  //         : 0;
+  //       const igstAmount = !sameState
+  //         ? calculateIGSTAmount(taxable, igstRate)
+  //         : 0;
+
+  //       const billAmount = calculateBillAmount(
+  //         taxable,
+  //         cgstAmount,
+  //         sgstAmount,
+  //         igstAmount,
+  //         bankCommission,
+  //         miscAmount
+  //       );
+
+  //       const tcsRate =
+  //         formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
+  //       const tcsAmount =
+  //         formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+
+  //       const tdsRate =
+  //         formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
+  //       const tdsAmount =
+  //         formData.IsTDS === "Y"
+  //           ? calculateTDSAmount(tdsBase || taxable, tdsRate)
+  //           : 0;
+
+  //       const hasTCS = tcsAmount > 0;
+  //       const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
+
+  //       newFormData = {
+  //         ...newFormData,
+  //         bags: bag,
+  //         Frieght_amt: freightAmt,
+  //         commission_amount: tenderDiffRate,
+  //         resale_rate: resaleRate,
+  //         subtotal: subtotal,
+  //         texable_amount: taxable,
+  //         cgst_amount: cgstAmount,
+  //         sgst_amount: sgstAmount,
+  //         igst_amount: igstAmount,
+  //         bill_amount: billAmount,
+  //         TCS_Amt: tcsAmount,
+  //         TDSAmount: tdsAmount,
+  //         TCS_Net_Payable: netPayable,
+  //         TDS: tdsBase,
+  //         sale_rate: purcRate > 0 ? 0 : saleRate,
+  //       };
+  //     }
+
+  //     // Perform GST-specific calculations
+  //     if (
+  //       [
+  //         "cgst_rate",
+  //         "sgst_rate",
+  //         "texable_amount",
+  //         "cgst_amount",
+  //         "sgst_amount",
+  //         "TCS_Rate",
+  //         "bill_amount",
+  //         "TDS_Per",
+  //         "igst_rate",
+  //         "BANK_COMMISSION",
+  //         "misc_amount",
+  //       ].includes(name)
+  //     ) {
+  //       const cgstRate = parseNumber(formData.cgst_rate);
+  //       const sgstRate = parseNumber(formData.sgst_rate);
+  //       const igstRate = parseNumber(formData.igst_rate);
+  //       const taxable = parseNumber(formData.texable_amount);
+  //       const tdsBase = parseNumber(formData.TDS);
+
+  //       const cgstAmount = sameState
+  //         ? calculateCGSTAmount(taxable, cgstRate)
+  //         : 0;
+  //       const sgstAmount = sameState
+  //         ? calculateSGSTAmount(taxable, sgstRate)
+  //         : 0;
+  //       const igstAmount = !sameState
+  //         ? calculateIGSTAmount(taxable, igstRate)
+  //         : 0;
+
+  //       const bankCommission = parseNumber(formData.BANK_COMMISSION);
+  //       const miscAmount = parseNumber(formData.misc_amount);
+
+  //       const billAmount = calculateBillAmount(
+  //         taxable,
+  //         cgstAmount,
+  //         sgstAmount,
+  //         igstAmount,
+  //         bankCommission,
+  //         miscAmount
+  //       );
+
+  //       const tcsRate =
+  //         formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
+  //       const tcsAmount =
+  //         formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+
+  //       const tdsRate =
+  //         formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
+  //       const tdsAmount =
+  //         formData.IsTDS === "Y"
+  //           ? calculateTDSAmount(tdsBase || taxable, tdsRate)
+  //           : 0;
+
+  //       const hasTCS = tcsAmount > 0;
+  //       const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
+
+  //       newFormData = {
+  //         ...newFormData,
+  //         cgst_rate: cgstRate,
+  //         cgst_amount: cgstAmount,
+  //         sgst_rate: sgstRate,
+  //         sgst_amount: sgstAmount,
+  //         igst_rate: igstRate,
+  //         igst_amount: igstAmount,
+  //         bill_amount: billAmount,
+  //         TCS_Amt: tcsAmount,
+  //         TCS_Net_Payable: netPayable,
+  //         TDSAmount: tdsAmount,
+  //         TDS: tdsBase,
+  //       };
+
+  //       await calculateAndSetGSTAmounts(newFormData);
+  //     }
+
+  //     setFormData(newFormData);
+  //   }
+  // };
 
   const handleKeyDownCalculations = async (event) => {
     if (event.key === "Tab") {
       const { name, value } = event.target;
       let newFormData = { ...formData };
-
+  
+      // Check if states match for GST calculations
       const sameState = await checkMatchStatus(
         formData.ac_code,
         companyCode,
         Year_Code
       );
-      console.log("Same state GST:", sameState);
-
+  
+      const parseNumber = (num) => parseFloat(num) || 0;
+  
+      // Recalculate values that might have changed
       if (
         [
           "Frieght_Rate",
@@ -486,78 +658,70 @@ const CommissionBill = () => {
           "purc_rate",
         ].includes(name)
       ) {
-        const freightRate = parseFloat(formData.Frieght_Rate) || 0;
-        const qntl = parseFloat(formData.qntl) || 0;
-        const saleRate = parseFloat(formData.sale_rate) || 0;
-        const millRate = parseFloat(formData.mill_rate) || 0;
-        const resale_commission = parseFloat(formData.resale_commission) || 0;
-        const bankCommission = parseFloat(formData.BANK_COMMISSION) || 0;
-        const misc_Amount = parseFloat(formData.misc_amount) || 0;
-        const purc_rate = parseFloat(formData.purc_rate) || 0;
-        const TDS = parseFloat(formData.TDS) || 0;
-
+        const freightRate = parseNumber(formData.Frieght_Rate);
+        const qntl = parseNumber(formData.qntl);
+        const saleRate = parseNumber(formData.sale_rate);
+        const millRate = parseNumber(formData.mill_rate);
+        const resaleCommission = parseNumber(formData.resale_commission);
+        const bankCommission = parseNumber(formData.BANK_COMMISSION);
+        const miscAmount = parseNumber(formData.misc_amount);
+        const purcRate = parseNumber(formData.purc_rate);
+        const packing = parseInt(formData.packing) || 0;
+  
+        // Calculate Bags, Freight, and Rates
         const rDiffTenderRate = calculateRDiffTenderRate(
           saleRate,
           millRate,
-          purc_rate
+          purcRate
         );
-        const tenderDiffRate = calculateTenderDiffRateAmount(
-          rDiffTenderRate,
-          qntl
-        );
-        const packing = parseInt(formData.packing) || 0;
+        const tenderDiffRate = calculateTenderDiffRateAmount(rDiffTenderRate, qntl);
         const bag = calculateBags(qntl, packing);
         const freightAmt = calculateFreight(freightRate, qntl);
-        const resale_rate = calculateResaleRate(resale_commission, qntl);
-        const subtotal = calculateSubtotal(rDiffTenderRate, qntl, resale_rate);
+        const resaleRate = calculateResaleRate(resaleCommission, qntl);
+        const subtotal = calculateSubtotal(rDiffTenderRate, qntl, resaleRate);
         const taxable = calculateTaxable(subtotal, freightAmt);
-
-        const cgstRate = parseFloat(formData.cgst_rate) || 0;
-        const sgstRate = parseFloat(formData.sgst_rate) || 0;
-        const igstRate = parseFloat(formData.igst_rate) || 0;
-
-        const cgstAmount = sameState
-          ? calculateCGSTAmount(taxable, cgstRate)
-          : 0;
-        const sgstAmount = sameState
-          ? calculateSGSTAmount(taxable, sgstRate)
-          : 0;
-        const igstAmount = !sameState
-          ? calculateIGSTAmount(taxable, igstRate)
-          : 0;
-
+  
+        // Determine TDS Base
+        const tdsBase = formData.TDS ? parseNumber(formData.TDS) : taxable;
+  
+        // GST Calculations
+        const cgstRate = parseNumber(formData.cgst_rate);
+        const sgstRate = parseNumber(formData.sgst_rate);
+        const igstRate = parseNumber(formData.igst_rate);
+  
+        const cgstAmount = sameState ? calculateCGSTAmount(taxable, cgstRate) : 0;
+        const sgstAmount = sameState ? calculateSGSTAmount(taxable, sgstRate) : 0;
+        const igstAmount = !sameState ? calculateIGSTAmount(taxable, igstRate) : 0;
+  
+        // Calculate Bill Amount
         const billAmount = calculateBillAmount(
           taxable,
           cgstAmount,
           sgstAmount,
           igstAmount,
           bankCommission,
-          misc_Amount
+          miscAmount
         );
-
-        const tcsRate =
-          formData.IsTDS === "N" ? parseFloat(formData.TCS_Rate) : 0;
-        const tcsAmount =
-          formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
-        const tdsBaseAmount = formData.TDS > 0 ? formData.TDS : taxable;
-        const tdsRate =
-          formData.IsTDS === "Y" ? parseFloat(formData.TDS_Per) : 0;
-        const tdsAmount =
-          formData.IsTDS === "Y"
-            ? calculateTDSAmount(tdsBaseAmount, tdsRate)
-            : 0;
-        // const tdsApplicableAmount = formData.IsTDS === "Y" ? calculateTDSApplicableAmount(TDS, tdsRate) : 0;
-
+  
+        // TCS Calculation
+        const tcsRate = formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
+        const tcsAmount = formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+  
+        // TDS Calculation
+        const tdsRate = formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
+        const tdsAmount = formData.IsTDS === "Y" ? calculateTDSAmount(tdsBase, tdsRate) : 0;
+  
+        // Net Payable Calculation
         const hasTCS = tcsAmount > 0;
-        const hasTDS = tdsAmount > 0;
         const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-
+  
+        // Update newFormData with all recalculated values
         newFormData = {
           ...newFormData,
           bags: bag,
           Frieght_amt: freightAmt,
           commission_amount: tenderDiffRate,
-          resale_rate: resale_rate,
+          resale_rate: resaleRate,
           subtotal: subtotal,
           texable_amount: taxable,
           cgst_amount: cgstAmount,
@@ -567,11 +731,11 @@ const CommissionBill = () => {
           TCS_Amt: tcsAmount,
           TDSAmount: tdsAmount,
           TCS_Net_Payable: netPayable,
-          TDS: TDS ? TDS : taxable,
-          sale_rate: purc_rate > 0 ? 0 : saleRate,
+          sale_rate: purcRate > 0 ? 0 : saleRate,
         };
       }
-
+  
+      // Handle GST-specific calculations
       if (
         [
           "cgst_rate",
@@ -587,51 +751,41 @@ const CommissionBill = () => {
           "misc_amount",
         ].includes(name)
       ) {
-        const cgstRate = parseFloat(formData.cgst_rate) || 0;
-        const sgstRate = parseFloat(formData.sgst_rate) || 0;
-        const igstRate = parseFloat(formData.igst_rate) || 0;
-        const taxable = parseFloat(formData.texable_amount) || 0;
-        const TDS = parseFloat(formData.TDS) || 0;
-
-        const cgstAmount = sameState
-          ? calculateCGSTAmount(taxable, cgstRate)
-          : 0;
-        const sgstAmount = sameState
-          ? calculateSGSTAmount(taxable, sgstRate)
-          : 0;
-        const igstAmount = !sameState
-          ? calculateIGSTAmount(taxable, igstRate)
-          : 0;
-
-        const bankCommission = parseFloat(formData.BANK_COMMISSION) || 0;
-        const misc_Amount = parseFloat(formData.misc_amount) || 0;
-
+        const cgstRate = parseNumber(formData.cgst_rate);
+        const sgstRate = parseNumber(formData.sgst_rate);
+        const igstRate = parseNumber(formData.igst_rate);
+        const taxable = parseNumber(formData.texable_amount);
+        const tdsBase = parseNumber(formData.TDS);
+  
+        // Recalculate GST Amounts
+        const cgstAmount = sameState ? calculateCGSTAmount(taxable, cgstRate) : 0;
+        const sgstAmount = sameState ? calculateSGSTAmount(taxable, sgstRate) : 0;
+        const igstAmount = !sameState ? calculateIGSTAmount(taxable, igstRate) : 0;
+  
+        const bankCommission = parseNumber(formData.BANK_COMMISSION);
+        const miscAmount = parseNumber(formData.misc_amount);
+  
+        // Recalculate Bill Amount
         const billAmount = calculateBillAmount(
           taxable,
           cgstAmount,
           sgstAmount,
           igstAmount,
           bankCommission,
-          misc_Amount
+          miscAmount
         );
-
-        const tcsRate =
-          formData.IsTDS === "N" ? parseFloat(formData.TCS_Rate) : 0;
-        const tcsAmount =
-          formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
-        const tdsBaseAmount = formData.TDS > 0 ? formData.TDS : taxable;
-        const tdsRate =
-          formData.IsTDS === "Y" ? parseFloat(formData.TDS_Per) : 0;
-        const tdsAmount =
-          formData.IsTDS === "Y"
-            ? calculateTDSAmount(tdsBaseAmount, tdsRate)
-            : 0;
-        // const tdsApplicableAmount = formData.IsTDS === "Y" ? calculateTDSApplicableAmount(TDS, tdsRate) : 0;
-
+  
+        // TCS and TDS Calculation
+        const tcsRate = formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
+        const tcsAmount = formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+  
+        const tdsRate = formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
+        const tdsAmount = formData.IsTDS === "Y" ? calculateTDSAmount(tdsBase || taxable, tdsRate) : 0;
+  
         const hasTCS = tcsAmount > 0;
-        const hasTDS = tdsAmount > 0;
         const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-
+  
+        // Update newFormData with recalculated GST and TDS values
         newFormData = {
           ...newFormData,
           cgst_rate: cgstRate,
@@ -644,19 +798,22 @@ const CommissionBill = () => {
           TCS_Amt: tcsAmount,
           TCS_Net_Payable: netPayable,
           TDSAmount: tdsAmount,
-          TDS: TDS ? TDS : taxable,
         };
-
+  
         await calculateAndSetGSTAmounts(newFormData);
       }
-
+  
+      // Set updated form data
       setFormData(newFormData);
     }
   };
+  
 
   const fetchLastRecord = (tranType) => {
     fetch(
-      `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
+      `${API_URL}/get-next-doc-no-commissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${
+        tranType || selectedVoucherType
+      }`
     )
       .then((response) => {
         if (!response.ok) {
@@ -667,7 +824,7 @@ const CommissionBill = () => {
       .then((data) => {
         setFormData((prevState) => ({
           ...prevState,
-          doc_no: data.doc_no + 1,
+          doc_no: data.next_doc_no,
         }));
       })
       .catch((error) => {
@@ -678,7 +835,7 @@ const CommissionBill = () => {
   const fetchItemCode = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/sugarian/system_master_help?CompanyCode=${companyCode}&SystemType=I`
+        `${API_URL}/system_master_help?CompanyCode=${companyCode}&SystemType=I`
       );
       const data = response.data;
       const item = data.find((item) => item.Category_Code === 1);
@@ -699,7 +856,7 @@ const CommissionBill = () => {
   const fetchBrokerCode = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/sugarian/account_master_all?Company_Code=${companyCode}`
+        `${API_URL}/account_master_all?Company_Code=${companyCode}`
       );
       const data = response.data;
       const item = data.find((item) => item.Ac_Code === 2);
@@ -713,23 +870,22 @@ const CommissionBill = () => {
   };
 
   const fetchGSTRateCode = async () => {
-    debugger;
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/sugarian/gst_rate_master?Company_Code=${companyCode}`
+        `${API_URL}/gst_rate_master?Company_Code=${companyCode}`
       );
       const data = response.data;
       const item = data.find((item) => item.Doc_no === 1);
 
       if (item) {
-        const rateWithoutPercent = parseFloat(item.Rate.replace("%", "")); // Remove % and convert to a number
-        setGstRate(rateWithoutPercent); // Set the numeric value (e.g., 5) to GstRate
+        const rateWithoutPercent = parseFloat(item.Rate.replace("%", ""));
+        setGstRate(rateWithoutPercent);
 
         return {
           code: item.Doc_no,
           accoid: item.gstid,
           label: item.GST_Name,
-          Rate: rateWithoutPercent, // Store the numeric rate for further use
+          Rate: rateWithoutPercent,
         };
       } else {
         return { code: null, accoid: null, label: null };
@@ -782,80 +938,99 @@ const CommissionBill = () => {
     newitem_code = "";
     TdsName = "";
     newTDS_Ac = "";
-    if (TranTypeInputRef.current) {
-      TranTypeInputRef.current.focus();
-    }
+
+    setTimeout(() => {
+      TranTypeInputRef.current?.focus();
+    }, 0);
   };
 
   const handleSaveOrUpdate = () => {
+    setLoading(true)
     const preparedData = {
       ...formData,
-      Company_Code: companyCode,
-      Year_Code: Year_Code,
-      doc_date: formatDate(formData.doc_date),
     };
-
-    if (isEditMode) {
-      axios
-        .put(
-          `${API_URL}/update-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`,
-          preparedData
-        )
-        .then((response) => {
-          toast.success("Record updated successfully!");
-          setIsEditMode(false);
-          setAddOneButtonEnabled(true);
-          setEditButtonEnabled(true);
-          setDeleteButtonEnabled(true);
-          setBackButtonEnabled(true);
-          setSaveButtonEnabled(false);
-          setCancelButtonEnabled(false);
-          setUpdateButtonClicked(true);
-          setIsEditing(false);
-        })
-        .catch((error) => {
-          handleCancel();
-          console.error("Error updating data:", error);
-        });
-    } else {
-      axios
-        .post(
-          `${API_URL}/create-RecordCommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`,
-          preparedData
-        )
-        .then((response) => {
-          toast.success("Record created successfully!");
-          setIsEditMode(false);
-          setAddOneButtonEnabled(true);
-          setEditButtonEnabled(true);
-          setDeleteButtonEnabled(true);
-          setBackButtonEnabled(true);
-          setSaveButtonEnabled(false);
-          setCancelButtonEnabled(false);
-          setUpdateButtonClicked(true);
-          setIsEditing(false);
-        })
-        .catch((error) => {
-          console.error("Error saving data:", error);
-        });
-    }
+  
+    const apiUrl = isEditMode
+      ? `${API_URL}/update-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
+      : `${API_URL}/create-RecordCommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`;
+  
+    const apiCall = isEditMode
+      ? axios.put(apiUrl, preparedData)
+      : axios.post(apiUrl, preparedData);
+  
+    apiCall
+      .then((response) => {
+        const successMessage = isEditMode
+          ? "Record updated successfully!" && unlockRecord()
+          : "Record created successfully!";
+        toast.success(successMessage);
+        // Reset button states
+        setIsEditMode(false);
+        setAddOneButtonEnabled(true);
+        setEditButtonEnabled(true);
+        setDeleteButtonEnabled(true);
+        setBackButtonEnabled(true);
+        setSaveButtonEnabled(false);
+        setCancelButtonEnabled(false);
+        setUpdateButtonClicked(true);
+        setIsEditing(false);
+        setLoading(false)
+        
+      })
+      .catch((error) => {
+        if (isEditMode) handleCancel(); 
+        console.error(
+          `Error ${isEditMode ? "updating" : "saving"} data:`,
+          error
+        );
+        setLoading(false)
+      });
   };
+  
+  const handleEdit = async () => {
+    axios
+      .get(
+        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
+      )
+      .then((response) => {
+        const data = response.data;
 
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
+        const isLockedNew = data.LockedRecord;
+        const isLockedByUserNew = data.LockedUser;
+
+        if (isLockedNew) {
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord();
+        }
+        setFormData({
+          ...formData,
+          ...data,
+        });
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert(
+          "This record is already deleted! Showing the previous record.",
+          error
+        );
+      });
   };
 
   const handleCancel = () => {
     axios
       .get(
-        `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
+        `${API_URL}/get-CommissionBill-lastRecord?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${
+          tranType || selectedVoucherType
+        }`
       )
       .then((response) => {
         const data = response.data;
@@ -881,8 +1056,8 @@ const CommissionBill = () => {
         setFormData((prevState) => ({
           ...formData,
           ...data,
-          doc_date: formatDate(data.doc_date),
         }));
+        unlockRecord()
         setTimeout(() => {
           console.log("Form data after state update:", formData);
         }, 0);
@@ -900,12 +1075,22 @@ const CommissionBill = () => {
     setSaveButtonEnabled(false);
     setCancelButtonEnabled(false);
     setCancelButtonClicked(true);
-    if (changeNoInputRef.current) {
-      changeNoInputRef.current.focus();
-    }
   };
 
   const handleDelete = async () => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
+      );
+
+      const data = response.data;
+      const isLockedNew = data.LockedRecord;
+      const isLockedByUserNew = data.LockedUser;
+
+      if (isLockedNew) {
+        window.alert(`This record is locked by ${isLockedByUserNew}`);
+        return;
+      }
     if (formData.link_no && formData.link_no !== "" && formData.link_no !== 0) {
       toast.error(
         `This record has a reference in Tender No. ${formData.link_no}. Deletion not allowed.`
@@ -924,30 +1109,38 @@ const CommissionBill = () => {
       setBackButtonEnabled(true);
       setSaveButtonEnabled(false);
       setCancelButtonEnabled(false);
+      setLoading(true);
 
-      try {
         const deleteApiUrl = `${API_URL}/delete-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`;
         const response = await axios.delete(deleteApiUrl);
         toast.success("Record deleted successfully!");
+        setLoading(false)
         handleCancel();
-      } catch (error) {
-        toast.error("Deletion cancelled");
-        console.error("Error during API call:", error);
-      }
-    } else {
-      console.log("Deletion cancelled");
+      
     }
-  };
+    else {
+      console.log("Deletion cancelled");
+      };
+  } catch (error) {
+    toast.error("Deletion cancelled");
+    console.error("Error during API call:", error);
+    setLoading(false)
+  }
+} 
 
   const handleBack = () => {
     navigate("/CommissionBill-utility");
   };
 
   const handlerecordDoubleClicked = async () => {
-    const voucherNo = selectedVoucherNo ? selectedVoucherNo:selectedRecord.doc_no;
+    const voucherNo = selectedVoucherNo
+      ? selectedVoucherNo
+      : selectedRecord.doc_no;
     try {
       const response = await axios.get(
-        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${voucherNo}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
+        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${voucherNo}&Year_Code=${Year_Code}&Tran_Type=${
+          tranType || selectedVoucherType
+        }`
       );
       const data = response.data;
       newac_code = data.PartyCode;
@@ -972,7 +1165,6 @@ const CommissionBill = () => {
       setFormData({
         ...formData,
         ...data,
-        doc_date: formatDate(data.doc_date),
       });
 
       setIsEditing(false);
@@ -990,11 +1182,12 @@ const CommissionBill = () => {
     setUpdateButtonClicked(true);
     setIsEditing(false);
   };
+
   useEffect(() => {
     if (selectedRecord || selectedVoucherNo) {
       handlerecordDoubleClicked();
     } else {
-      handleAddOne(); // If no record or voucher is selected, add a new one
+      handleAddOne();
     }
   }, [selectedRecord, selectedVoucherNo]);
 
@@ -1006,9 +1199,6 @@ const CommissionBill = () => {
           `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${changeNoValue}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
         );
         const data = response.data;
-        if (data.doc_date) {
-          data.doc_date = formatDate(data.doc_date);
-        }
         newac_code = data.PartyCode;
         SupplierName = data.PartyName;
         newunit_code = data.Unitcode;
@@ -1035,44 +1225,41 @@ const CommissionBill = () => {
     }
   };
 
-  // Navigation Buttons
-  const handleFirstButtonClick = async () => {
+  // Common function for navigation
+  const fetchRecord = async (url) => {
     try {
-      const response = await fetch(
-        `${API_URL}/get-first-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
-      );
+      const response = await fetch(url);
+
       if (response.ok) {
         const data = await response.json();
-        const firstUserCreation = data[0];
-        if (firstUserCreation.doc_date) {
-          firstUserCreation.doc_date = formatDate(firstUserCreation.doc_date);
-        }
-        newac_code = firstUserCreation.PartyCode;
-        SupplierName = firstUserCreation.PartyName;
-        newunit_code = firstUserCreation.Unitcode;
-        UnitName = firstUserCreation.UnitName;
-        BrokerName = firstUserCreation.brokername;
-        newbroker_code = firstUserCreation.broker_code;
-        TransportName = firstUserCreation.transportname;
-        newtransport_code = firstUserCreation.transportcode;
-        GstRateName = firstUserCreation.gstratename;
-        newgst_code = firstUserCreation.gstratecode;
-        MillName = firstUserCreation.millname;
-        newmill_code = firstUserCreation.millcode;
-        newnarration1 = firstUserCreation.narration1;
-        newnarration2 = firstUserCreation.narration2;
-        TdsName = firstUserCreation.tdsacname;
-        newTDS_Ac = firstUserCreation.tdsac;
-        ItemName = firstUserCreation.Itemname;
-        newitem_code = firstUserCreation.Itemcode;
+        const record = data[0];
+        newac_code = record.PartyCode;
+        SupplierName = record.PartyName;
+        newunit_code = record.Unitcode;
+        UnitName = record.UnitName;
+        BrokerName = record.brokername;
+        newbroker_code = record.broker_code;
+        TransportName = record.transportname;
+        newtransport_code = record.transportcode;
+        GstRateName = record.gstratename;
+        newgst_code = record.gstratecode;
+        MillName = record.millname;
+        newmill_code = record.millcode;
+        newnarration1 = record.narration1;
+        newnarration2 = record.narration2;
+        TdsName = record.tdsacname;
+        newTDS_Ac = record.tdsac;
+        ItemName = record.Itemname;
+        newitem_code = record.Itemcode;
 
         setFormData({
           ...formData,
-          ...firstUserCreation,
+          ...record,
+          doc_date: record.Formatted_Doc_Date
         });
       } else {
         console.error(
-          "Failed to fetch first record:",
+          "Failed to fetch record:",
           response.status,
           response.statusText
         );
@@ -1082,147 +1269,28 @@ const CommissionBill = () => {
     }
   };
 
-  const handlePreviousButtonClick = async () => {
-    try {
-      const response = await fetch(
-        `${API_URL}/get-previous-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const previousRecord = data[0];
-        if (previousRecord.doc_date) {
-          previousRecord.doc_date = formatDate(previousRecord.doc_date);
-        }
-        newac_code = previousRecord.PartyCode;
-        SupplierName = previousRecord.PartyName;
-        newunit_code = previousRecord.Unitcode;
-        UnitName = previousRecord.UnitName;
-        BrokerName = previousRecord.brokername;
-        newbroker_code = previousRecord.broker_code;
-        TransportName = previousRecord.transportname;
-        newtransport_code = previousRecord.transportcode;
-        GstRateName = previousRecord.gstratename;
-        newgst_code = previousRecord.gstratecode;
-        MillName = previousRecord.millname;
-        newmill_code = previousRecord.millcode;
-        newnarration1 = previousRecord.narration1;
-        newnarration2 = previousRecord.narration2;
-        TdsName = previousRecord.tdsacname;
-        newTDS_Ac = previousRecord.tdsac;
-        ItemName = previousRecord.Itemname;
-        newitem_code = previousRecord.Itemcode;
-
-        setFormData({
-          ...formData,
-          ...previousRecord,
-        });
-      } else {
-        console.error(
-          "Failed to fetch previous record:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Error during API call:", error);
-    }
+  // Navigation Button Handlers
+  const handleFirstButtonClick = () => {
+    const url = `${API_URL}/get-first-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`;
+    fetchRecord(url);
   };
 
-  const handleNextButtonClick = async () => {
-    try {
-      const response = await fetch(
-        `${API_URL}/get-next-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const nextRecord = data[0];
-        if (nextRecord.doc_date) {
-          nextRecord.doc_date = formatDate(nextRecord.doc_date);
-        }
-        newac_code = nextRecord.PartyCode;
-        SupplierName = nextRecord.PartyName;
-        newunit_code = nextRecord.Unitcode;
-        UnitName = nextRecord.UnitName;
-        BrokerName = nextRecord.brokername;
-        newbroker_code = nextRecord.broker_code;
-        TransportName = nextRecord.transportname;
-        newtransport_code = nextRecord.transportcode;
-        GstRateName = nextRecord.gstratename;
-        newgst_code = nextRecord.gstratecode;
-        MillName = nextRecord.millname;
-        newmill_code = nextRecord.millcode;
-        newnarration1 = nextRecord.narration1;
-        newnarration2 = nextRecord.narration2;
-        TdsName = nextRecord.tdsacname;
-        newTDS_Ac = nextRecord.tdsac;
-        ItemName = nextRecord.Itemname;
-        newitem_code = nextRecord.Itemcode;
-
-        setFormData({
-          ...formData,
-          ...nextRecord,
-        });
-      } else {
-        console.error(
-          "Failed to fetch next record:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Error during API call:", error);
-    }
+  const handlePreviousButtonClick = () => {
+    const url = `${API_URL}/get-previous-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`;
+    fetchRecord(url);
   };
 
-  const handleLastButtonClick = async () => {
-    try {
-      const response = await fetch(
-        `${API_URL}/get-last-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const lastRecord = data[0];
-        if (lastRecord.doc_date) {
-          lastRecord.doc_date = formatDate(lastRecord.doc_date);
-        }
-        newac_code = lastRecord.PartyCode;
-        SupplierName = lastRecord.PartyName;
-        newunit_code = lastRecord.Unitcode;
-        UnitName = lastRecord.UnitName;
-        BrokerName = lastRecord.brokername;
-        newbroker_code = lastRecord.broker_code;
-        TransportName = lastRecord.transportname;
-        newtransport_code = lastRecord.transportcode;
-        GstRateName = lastRecord.gstratename;
-        newgst_code = lastRecord.gstratecode;
-        MillName = lastRecord.millname;
-        newmill_code = lastRecord.millcode;
-        newnarration1 = lastRecord.narration1;
-        newnarration2 = lastRecord.narration2;
-        TdsName = lastRecord.tdsacname;
-        newTDS_Ac = lastRecord.tdsac;
-        ItemName = lastRecord.Itemname;
-        newitem_code = lastRecord.Itemcode;
-
-        setFormData({
-          ...formData,
-          ...lastRecord,
-        });
-      } else {
-        console.error(
-          "Failed to fetch last record:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Error during API call:", error);
-    }
+  const handleNextButtonClick = () => {
+    const url = `${API_URL}/get-next-CommissionBill?doc_no=${formData.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`;
+    fetchRecord(url);
   };
+
+  const handleLastButtonClick = () => {
+    const url = `${API_URL}/get-last-CommissionBill?Company_Code=${companyCode}&Year_Code=${Year_Code}&Tran_Type=${tranType}`;
+    fetchRecord(url);
+  };
+
   const handleTenderNo = () => {
-    // When Voucher_No is clicked, navigate to CommissionBill and pass formData (or other data)
     navigate("/tender_head", {
       state: {
         selectedTenderNo: formData.link_no,
@@ -1232,48 +1300,48 @@ const CommissionBill = () => {
 
   return (
     <>
-      <div className="container">
-        <ToastContainer />
-        <ActionButtonGroup
-          handleAddOne={handleAddOne}
-          addOneButtonEnabled={addOneButtonEnabled}
-          handleSaveOrUpdate={handleSaveOrUpdate}
-          saveButtonEnabled={saveButtonEnabled}
-          isEditMode={isEditMode}
-          handleEdit={handleEdit}
-          editButtonEnabled={editButtonEnabled}
-          handleDelete={handleDelete}
-          deleteButtonEnabled={deleteButtonEnabled}
-          handleCancel={handleCancel}
-          cancelButtonEnabled={cancelButtonEnabled}
-          handleBack={handleBack}
-          backButtonEnabled={backButtonEnabled}
-        />
-        <div>
-          {/* Navigation Buttons */}
-          <NavigationButtons
-            handleFirstButtonClick={handleFirstButtonClick}
-            handlePreviousButtonClick={handlePreviousButtonClick}
-            handleNextButtonClick={handleNextButtonClick}
-            handleLastButtonClick={handleLastButtonClick}
-            highlightedButton={highlightedButton}
-            isEditing={isEditing}
-            isFirstRecord={formData.Company_Code === companyCode}
+      <div>
+        <h5>Commission Bill</h5>
+        <div className="commission-form-container">
+          <ToastContainer />
+          <ActionButtonGroup
+            handleAddOne={handleAddOne}
+            addOneButtonEnabled={addOneButtonEnabled}
+            handleSaveOrUpdate={handleSaveOrUpdate}
+            saveButtonEnabled={saveButtonEnabled}
+            isEditMode={isEditMode}
+            handleEdit={handleEdit}
+            editButtonEnabled={editButtonEnabled}
+            handleDelete={handleDelete}
+            deleteButtonEnabled={deleteButtonEnabled}
+            handleCancel={handleCancel}
+            cancelButtonEnabled={cancelButtonEnabled}
+            handleBack={handleBack}
+            backButtonEnabled={backButtonEnabled}
+            permissions={permissions}
           />
+          <div>
+            {/* Navigation Buttons */}
+            <NavigationButtons
+              handleFirstButtonClick={handleFirstButtonClick}
+              handlePreviousButtonClick={handlePreviousButtonClick}
+              handleNextButtonClick={handleNextButtonClick}
+              handleLastButtonClick={handleLastButtonClick}
+              highlightedButton={highlightedButton}
+              isEditing={isEditing}
+              isFirstRecord={formData.Company_Code === companyCode}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="commission-form-container">
         <form>
-          <h2>Commission Bill</h2>
           <br />
           <div className="form-group ">
             <label htmlFor="changeNo">Change No:</label>
             <input
               type="text"
               id="changeNo"
-              Name="changeNo"
-              ref={changeNoInputRef}
+              name="changeNo"
               onKeyDown={handleKeyDown}
               disabled={!addOneButtonEnabled}
               tabIndex={1}
@@ -1299,7 +1367,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="doc_no"
-              Name="doc_no"
+              name="doc_no"
               value={formData.doc_no}
               onChange={handleChange}
               disabled={true}
@@ -1310,7 +1378,7 @@ const CommissionBill = () => {
               <input
                 type="text"
                 id="link_no"
-                Name="link_no"
+                name="link_no"
                 value={formData.link_no}
                 onChange={handleChange}
                 disabled={!isEditing && addOneButtonEnabled}
@@ -1322,7 +1390,7 @@ const CommissionBill = () => {
             <input
               type="date"
               id="doc_date"
-              Name="doc_date"
+              name="doc_date"
               value={formData.doc_date}
               onChange={handleDateChange}
               disabled={!isEditing && addOneButtonEnabled}
@@ -1333,50 +1401,56 @@ const CommissionBill = () => {
           <div className="form-group">
             <label htmlFor="ac_code">Party/Supplier</label>
             <AccountMasterHelp
-              Name="ac_code"
+              name="ac_code"
               onAcCodeClick={handleAcCode}
               CategoryName={SupplierName}
               CategoryCode={newac_code}
-              tabIndex={6}
+              Ac_type=""
+              tabIndexHelp={6}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
             <label htmlFor="unit_code">Unit</label>
             <AccountMasterHelp
-              Name="unit_code"
+              name="unit_code"
               onAcCodeClick={handleUnitCode}
               CategoryName={UnitName}
               CategoryCode={newunit_code}
-              tabIndex={7}
+              Ac_type=""
+              tabIndexHelp={7}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
             <label htmlFor="broker_code">Broker</label>
             <AccountMasterHelp
-              Name="broker_code"
+              name="broker_code"
               onAcCodeClick={handleBrokerCode}
               CategoryName={BrokerName}
               CategoryCode={newbroker_code || formData.broker_code}
-              tabIndex={8}
+              Ac_type=""
+              tabIndexHelp={8}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
           </div>
           <div className="form-group">
             <label htmlFor="item_code">Item Code</label>
             <ItemMasterHelp
-              Name="item_code"
+              name="item_code"
               onAcCodeClick={handleItemCode}
               CategoryName={ItemName}
               SystemType="I"
               CategoryCode={newitem_code || formData.item_code}
-              tabIndex={9}
+              tabIndexHelp={9}
               disabledField={!isEditing && addOneButtonEnabled}
             />
             <label htmlFor="qntl">Quantal:</label>
             <input
               type="text"
               id="qntl"
-              Name="qntl"
+              name="qntl"
               value={formData.qntl}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={10}
@@ -1385,10 +1459,13 @@ const CommissionBill = () => {
             <input
               type="text"
               id="packing"
-              Name="packing"
+              name="packing"
               value={formData.packing}
               onKeyDown={handleKeyDownCalculations}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={11}
             />
@@ -1396,9 +1473,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="bags"
-              Name="bags"
+              name="bags"
               value={formData.bags}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={12}
@@ -1407,7 +1487,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="HSN"
-              Name="HSN"
+              name="HSN"
               value={formData.HSN}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
@@ -1420,7 +1500,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="grade"
-              Name="grade"
+              name="grade"
               value={formData.grade}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
@@ -1428,20 +1508,22 @@ const CommissionBill = () => {
             />
             <label htmlFor="transport_code">Transport</label>
             <AccountMasterHelp
-              Name="transport_code"
+              name="transport_code"
               onAcCodeClick={handleTransportCode}
               CategoryName={TransportName}
               CategoryCode={newtransport_code}
-              tabIndex={15}
+              Ac_type=""
+              tabIndexHelp={15}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
             <label htmlFor="mill_code">Mill Code</label>
             <AccountMasterHelp
-              Name="mill_code"
+              name="mill_code"
               onAcCodeClick={handleMillCode}
               CategoryName={MillName}
               CategoryCode={newmill_code}
-              tabIndex={16}
+              Ac_type=""
+              tabIndexHelp={16}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
           </div>
@@ -1451,9 +1533,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="mill_rate"
-              Name="mill_rate"
+              name="mill_rate"
               value={formData.mill_rate}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={17}
@@ -1462,9 +1547,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="sale_rate"
-              Name="sale_rate"
+              name="sale_rate"
               value={formData.sale_rate}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={18}
@@ -1473,20 +1561,23 @@ const CommissionBill = () => {
             <input
               type="text"
               id="purc_rate"
-              Name="purc_rate"
+              name="purc_rate"
               value={formData.purc_rate}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={19}
             />
             <label htmlFor="gst_code">Gst Rate Code</label>
             <GSTRateMasterHelp
-              Name="gst_code"
+              name="gst_code"
               onAcCodeClick={handleGSTCode}
               GstRateName={GstRateName}
               GstRateCode={newgst_code || formData.gst_code}
-              tabIndex={20}
+              tabIndexHelp={20}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
           </div>
@@ -1495,41 +1586,47 @@ const CommissionBill = () => {
             <input
               type="text"
               id="rDiffTenderRate"
-              Name="rDiffTenderRate"
+              name="rDiffTenderRate"
               value={calculateRDiffTenderRate(
                 formData.sale_rate,
                 formData.mill_rate,
                 formData.purc_rate
               )}
               onKeyDown={handleKeyDownCalculations}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={21}
             />
             <input
               type="text"
               id="commission_amount"
-              Name="commission_amount"
+              name="commission_amount"
               value={formData.commission_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={22}
             />
             <label htmlFor="narration1">Narration</label>
             <AccountMasterHelp
-              Name="narration1"
+              name="narration1"
               onAcCodeClick={handleNarration1}
               newnarration1={newnarration1}
-              tabIndex={23}
+              tabIndexHelp={23}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
             <label htmlFor="narration2">Narration2</label>
             <AccountMasterHelp
-              Name="narration2"
+              name="narration2"
               onAcCodeClick={handleNarration2}
               newnarration2={newnarration2}
-              tabIndex={24}
+              tabIndexHelp={24}
               disabledFeild={!isEditing && addOneButtonEnabled}
             />
           </div>
@@ -1538,9 +1635,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="resale_commission"
-              Name="resale_commission"
+              name="resale_commission"
               value={formData.resale_commission}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={25}
@@ -1548,9 +1648,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="resale_rate"
-              Name="resale_rate"
+              name="resale_rate"
               value={formData.resale_rate}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={26}
@@ -1559,9 +1662,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="BANK_COMMISSION"
-              Name="BANK_COMMISSION"
+              name="BANK_COMMISSION"
               value={formData.BANK_COMMISSION}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={27}
@@ -1570,9 +1676,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="subtotal"
-              Name="subtotal"
+              name="subtotal"
               value={formData.subtotal}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={28}
@@ -1581,9 +1690,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="Frieght_Rate"
-              Name="Frieght_Rate"
+              name="Frieght_Rate"
               value={formData.Frieght_Rate}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={29}
@@ -1591,9 +1703,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="Frieght_amt"
-              Name="Frieght_amt"
+              name="Frieght_amt"
               value={formData.Frieght_amt}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={30}
@@ -1604,9 +1719,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="texable_amount"
-              Name="texable_amount"
+              name="texable_amount"
               value={formData.texable_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={31}
@@ -1615,7 +1733,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="cgst_rate"
-              Name="cgst_rate"
+              name="cgst_rate"
               value={formData.cgst_rate}
               onChange={handleGSTCode}
               onKeyDown={handleKeyDownCalculations}
@@ -1625,9 +1743,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="cgst_amount"
-              Name="cgst_amount"
+              name="cgst_amount"
               value={formData.cgst_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={33}
@@ -1636,7 +1757,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="sgst_rate"
-              Name="sgst_rate"
+              name="sgst_rate"
               value={formData.sgst_rate}
               onChange={handleGSTCode}
               onKeyDown={handleKeyDownCalculations}
@@ -1646,9 +1767,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="sgst_amount"
-              Name="sgst_amount"
+              name="sgst_amount"
               value={formData.sgst_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={35}
@@ -1657,7 +1781,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="igst_rate"
-              Name="igst_rate"
+              name="igst_rate"
               value={formData.igst_rate}
               onChange={handleGSTCode}
               onKeyDown={handleKeyDownCalculations}
@@ -1667,9 +1791,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="igst_amount"
-              Name="igst_amount"
+              name="igst_amount"
               value={formData.igst_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={37}
@@ -1681,9 +1808,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="bill_amount"
-              Name="bill_amount"
+              name="bill_amount"
               value={formData.bill_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={38}
@@ -1692,9 +1822,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="TCS_Rate"
-              Name="TCS_Rate"
+              name="TCS_Rate"
               value={formData.TCS_Rate}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={
                 formData.IsTDS === "Y" || (!isEditing && addOneButtonEnabled)
@@ -1704,9 +1837,12 @@ const CommissionBill = () => {
             <input
               type="text"
               id="TCS_Amt"
-              Name="TCS_Amt"
+              name="TCS_Amt"
               value={formData.TCS_Amt}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={
                 formData.IsTDS === "Y" || (!isEditing && addOneButtonEnabled)
@@ -1717,23 +1853,29 @@ const CommissionBill = () => {
             <input
               type="text"
               id="misc_amount"
-              Name="misc_amount"
+              name="misc_amount"
               value={formData.misc_amount}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
-              tabIndex={42}
+              tabIndex={41}
             />
             <label htmlFor="TCS_Net_Payable">Net Payable:</label>
             <input
               type="text"
               id="TCS_Net_Payable"
-              Name="TCS_Net_Payable"
+              name="TCS_Net_Payable"
               value={formData.TCS_Net_Payable}
-              onChange={handleChange}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={!isEditing && addOneButtonEnabled}
-              tabIndex={41}
+              tabIndex={42}
             />
           </div>
           <div className="form-group">
@@ -1753,11 +1895,12 @@ const CommissionBill = () => {
             </select>
             <label htmlFor="TDS_Ac">Tds A/c</label>
             <AccountMasterHelp
-              Name="TDS_Ac"
+              name="TDS_Ac"
               onAcCodeClick={handleTDSAc}
               CategoryName={TdsName}
               CategoryCode={newTDS_Ac}
-              tabIndex={44}
+              Ac_type=""
+              tabIndexHelp={44}
               disabledFeild={
                 formData.IsTDS === "N" || (!isEditing && addOneButtonEnabled)
               }
@@ -1766,39 +1909,48 @@ const CommissionBill = () => {
             <input
               type="text"
               id="TDS"
-              Name="TDS"
-              value={formData.TDS}
-              onChange={handleChange}
-              onKeyDown={handleKeyDownCalculations}
-              disabled={
-                formData.IsTDS === "N" || (!isEditing && addOneButtonEnabled)
-              }
-              tabIndex={47}
-            />
-            <label htmlFor="TDS_Per">TDS %:</label>
-            <input
-              type="text"
-              id="TDS_Per"
-              Name="TDS_Per"
-              value={formData.TDS_Per}
-              onChange={handleChange}
+              name="TDS"
+              value={formData.TDS !== undefined ? formData.TDS : formData.texable_amount}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={
                 formData.IsTDS === "N" || (!isEditing && addOneButtonEnabled)
               }
               tabIndex={45}
             />
+            <label htmlFor="TDS_Per">TDS %:</label>
             <input
               type="text"
-              id="TDSAmount"
-              Name="TDSAmount"
-              value={formData.TDSAmount}
-              onChange={handleChange}
+              id="TDS_Per"
+              name="TDS_Per"
+              value={formData.TDS_Per}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
               onKeyDown={handleKeyDownCalculations}
               disabled={
                 formData.IsTDS === "N" || (!isEditing && addOneButtonEnabled)
               }
               tabIndex={46}
+            />
+            <input
+              type="text"
+              id="TDSAmount"
+              name="TDSAmount"
+              value={formData.TDSAmount}
+              onChange={(e) => {
+                validateNumericInput(e);
+                handleChange(e);
+              }}
+              onKeyDown={handleKeyDownCalculations}
+              disabled={
+                formData.IsTDS === "N" || (!isEditing && addOneButtonEnabled)
+              }
+              tabIndex={47}
             />
           </div>
           <div className="form-group">
@@ -1806,7 +1958,7 @@ const CommissionBill = () => {
             <input
               type="text"
               id="einvoiceno"
-              Name="einvoiceno"
+              name="einvoiceno"
               value={formData.einvoiceno}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
@@ -1816,13 +1968,20 @@ const CommissionBill = () => {
             <input
               type="text"
               id="ackno"
-              Name="ackno"
+              name="ackno"
               value={formData.ackno}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={49}
             />
           </div>
+          {loading && (
+          <div className="loading-overlay">
+            <div className="spinner-container">
+              <HashLoader color="#007bff" loading={loading} size={80} />
+            </div>
+          </div>
+        )}
         </form>
       </div>
     </>

@@ -12,6 +12,7 @@ var lActiveInputFeild = "";
 const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, tabIndexHelp, disabledFeild,Ac_type}) => {
 
     const CompanyCode = sessionStorage.getItem("Company_Code");
+    const API_URL = process.env.REACT_APP_API;
     const [showModal, setShowModal] = useState(false);
     const [popupContent, setPopupContent] = useState([]);
     const [enteredAcCode, setEnteredAcCode] = useState("");
@@ -42,7 +43,7 @@ const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, ta
 
     const fetchData = useCallback(async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/account_master_all?Company_Code=${CompanyCode}&Ac_type=${Ac_type}`);
+            const response = await axios.get(`${API_URL}/account_master_all?Company_Code=${CompanyCode}&Ac_type=${Ac_type}`);
             const data = response.data;
             setPopupContent(data);
             setApiDataFetched(true);
@@ -194,7 +195,7 @@ const AccountMasterHelp = ({ onAcCodeClick, name, CategoryName, CategoryCode, ta
                         ...
                     </Button>
                     <label id="acNameLabel" className="form-labels ms-2">
-                    {`${enteredAcName || ''} ${city || ''} ${CategoryName || ''}`}
+                    {enteredAcName} {city || CategoryName}
 
                     </label>
                 </div>

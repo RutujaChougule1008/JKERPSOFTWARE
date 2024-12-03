@@ -1,24 +1,28 @@
-from sqlalchemy.sql import text
+from sqlalchemy.sql import text, func, desc
 from flask import jsonify, request
 from app import app, db
 from app.models.Inword.OtherGSTInput.OtherGSTInputModel import OtherGSTInput  
 import os
 
+API_URL= os.getenv('API_URL')
+
 sql_query = text('''
-    SELECT am.Ac_Name_E
-    FROM dbo.nt_1_accountmaster AS am
-    RIGHT JOIN dbo.other_input_gst AS gst ON am.accoid = gst.ea
+    SELECT        am.Ac_Name_E
+FROM            dbo.nt_1_accountmaster AS am INNER JOIN
+                         dbo.other_input_gst AS gst ON am.accoid = gst.ea
     WHERE gst.Doc_No = :doc_no
 ''')
 
 
-def format_dates(input):
-    """Format the date from an input record."""
-    return input.Doc_Date.strftime('%Y-%m-%d') if input.Doc_Date else None
+def format_dates(Data):
+    return {
+        "Doc_Date": Data.Doc_Date.strftime('%Y-%m-%d') if Data.Doc_Date else None,
+        "Modified_Date":Data.Modified_Date.strftime('%Y-%m-%d') if Data.Modified_Date else None,
+        "Created_Date":Data.Created_Date.strftime('%Y-%m-%d') if Data.Created_Date else None
+    }
 
-@app.route("/getall-OtherGSTInput", methods=["GET"])
+@app.route(API_URL+"/getall-OtherGSTInput", methods=["GET"])
 def get_all_OtherGSTInput():
-    """Retrieve all records for OtherGSTInput based on company and year code."""
     try:
         company_code = request.args.get('Company_Code')
         year_code = request.args.get('Year_Code')
@@ -31,17 +35,43 @@ def get_all_OtherGSTInput():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code or Year_Code parameter'}), 400
 
-        records = OtherGSTInput.query.filter_by(Year_Code=year_code, Company_Code=company_code).all()
+        records = OtherGSTInput.query.filter_by(Year_Code=year_code, Company_Code=company_code).order_by(desc(OtherGSTInput.Doc_No)).all()
         record_data = [
             {**{column.key: getattr(record, column.key) for column in record.__table__.columns},
-             'Formatted_Doc_Date': format_dates(record)}
+              **format_dates(record)}
             for record in records
         ]
-        return jsonify(record_data)
+        return jsonify({"all_data": record_data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route("/get-OtherGSTInput-by-DocNo", methods=["GET"])
+#GET Records by next doc number. 
+@app.route( API_URL+"/getNextDocNo_OtherGSTInput", methods=["GET"])
+def getNextDocNo_OtherGSTInput():
+    try:
+        Company_Code = request.args.get('Company_Code')
+        Year_Code = request.args.get('Year_Code')
+
+        if not all([Company_Code, Year_Code]):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        max_doc_no = db.session.query(func.max(OtherGSTInput.Doc_No)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
+
+        if max_doc_no is None:
+            next_doc_no = 1  
+        else:
+            next_doc_no = max_doc_no + 1  
+
+        response = {
+            "next_doc_no": next_doc_no
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+@app.route(API_URL+"/get-OtherGSTInput-by-DocNo", methods=["GET"])
 def get_OtherGSTInput_by_doc_no():
     """Retrieve a specific OtherGSTInput record by document number."""
     try:
@@ -66,15 +96,14 @@ def get_OtherGSTInput_by_doc_no():
         account_name = account_name_result.scalar()
         record_data = {column.name: getattr(record, column.name) for column in record.__table__.columns}
 
-        record_data['Formatted_Doc_Date'] = format_dates(record)
-        record_data['Account_Name'] = account_name  # Add account name to the response
+        record_data.update(format_dates(record))
+        record_data['Account_Name'] = account_name  
         return jsonify(record_data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route("/create-OtherGSTInput", methods=["POST"])
+@app.route(API_URL+"/create-OtherGSTInput", methods=["POST"])
 def create_OtherGSTInput():
-    """Create a new OtherGSTInput record."""
     try:
         company_code = request.args.get('Company_Code')
         year_code = request.args.get('Year_Code')
@@ -102,9 +131,8 @@ def create_OtherGSTInput():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@app.route("/update-OtherGSTInput", methods=["PUT"])
+@app.route(API_URL+"/update-OtherGSTInput", methods=["PUT"])
 def update_OtherGSTInput():
-    """Update an existing OtherGSTInput record."""
     try:
         doc_no = request.args.get('Doc_No')
         company_code = request.args.get('Company_Code')
@@ -136,9 +164,8 @@ def update_OtherGSTInput():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@app.route("/delete-OtherGSTInput", methods=["DELETE"])
+@app.route(API_URL+"/delete-OtherGSTInput", methods=["DELETE"])
 def delete_OtherGSTInput():
-    """Delete an OtherGSTInput record."""
     try:
         doc_no = request.args.get('Doc_No')
         company_code = request.args.get('Company_Code')
@@ -167,7 +194,7 @@ def delete_OtherGSTInput():
         return jsonify({'error': str(e)}), 500
 
     
-@app.route("/get-first-OtherGSTInput", methods=["GET"])
+@app.route(API_URL+"/get-first-OtherGSTInput", methods=["GET"])
 def get_first_OtherGSTInput():
     try:
         company_code = request.args.get('Company_Code')
@@ -182,13 +209,13 @@ def get_first_OtherGSTInput():
             return jsonify({'error': 'Invalid Company_Code or year_code parameter'}), 400
         first_user_creation = OtherGSTInput.query.filter_by(Company_Code=company_code,Year_Code = year_code).order_by(OtherGSTInput.Doc_No.asc()).first()
         if first_user_creation:
-            # Convert SQLAlchemy object to dictionary
+           
             account_name_result = db.session.execute(sql_query, {'doc_no': first_user_creation.Doc_No})
             account_name = account_name_result.scalar()
             serialized_last_user_creation = {column.name: getattr(first_user_creation, column.name) for column in first_user_creation.__table__.columns}
 
-            serialized_last_user_creation['Formatted_Doc_Date'] = format_dates(first_user_creation)
-            serialized_last_user_creation['Account_Name'] = account_name  # Add account name to the response
+            serialized_last_user_creation.update(format_dates(first_user_creation))
+            serialized_last_user_creation['Account_Name'] = account_name  
             return jsonify(serialized_last_user_creation)
         else:
             return jsonify({'error': 'No records found'}), 404
@@ -196,7 +223,7 @@ def get_first_OtherGSTInput():
         print (e)
         return jsonify({'error': 'internal server error'}), 500
 
-@app.route("/get_last_OtherGSTInput", methods=["GET"])
+@app.route(API_URL+"/get_last_OtherGSTInput", methods=["GET"])
 def get_last_OtherGSTInput():
     try:
         company_code = request.args.get('Company_Code')
@@ -212,14 +239,12 @@ def get_last_OtherGSTInput():
 
         last_user_creation = OtherGSTInput.query.filter_by(Company_Code=company_code, Year_Code=year_code).order_by(OtherGSTInput.Doc_No.desc()).first()
         if last_user_creation:
-            # Execute SQL query to get account name
             account_name_result = db.session.execute(sql_query, {'doc_no': last_user_creation.Doc_No})
             account_name = account_name_result.scalar()
 
-            # Serialize the last record
             serialized_last_user_creation = {column.name: getattr(last_user_creation, column.name) for column in last_user_creation.__table__.columns}
 
-            serialized_last_user_creation['Formatted_Doc_Date'] = format_dates(last_user_creation)
+            serialized_last_user_creation.update(format_dates(last_user_creation))
             serialized_last_user_creation['Account_Name'] = account_name  # Add account name to the response
 
             return jsonify(serialized_last_user_creation)
@@ -229,7 +254,7 @@ def get_last_OtherGSTInput():
         print(e)
         return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
 
-@app.route("/get_previous_OtherGSTInput", methods=["GET"])
+@app.route(API_URL+"/get_previous_OtherGSTInput", methods=["GET"])
 def get_previous_OtherGSTInput():
     try:
         company_code = request.args.get('Company_Code')
@@ -249,12 +274,11 @@ def get_previous_OtherGSTInput():
         previous_selected_record = OtherGSTInput.query.filter(OtherGSTInput.Doc_No < Selected_Record,OtherGSTInput.Company_Code==company_code,OtherGSTInput.Year_Code==year_code)\
             .order_by(OtherGSTInput.Doc_No.desc()).first()
         if previous_selected_record:
-            # Serialize the SystemMaster object to a dictionary
             account_name_result = db.session.execute(sql_query, {'doc_no': previous_selected_record.Doc_No})
             account_name = account_name_result.scalar()
             serialized_last_user_creation = {column.name: getattr(previous_selected_record, column.name) for column in previous_selected_record.__table__.columns}
 
-            serialized_last_user_creation['Formatted_Doc_Date'] = format_dates(previous_selected_record)
+            serialized_last_user_creation.update(format_dates(previous_selected_record))
             serialized_last_user_creation['Account_Name'] = account_name  # Add account name to the response
             return jsonify(serialized_last_user_creation)
         else:
@@ -263,7 +287,7 @@ def get_previous_OtherGSTInput():
         print (e)
         return jsonify({'error': 'internal server error', 'message': str(e)}), 500
 
-@app.route("/get_next_OtherGSTInput", methods=["GET"])
+@app.route(API_URL+"/get_next_OtherGSTInput", methods=["GET"])
 def get_next_OtherGSTInput():
     try:
         company_code = request.args.get('Company_Code')
@@ -283,12 +307,11 @@ def get_next_OtherGSTInput():
         next_Selected_Record = OtherGSTInput.query.filter(OtherGSTInput.Doc_No > Selected_Record,OtherGSTInput.Company_Code==company_code,OtherGSTInput.Year_Code==year_code)\
             .order_by(OtherGSTInput.Doc_No.asc()).first()
         if next_Selected_Record:
-            # Serialize the SystemMaster object to a dictionary
             account_name_result = db.session.execute(sql_query, {'doc_no': next_Selected_Record.Doc_No})
             account_name = account_name_result.scalar()
             serialized_last_user_creation = {column.name: getattr(next_Selected_Record, column.name) for column in next_Selected_Record.__table__.columns}
 
-            serialized_last_user_creation['Formatted_Doc_Date'] = format_dates(next_Selected_Record)
+            serialized_last_user_creation.update(format_dates(next_Selected_Record))
             serialized_last_user_creation['Account_Name'] = account_name  # Add account name to the response
             return jsonify(serialized_last_user_creation)
         else:

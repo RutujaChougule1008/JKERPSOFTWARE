@@ -6,6 +6,7 @@ import axios from "axios";
 import "../App.css";
 
 var lActiveInputFeild = "";
+const API_URL = process.env.REACT_APP_API;
 
 const GSTStateMasterHelp = ({ onAcCodeClick, name,GstStateName,GstStateCode, disabledFeild,tabIndexHelp }) => {
 
@@ -23,7 +24,7 @@ const GSTStateMasterHelp = ({ onAcCodeClick, name,GstStateName,GstStateCode, dis
     // Fetch data based on acType
     const fetchAndOpenPopup = async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/api/sugarian/getall-gststatemaster`);
+            const response = await axios.get(`${API_URL}/getall-gststatemaster`);
             const data = response.data.alldata;
             setPopupContent(data);
             setShowModal(true);
@@ -71,7 +72,7 @@ const GSTStateMasterHelp = ({ onAcCodeClick, name,GstStateName,GstStateCode, dis
 
         try {
             // Assuming `apiURL` is defined somewhere in your code
-            const response = await axios.get(`http://localhost:8080/api/sugarian/getall-gststatemaster`);
+            const response = await axios.get(`${API_URL}/getall-gststatemaster`);
             const data = response.data.alldata;
             setPopupContent(data);
             setApiDataFetched(true);

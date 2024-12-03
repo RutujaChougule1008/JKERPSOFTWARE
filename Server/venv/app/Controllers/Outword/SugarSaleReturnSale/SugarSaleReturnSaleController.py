@@ -16,6 +16,7 @@ sugar_sale_return_detail_schema = SugarSaleReturnSaleDetailSchema()
 sugar_sale_return_detail_schemas = SugarSaleReturnSaleDetailSchema(many=True)
 
 API_URL = os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 
 SUGAR_SALE_RETURN_DETAILS_QUERY = '''
 SELECT accode.Ac_Name_E AS partyname, mill.Ac_Name_E AS millname, unit.Ac_Name_E AS unitname, broker.Ac_Name_E AS brokername, item.System_Name_E AS itemname, transport.Ac_Name_E AS transportname, 
@@ -426,7 +427,7 @@ def delete_sugarsalereturn():
                 'TRAN_TYPE': tran_type,
             }
 
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to delete record in gLedger")

@@ -56,6 +56,8 @@ class TenderHead(db.Model):
     bp = db.Column(db.Integer)
     groupTenderNo = db.Column(db.Integer)
     groupTenderId = db.Column(db.Integer)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)
 
     details = db.relationship('TenderDetails', backref='head', lazy=True)
  

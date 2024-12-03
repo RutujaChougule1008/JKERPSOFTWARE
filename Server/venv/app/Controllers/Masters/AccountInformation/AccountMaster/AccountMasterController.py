@@ -8,6 +8,7 @@ import os
 
 # Get the base URL from environment variables
 API_URL = os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 
 # Import schemas from the schemas module
 from app.models.Masters.AccountInformation.AccountMaster.AccountMasterModel import AccountMaster, AccountContact, AcGroups
@@ -24,12 +25,12 @@ account_contact_schemas = AccountContactSchema(many=True)
 
 # Global SQL Query
 ACCOUNT_CONTACT_DETAILS_QUERY = '''
-   SELECT city.city_name_e AS cityname, dbo.nt_1_bsgroupmaster.group_Name_E AS groupcodename, State.State_Name
-FROM     dbo.nt_1_accountmaster INNER JOIN
-                  dbo.gststatemaster AS State ON dbo.nt_1_accountmaster.GSTStateCode = State.State_Code LEFT OUTER JOIN
-                  dbo.nt_1_citymaster AS city ON dbo.nt_1_accountmaster.cityid = city.cityid LEFT OUTER JOIN
-                  dbo.nt_1_accontacts ON dbo.nt_1_accountmaster.accoid = dbo.nt_1_accontacts.accoid LEFT OUTER JOIN
-                  dbo.nt_1_bsgroupmaster ON dbo.nt_1_accountmaster.bsid = dbo.nt_1_bsgroupmaster.bsid
+   SELECT        city.city_name_e AS cityname, dbo.nt_1_bsgroupmaster.group_Name_E AS groupcodename, State.State_Name
+FROM            dbo.nt_1_accountmaster LEFT OUTER JOIN
+                         dbo.nt_1_bsgroupmaster ON dbo.nt_1_accountmaster.bsid = dbo.nt_1_bsgroupmaster.bsid LEFT OUTER JOIN
+                         dbo.nt_1_accontacts ON dbo.nt_1_accountmaster.accoid = dbo.nt_1_accontacts.accoid LEFT OUTER JOIN
+                         dbo.gststatemaster AS State ON dbo.nt_1_accountmaster.GSTStateCode = State.State_Code LEFT OUTER JOIN
+                         dbo.nt_1_citymaster AS city ON dbo.nt_1_accountmaster.cityid = city.cityid
     WHERE dbo.nt_1_accountmaster.accoid = :accoid
 '''
 
@@ -452,7 +453,7 @@ def insert_accountmaster():
             'TRAN_TYPE': tranType,
         }
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = requests.post(API_URL_SERVER+"/create-Record-gLedger", params=query_params, json=gledger_entries)
 
         if response.status_code == 201:
             db.session.commit()
@@ -581,7 +582,7 @@ def update_accountmaster():
             'TRAN_TYPE': tranType,
         }
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = requests.post(API_URL_SERVER+"/create-Record-gLedger", params=query_params, json=gledger_entries)
 
         if response.status_code == 201:
             db.session.commit()
@@ -627,7 +628,7 @@ def delete_accountmaster():
             }
 
             # Make the external request
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER+"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")

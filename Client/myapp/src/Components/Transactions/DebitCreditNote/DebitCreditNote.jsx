@@ -15,6 +15,7 @@ import {
   TextField,
   Grid
 } from '@mui/material';
+import { useRecordLocking } from '../../../hooks/useRecordLocking';
 
 // Global Variables
 var newDcid = "";
@@ -32,17 +33,19 @@ var ExpAcaccountName = "";
 var ExpAcaccountCode = "";
 var ItemCodeName = "";
 var ItemCodeDetail = "";
-var selectedfilter = "";
 var HSN = "";
 var CGSTRate = 0.0;
 var SGSTRate = 0.0;
 var IGSTRate = 0.0;
 
 const API_URL = process.env.REACT_APP_API;
-const companyCode = sessionStorage.getItem("Company_Code");
-const Year_Code = sessionStorage.getItem("Year_Code");
 
 const DebitCreditNote = () => {
+
+  //GET values from the session
+  const companyCode = sessionStorage.getItem("Company_Code");
+  const Year_Code = sessionStorage.getItem("Year_Code");
+
   // Detail Help State Management
   const [users, setUsers] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
@@ -79,21 +82,17 @@ const DebitCreditNote = () => {
 
   // In utility page record doubleClicked that record show for edit functionality
   const location = useLocation();
+  const navigate = useNavigate();
+
   const selectedRecord = location.state?.selectedRecord;
   const handleTransType = location.state?.tran_type;
+  const permissions = location.state?.permissionsData;
 
-  console.log("handleTransType", handleTransType)
-
-
-  const navigate = useNavigate();
   const setFocusTaskdate = useRef(null);
-  selectedfilter = location.state?.selectedfilter;
-  const [tranType, setTranType] = useState(selectedfilter);
+
+  const [tranType, setTranType] = useState(handleTransType);
   const [isHandleChange, setIsHandleChange] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [cgstRate, setCgstRate] = useState(0.0);
-  const [sgstRate, setSgstRate] = useState(0.0);
-  const [igstRate, setIgstRate] = useState(0.0);
 
   const initialFormData = {
     doc_no: "",
@@ -137,7 +136,7 @@ const DebitCreditNote = () => {
     IsDeleted: 1,
   };
 
-  // Head data functionality code.
+  // ----------------------------------------------Debit Credit Note Head section Functionality---------------------------------------.
   const [formData, setFormData] = useState(initialFormData);
   const [billFrom, setBillFrom] = useState("");
   const [billTo, setBillTo] = useState("");
@@ -147,6 +146,10 @@ const DebitCreditNote = () => {
   const [GstRate, setGstRate] = useState(0.0);
   const [matchStatus, setMatchStatus] = useState(null);
 
+  //Lock-Unlock record functionality
+  const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no, undefined, companyCode, Year_Code, "DebitCredit_Note");
+
+  //User Input chnage State management
   const handleChange = async (event) => {
     const { name, value } = event.target;
     setFormData((prevData) => ({
@@ -155,6 +158,7 @@ const DebitCreditNote = () => {
     }));
   };
 
+  //Calculations
   const handleKeyDownCalculations = async (event) => {
     if (event.key === "Tab") {
       const { name, value } = event.target;
@@ -176,6 +180,7 @@ const DebitCreditNote = () => {
     }
   };
 
+  //Date format OnChnage
   const handleDateChange = (event, fieldName) => {
     setFormData((prevFormData) => ({
       ...prevFormData,
@@ -248,16 +253,36 @@ const DebitCreditNote = () => {
     setLastTenderDetails([]);
   };
 
-  // Handle Edit button Functionality
-  const handleEdit = () => {
-    setIsEditMode(true);
-    setAddOneButtonEnabled(false);
-    setSaveButtonEnabled(true);
-    setCancelButtonEnabled(true);
-    setEditButtonEnabled(false);
-    setDeleteButtonEnabled(false);
-    setBackButtonEnabled(true);
-    setIsEditing(true);
+  //Edit Functionality
+  const handleEdit = async () => {
+    axios.get(`${API_URL}/getdebitcreditByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&tran_type=${tranType}&Year_Code=${Year_Code}`)
+      .then((response) => {
+        const data = response.data;
+        const isLockedNew = data.last_head_data.LockedRecord;
+        const isLockedByUserNew = data.last_head_data.LockedUser;
+
+        if (isLockedNew) {
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord()
+        }
+        setFormData({
+          ...formData,
+          ...data.last_head_data
+        });
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert("This record is already deleted! Showing the previous record.");
+      });
   };
 
   // Handle New record insert in database and update the record Functionality
@@ -296,7 +321,7 @@ const DebitCreditNote = () => {
       if (isEditMode) {
         const updateApiUrl = `${API_URL}/update-debitCreditnote?dcid=${newDcid}`;
         const response = await axios.put(updateApiUrl, requestData);
-
+        await unlockRecord();
         toast.success("Data updated successfully!");
         setTimeout(() => {
           window.location.reload();
@@ -330,43 +355,88 @@ const DebitCreditNote = () => {
 
   // Handle Delete the record from database functionality
   const handleDelete = async () => {
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete this record ${formData.doc_no}?`
-    );
-    if (isConfirmed) {
-      setIsEditMode(false);
-      setAddOneButtonEnabled(true);
-      setEditButtonEnabled(true);
-      setDeleteButtonEnabled(true);
-      setBackButtonEnabled(true);
-      setSaveButtonEnabled(false);
-      setCancelButtonEnabled(false);
-      setIsLoading(true);
-      try {
+    try {
+      const getRecordUrl = `${API_URL}/getdebitcreditByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&tran_type=${tranType}&Year_Code=${Year_Code}`;
+      const response = await axios.get(getRecordUrl);
+
+      const data = response.data;
+      const isLockedNew = data.last_head_data.LockedRecord;
+      const isLockedByUserNew = data.last_head_data.LockedUser;
+
+      if (isLockedNew) {
+        window.alert(`This record is locked by ${isLockedByUserNew}`);
+        return;
+      } else {
+        await lockRecord();
+      }
+
+      const isConfirmed = window.confirm(
+        `Are you sure you want to delete this record ${formData.doc_no}?`
+      );
+
+      if (isConfirmed) {
+        setIsEditMode(false);
+        setAddOneButtonEnabled(true);
+        setEditButtonEnabled(true);
+        setDeleteButtonEnabled(true);
+        setBackButtonEnabled(true);
+        setSaveButtonEnabled(false);
+        setCancelButtonEnabled(false);
+        setIsLoading(true);
+
         const deleteApiUrl = `${API_URL}/delete_data_by_dcid?dcid=${newDcid}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${tranType}`;
-        const response = await axios.delete(deleteApiUrl);
-        if (response.status === 200) {
-          if (response.data) {
-            toast.success("Data delete successfully!");
+        const deleteResponse = await axios.delete(deleteApiUrl);
+
+        if (deleteResponse.status === 200) {
+          if (deleteResponse.data) {
+            toast.success("Data deleted successfully!");
             handleCancel();
-          } else if (response.status === 404) {
-            toast.error("No data found");
+          } else if (deleteResponse.status === 404) {
+            toast.error("No data found for deletion");
           }
         } else {
-          toast.error(
-            "Failed to delete tender:",
-            response.status,
-            response.statusText
-          );
+          toast.error(`Failed to delete record: ${deleteResponse.statusText}`);
         }
-      } catch (error) {
-        toast.error("Error during API call:", error);
-      } finally {
-        setIsLoading(false);
+      } else {
+        console.log("Deletion cancelled");
       }
-    } else {
-      toast.log("Deletion cancelled");
+    } catch (error) {
+      toast.error("Error during API call: " + error.message);
+      console.error("Error during API call:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Utility function to handle common data extraction and state updates
+  const updateFormData = (data) => {
+    const lastHeadData = data.last_head_data;
+    const lastDetailsData = data.last_details_data[0];
+
+    setFormData((prevData) => ({
+      ...prevData,
+      ...lastHeadData,
+    }));
+
+    setLastTenderData(lastHeadData || {});
+    setLastTenderDetails(data.last_details_data || []);
+
+    // Assign the common data values
+    newDcid = lastHeadData.dcid;
+    BillFromName = lastDetailsData.BillFromName;
+    BillFormCode = lastHeadData.ac_code;
+    ShipToName = lastDetailsData.UnitAcName;
+    ShipToCode = lastHeadData.Unit_Code;
+    BillToName = lastDetailsData.ShipToName;
+    BillToCode = lastHeadData.Shit_To;
+    GSTName = lastDetailsData.GST_Name;
+    GSTCode = lastHeadData.gst_code;
+    MillName = lastDetailsData.MillName;
+    MillCode = lastHeadData.Mill_Code;
+    ExpAcaccountName = lastDetailsData.expacaccountname;
+    ExpAcaccountCode = lastDetailsData.expac_code;
+    ItemCodeName = lastDetailsData.Item_Name;
+    ItemCodeDetail = lastDetailsData.Item_Code;
   };
 
   // Handle Cancel button clicked show the last record for edit functionality
@@ -385,45 +455,16 @@ const DebitCreditNote = () => {
         `${API_URL}/get-lastdebitcreditnotedata?Company_Code=${companyCode}&Year_Code=${Year_Code}&tran_type=${tranType}`
       );
       if (response.status === 200) {
-        const data = response.data;
-        newDcid = data.last_head_data.dcid;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        HSN = data.last_details_data[0].HSN;
-
-        // setCgstRate(parseFloat(data.last_head_data.cgst_rate));
-        // setSgstRate(parseFloat(data.last_head_data.sgst_rate));
-        // setIgstRate(parseFloat(data.last_head_data.igst_rate));
-
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-          // cgst_rate: parseFloat(data.last_head_data.cgst_rate),
-          // sgst_rate: parseFloat(data.last_head_data.sgst_rate),
-          // igst_rate: parseFloat(data.last_head_data.igst_rate),
-        }));
-
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        updateFormData(response.data);
       } else {
-        toast.error(
-          "Failed to fetch last data:",
+        console.error(
+          "Failed to fetch first tender data:",
           response.status,
           response.statusText
         );
       }
+      HSN = response.data.last_details_data[0].HSN;
+      unlockRecord();
     } catch (error) {
       toast.error("Error during API call:", error);
     }
@@ -434,35 +475,14 @@ const DebitCreditNote = () => {
     navigate("/debitcreditnote-utility");
   };
 
-  // Navigation Functionality to show first, previous, next, and last record functionality
+  // Navigation APIS
   const handleFirstButtonClick = async () => {
     try {
       const response = await axios.get(
         `${API_URL}/get-firstdebitcredit-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&tran_type=${tranType}`
       );
       if (response.status === 200) {
-        const data = response.data;
-        newDcid = data.last_head_data.dcid;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        updateFormData(response.data);
       } else {
         console.error(
           "Failed to fetch first tender data:",
@@ -475,35 +495,13 @@ const DebitCreditNote = () => {
     }
   };
 
-  // Function to fetch the last record
   const handleLastButtonClick = async () => {
     try {
       const response = await axios.get(
         `${API_URL}/get-lastdebitcredit-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&tran_type=${tranType}`
       );
       if (response.status === 200) {
-        const data = response.data;
-        newDcid = data.last_head_data.dcid;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        updateFormData(response.data);
       } else {
         console.error(
           "Failed to fetch last tender data:",
@@ -516,35 +514,13 @@ const DebitCreditNote = () => {
     }
   };
 
-  // Function to fetch the next record
   const handleNextButtonClick = async () => {
     try {
       const response = await axios.get(
         `${API_URL}/get-nextdebitcreditnote-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&tran_type=${tranType}&doc_no=${formData.doc_no}`
       );
       if (response.status === 200) {
-        const data = response.data;
-        newDcid = data.last_head_data.dcid;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        updateFormData(response.data);
       } else {
         console.error(
           "Failed to fetch next tender data:",
@@ -557,35 +533,13 @@ const DebitCreditNote = () => {
     }
   };
 
-  // Function to fetch the previous record
   const handlePreviousButtonClick = async () => {
     try {
       const response = await axios.get(
         `${API_URL}/get-previousDebitcreditnote-navigation?Company_Code=${companyCode}&Year_Code=${Year_Code}&tran_type=${tranType}&doc_no=${formData.doc_no}`
       );
       if (response.status === 200) {
-        const data = response.data;
-        newDcid = data.last_head_data.dcid;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        updateFormData(response.data);
       } else {
         console.error(
           "Failed to fetch previous tender data:",
@@ -598,11 +552,12 @@ const DebitCreditNote = () => {
     }
   };
 
-  // Handle form submission (you can modify this based on your needs)
+  // Handle form submission.
   const handleSubmit = (event) => {
     event.preventDefault();
   };
 
+  //Record DoubleCliked.
   useEffect(() => {
     if (selectedRecord) {
       handlerecordDoubleClicked();
@@ -627,29 +582,8 @@ const DebitCreditNote = () => {
         `${API_URL}/getdebitcreditByid?doc_no=${selectedRecord.doc_no}&Company_Code=${companyCode}&Year_Code=${Year_Code}&tran_type=${selectedRecord.tran_type}`
       );
       if (response.status === 200) {
-        const data = response.data;
-        newDcid = data.last_head_data.dcid;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        setFormData((prevData) => ({
-          ...prevData,
-          ...data.last_head_data,
-        }));
+        updateFormData(response.data);
         setTranType(selectedRecord.tran_type);
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
       } else {
         console.error(
           "Failed to fetch last tender data:",
@@ -670,27 +604,7 @@ const DebitCreditNote = () => {
         const response = await axios.get(
           `${API_URL}/getdebitcreditByid?Company_Code=${companyCode}&doc_no=${changeNoValue}&tran_type=${tranType}&Year_Code=${Year_Code}`
         );
-        const data = response.data;
-        BillFromName = data.last_details_data[0].BillFromName;
-        BillFormCode = data.last_head_data.ac_code;
-        ShipToName = data.last_details_data[0].UnitAcName;
-        ShipToCode = data.last_head_data.Unit_Code;
-        BillToName = data.last_details_data[0].ShipToName;
-        BillToCode = data.last_head_data.Shit_To;
-        GSTName = data.last_details_data[0].GST_Name;
-        GSTCode = data.last_head_data.gst_code;
-        MillName = data.last_details_data[0].MillName;
-        MillCode = data.last_head_data.Mill_Code;
-        ExpAcaccountName = data.last_details_data[0].expacaccountname;
-        ExpAcaccountCode = data.last_details_data[0].expac_code;
-        ItemCodeName = data.last_details_data[0].Item_Name;
-        ItemCodeDetail = data.last_details_data[0].Item_Code;
-        setFormData({
-          ...formData,
-          ...data.last_head_data,
-        });
-        setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last_details_data || []);
+        updateFormData(response.data);
         setIsEditing(false);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -698,7 +612,7 @@ const DebitCreditNote = () => {
     }
   };
 
-  // Detail Grid Functionality
+  //--------------------------------------------Debit Credit Note Detail Functionality--------------------------------------------------
   useEffect(() => {
     if (selectedRecord) {
       setUsers(
@@ -792,6 +706,7 @@ const DebitCreditNote = () => {
     openPopup("edit");
   };
 
+  //Add Record
   const addUser = async () => {
     const newUser = {
       id: users.length > 0 ? Math.max(...users.map((user) => user.id)) + 1 : 1,
@@ -825,8 +740,6 @@ const DebitCreditNote = () => {
       const cgstRate = parseFloat(formData.cgst_rate) || 0;
       const sgstRate = parseFloat(formData.sgst_rate) || 0;
       const igstRate = parseFloat(formData.igst_rate) || 0;
-
-      // Assume that if IGST is present, it should be used; otherwise, use CGST + SGST
       gstRate = igstRate > 0 ? igstRate : cgstRate + sgstRate;
     }
 
@@ -842,7 +755,7 @@ const DebitCreditNote = () => {
     closePopup();
   };
 
-  // Update User On Grid
+  // Update Record
   const updateUser = async () => {
     const updatedUsers = users.map((user) => {
       if (user.id === selectedUser.id) {
@@ -866,8 +779,6 @@ const DebitCreditNote = () => {
     });
 
     setUsers(updatedUsers);
-
-    // Update the total taxable amount
     const totalTaxableAmount = calculateTotalTaxableAmount(updatedUsers);
     let updatedFormData = { ...formData, texable_amount: totalTaxableAmount };
 
@@ -882,10 +793,8 @@ const DebitCreditNote = () => {
       const cgstRate = parseFloat(formData.cgst_rate) || 0;
       const sgstRate = parseFloat(formData.sgst_rate) || 0;
       const igstRate = parseFloat(formData.igst_rate) || 0;
-
       gstRate = igstRate > 0 ? igstRate : cgstRate + sgstRate;
     }
-
     updatedFormData = await calculateDependentValues(
       "gst_code",
       gstRate,
@@ -898,7 +807,7 @@ const DebitCreditNote = () => {
     closePopup();
   };
 
-  // Delete User On Grid
+  // Delete Record
   const deleteModeHandler = async (user) => {
     setDeleteMode(true);
     setSelectedUser(user);
@@ -917,19 +826,15 @@ const DebitCreditNote = () => {
         u.id === user.id ? { ...u, rowaction: "DNU" } : u
       );
     }
-
     setUsers(updatedUsers);
     setSelectedUser({});
-
     const totalTaxableAmount = calculateTotalTaxableAmount(updatedUsers);
     let updatedFormData = { ...formData, texable_amount: totalTaxableAmount };
-
     const matchStatus = await checkMatchStatus(
       updatedFormData.ac_code,
       companyCode,
       Year_Code
     );
-
     let gstRate = GstRate;
     if (!gstRate || gstRate === 0) {
       const cgstRate = parseFloat(formData.cgst_rate) || 0;
@@ -937,7 +842,6 @@ const DebitCreditNote = () => {
       const igstRate = parseFloat(formData.igst_rate) || 0;
       gstRate = igstRate > 0 ? igstRate : cgstRate + sgstRate;
     }
-
     updatedFormData = await calculateDependentValues(
       "gst_code",
       gstRate,
@@ -945,7 +849,6 @@ const DebitCreditNote = () => {
       matchStatus,
       gstRate
     );
-
     setFormData(updatedFormData);
   };
 
@@ -953,7 +856,6 @@ const DebitCreditNote = () => {
   const openDelete = async (user) => {
     setDeleteMode(true);
     setSelectedUser(user);
-
     let updatedUsers;
     if (isEditMode && user.rowaction === "delete") {
       updatedUsers = users.map((u) =>
@@ -964,13 +866,10 @@ const DebitCreditNote = () => {
         u.id === user.id ? { ...u, rowaction: "add" } : u
       );
     }
-
     setUsers(updatedUsers);
     setSelectedUser({});
-
     const totalTaxableAmount = calculateTotalTaxableAmount(updatedUsers);
     let updatedFormData = { ...formData, texable_amount: totalTaxableAmount };
-
     const matchStatus = await checkMatchStatus(
       updatedFormData.ac_code,
       companyCode,
@@ -982,10 +881,8 @@ const DebitCreditNote = () => {
       const cgstRate = parseFloat(formData.cgst_rate) || 0;
       const sgstRate = parseFloat(formData.sgst_rate) || 0;
       const igstRate = parseFloat(formData.igst_rate) || 0;
-
       gstRate = igstRate > 0 ? igstRate : cgstRate + sgstRate;
     }
-
     updatedFormData = await calculateDependentValues(
       "gst_code",
       gstRate,
@@ -993,12 +890,11 @@ const DebitCreditNote = () => {
       matchStatus,
       gstRate
     );
-
     setFormData(updatedFormData);
   };
 
   // Functionality to help section to set the record
-  const handleItemCode = (code, accoid, name, HSN) => {
+  const handleItemCode = (code, accoid, HSN, name) => {
     setItemCode(code);
     setItemCodeAccoid(accoid);
     setHSNNo(HSN);
@@ -1023,6 +919,7 @@ const DebitCreditNote = () => {
     setUsers(updatedUsers);
   };
 
+  //Check Status
   const checkMatchStatus = async (ac_code, company_code, year_code) => {
     try {
       const { data } = await axios.get(
@@ -1155,6 +1052,7 @@ const DebitCreditNote = () => {
       .reduce((sum, user) => sum + parseFloat(user.value || 0), 0);
   };
 
+  //Calculations
   const calculateDependentValues = async (
     name,
     input,
@@ -1228,9 +1126,9 @@ const DebitCreditNote = () => {
   return (
     <>
       <ToastContainer />
-      <h3 className="mt-4 mb-4 text-center custom-heading">
+      <h4 className="mt-4 mb-4 text-center custom-heading">
         Debit Credit Note
-      </h3>
+      </h4>
       <div >
         <ActionButtonGroup
           handleAddOne={handleAddOne}
@@ -1246,6 +1144,7 @@ const DebitCreditNote = () => {
           cancelButtonEnabled={cancelButtonEnabled}
           handleBack={handleBack}
           backButtonEnabled={backButtonEnabled}
+          permissions={permissions}
         />
         <div>
           <NavigationButtons
@@ -1294,7 +1193,7 @@ const DebitCreditNote = () => {
                 id="tran_type"
                 name="tran_type"
                 className="debitCreditNote-custom-select"
-                value={formData.tran_type}
+                value={formData.tran_type || tranType}
                 onChange={handleChange}
                 disabled={!isEditing && addOneButtonEnabled}
               >
@@ -1331,6 +1230,7 @@ const DebitCreditNote = () => {
                   CategoryName={BillFromName}
                   CategoryCode={BillFormCode}
                   name="ac_code"
+                  Ac_type=""
                   disabledFeild={!isEditing && addOneButtonEnabled}
                 />
               </div>
@@ -1350,6 +1250,7 @@ const DebitCreditNote = () => {
                 CategoryName=""
                 CategoryCode=""
                 name="Bill_No"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1378,6 +1279,7 @@ const DebitCreditNote = () => {
                 CategoryName={BillToName}
                 CategoryCode={BillToCode}
                 name="Bill_To"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1392,6 +1294,7 @@ const DebitCreditNote = () => {
                 CategoryName={MillName}
                 CategoryCode={MillCode}
                 name="Mill"
+                Ac_type="M"
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1406,6 +1309,7 @@ const DebitCreditNote = () => {
                 CategoryName={ShipToName}
                 CategoryCode={ShipToCode}
                 name="Ship_To"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1471,6 +1375,7 @@ const DebitCreditNote = () => {
                           CategoryName={expacName}
                           CategoryCode={expacCode}
                           name="expac_code"
+                          Ac_type=""
                           className="account-master-help"
                         />
                       </div>
@@ -1646,7 +1551,6 @@ const DebitCreditNote = () => {
             </tbody>
           </table>
         </div>
-
 
         <div className="debitCreditNote-row">
           <label htmlFor="gst_code" >

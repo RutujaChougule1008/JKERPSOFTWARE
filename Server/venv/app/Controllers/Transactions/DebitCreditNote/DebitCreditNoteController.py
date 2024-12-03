@@ -7,10 +7,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func,desc
 import os
 import requests
-from app.utils.CommonGLedgerFunctions import fetch_company_parameters,get_accoid
+
+from app.utils.CommonGLedgerFunctions import fetch_company_parameters,get_accoid,getPurchaseAc,create_gledger_entry,send_gledger_entries
 
 # Get the base URL from environment variables
 API_URL= os.getenv('API_URL')
+API_URL_SERVER = os.getenv('API_URL_SERVER')
 
 # Import schemas from the schemas module
 from app.models.Transactions.DebitCreditNote.DebitCreditNoteSchema import DebitCreditNoteHeadSchema, DebitCreditNoteDetailSchema
@@ -33,11 +35,20 @@ FROM            dbo.nt_1_accountmaster AS Unit RIGHT OUTER JOIN
 				  where dbo.debitnotehead.dcid =:dcid
 '''
 
+#Format Dates
 def format_dates(task):
     return {
         "bill_date": task.bill_date.strftime('%Y-%m-%d') if task.bill_date else None,
         "doc_date": task.doc_date.strftime('%Y-%m-%d') if task.doc_date else None,
     }
+
+#GET Max Doc Number from the databse.
+def get_max_doc_no(tran_type, company_code, year_code):
+        return db.session.query(func.max(DebitCreditNoteHead.doc_no)).filter(
+        DebitCreditNoteHead.tran_type == tran_type,
+        DebitCreditNoteHead.Company_Code == company_code,
+        DebitCreditNoteHead.Year_Code == year_code
+    ).scalar() or 0
 
 # Define schemas
 task_head_schema = DebitCreditNoteHeadSchema()
@@ -46,6 +57,7 @@ task_head_schemas = DebitCreditNoteHeadSchema(many=True)
 task_detail_schema = DebitCreditNoteDetailSchema()
 task_detail_schemas = DebitCreditNoteDetailSchema(many=True)
 
+#GET all data from the database 
 @app.route(API_URL + "/getdata-debitcreditNote", methods=["GET"])
 def getdata_debitcreditNote():
     try:
@@ -61,36 +73,32 @@ FROM     dbo.debitnotehead INNER JOIN
                   dbo.nt_1_accountmaster AS AccountName ON dbo.debitnotehead.Company_Code = AccountName.company_code AND dbo.debitnotehead.ac_code = AccountName.Ac_Code AND dbo.debitnotehead.ac = AccountName.accoid INNER JOIN
                   dbo.nt_1_accountmaster AS ShipTo ON AccountName.accoid = ShipTo.accoid AND dbo.debitnotehead.Company_Code = ShipTo.company_code AND dbo.debitnotehead.Shit_To = ShipTo.Ac_Code
                  where dbo.debitnotehead.Company_Code = :company_code and dbo.debitnotehead.Year_Code = :year_code
+            order by dbo.debitnotehead.doc_no desc
                                  '''
             )
         additional_data = db.session.execute(text(query), {"company_code": company_code, "year_code": year_code})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
         
-        # Convert additional_data_rows to a list of dictionaries
         all_data = [dict(row._mapping) for row in additional_data_rows]
 
         for data in all_data:
             if 'doc_date' in data:
                 data['doc_date'] = data['doc_date'].strftime('%Y-%m-%d') if data['doc_date'] else None
 
-        # Prepare response data 
         response = {
             "all_data": all_data
         }
-        # If record found, return it
         return jsonify(response), 200
 
     except Exception as e:
         print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
    
-# # We have to get the data By the Particular doc_no AND tran_type
+# GET the data By the Particular doc_no AND tran_type
 @app.route(API_URL+"/getdebitcreditByid", methods=["GET"])
 def getdebitcreditByid():
     try:
-        # Extract taskNo from request query parameters
         doc_no = request.args.get('doc_no')
         tran_type = request.args.get('tran_type')
 
@@ -100,7 +108,6 @@ def getdebitcreditByid():
         if not tran_type:
             return jsonify({"error": "Transaction Type not provided"}), 400
         
-        # Extract Company_Code from query parameters
         Company_Code = request.args.get('Company_Code')
         Year_Code = request.args.get('Year_Code')
         if Company_Code is None:
@@ -112,33 +119,26 @@ def getdebitcreditByid():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        # Use SQLAlchemy to find the record by Task_No
         task_head = DebitCreditNoteHead.query.filter_by(doc_no=doc_no, tran_type=tran_type,Company_Code=Company_Code,Year_Code=year_code).first()
 
         newtaskid = task_head.dcid
-        print('task_head',newtaskid)
 
         additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"dcid": newtaskid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
       
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         category = row.BillToName if row else None
     
         last_head_data = {column.name: getattr(task_head, column.name) for column in task_head.__table__.columns}
         last_head_data.update(format_dates(task_head))
 
-        # Convert additional_data_rows to a list of dictionaries
         last_details_data = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "last_head_data": last_head_data,
             "last_details_data": last_details_data
         }
-        # If record found, return it
         return jsonify(response), 200
 
     except Exception as e:
@@ -148,14 +148,6 @@ def getdebitcreditByid():
 #Insert Record and Gldger Effects of DebitcreditNote and DebitcreditNoteDetail
 @app.route(API_URL + "/insert-debitcreditnote", methods=["POST"])
 def insert_debitcreditnote():
-    
-    def get_max_doc_no(tran_type, company_code, year_code):
-        return db.session.query(func.max(DebitCreditNoteHead.doc_no)).filter(
-        DebitCreditNoteHead.tran_type == tran_type,
-        DebitCreditNoteHead.Company_Code == company_code,
-        DebitCreditNoteHead.Year_Code == year_code
-    ).scalar() or 0
-
     def create_gledger_entry(data, amount, drcr, ac_code, accoid):
         return {
             "TRAN_TYPE": bill_type,
@@ -198,13 +190,10 @@ def insert_debitcreditnote():
         year_code = headData.get('Year_Code')
         bill_type = headData.get('bill_type')
       
-
         max_doc_no = get_max_doc_no(tran_type,company_code,year_code)
         new_doc_no = max_doc_no + 1
-        print("doc_no+++++++",new_doc_no)
         headData['doc_no'] = new_doc_no
        
-
         new_head = DebitCreditNoteHead(**headData)
         db.session.add(new_head)
 
@@ -302,10 +291,8 @@ def insert_debitcreditnote():
             accoid = get_accoid(ac_code,headData['Company_Code'])
             add_gledger_entry(gledger_entries, headData, TDS_Amt, 'D', ac_code, accoid)
 
-
         add_gledger_entry(gledger_entries, headData, bill_amount, DRCR_head, headData['ac_code'], get_accoid(headData['ac_code'],headData['Company_Code']))
     
-
         for item in detailData:
             detailLedger_entry = create_gledger_entry({
                 "tran_type": bill_type,
@@ -324,7 +311,7 @@ def insert_debitcreditnote():
             'TRAN_TYPE': headData['tran_type'],
         }
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = requests.post(API_URL_SERVER + "/create-Record-gLedger", params=query_params, json=gledger_entries)
 
         if response.status_code == 201:
             db.session.commit()
@@ -398,7 +385,6 @@ def update_debitCreditnote():
         updatedHeadCount = db.session.query(DebitCreditNoteHead).filter(DebitCreditNoteHead.dcid == dcid).update(headData)
         updated_debit_head = db.session.query(DebitCreditNoteHead).filter(DebitCreditNoteHead.dcid == dcid).one()
         updateddoc_no = updated_debit_head.doc_no
-        print("updateddoc_no",updateddoc_no)
 
         createdDetails = []
         updatedDetails = []
@@ -445,9 +431,8 @@ def update_debitCreditnote():
             DRCR_detail = "D"
             DRCR_head = "C"
         else:
-             # Default values if tran_type does not match any expected value
             DRCR_detail = "C"
-            DRCR_head = "D"  # Adjust this default based on your business logic
+            DRCR_head = "D"
 
         company_parameters = fetch_company_parameters(headData['Company_Code'], headData['Year_Code'])
 
@@ -504,7 +489,6 @@ def update_debitCreditnote():
 
         add_gledger_entry(gledger_entries, headData, bill_amount, DRCR_head, headData['ac_code'], get_accoid(headData['ac_code'],headData['Company_Code']))
     
-        print("item",item)
         for item in detailData:
             if 'expac_code' in item:
                 detailLedger_entry = create_gledger_entry({
@@ -524,7 +508,7 @@ def update_debitCreditnote():
             'TRAN_TYPE': headData['tran_type'],
         }
 
-        response = requests.post("http://localhost:8080/api/sugarian/create-Record-gLedger", params=query_params, json=gledger_entries)
+        response = requests.post(API_URL_SERVER + "/create-Record-gLedger", params=query_params, json=gledger_entries)
 
         if response.status_code == 201:
             db.session.commit()
@@ -555,19 +539,13 @@ def delete_data_by_dcid():
         Year_Code = request.args.get('Year_Code')
         tran_type = request.args.get('tran_type')
 
-        # Check if the required parameters are provided
         if not all([dcid, Company_Code, doc_no, Year_Code, tran_type]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Start a transaction
         with db.session.begin():
-            # Delete records from DebitCreditNoteDetail table
             deleted_user_rows = DebitCreditNoteDetail.query.filter_by(dcid=dcid).delete()
-
-            # Delete record from DebitCreditNoteHead table
             deleted_task_rows = DebitCreditNoteHead.query.filter_by(dcid=dcid).delete()
 
-        # If both deletions were successful, proceed with the external request
         if deleted_user_rows > 0 and deleted_task_rows > 0:
             query_params = {
                 'Company_Code': Company_Code,
@@ -576,13 +554,11 @@ def delete_data_by_dcid():
                 'TRAN_TYPE': tran_type,
             }
 
-            # Make the external request
-            response = requests.delete("http://localhost:8080/api/sugarian/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER + "/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")
 
-        # Commit the transaction
             db.session.commit()
 
         return jsonify({
@@ -590,7 +566,6 @@ def delete_data_by_dcid():
         }), 200
 
     except Exception as e:
-        # Roll back the transaction if any error occurs
         db.session.rollback()
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
@@ -605,32 +580,24 @@ def get_lastdebitcreditnotedata():
         if not tran_type:
             return jsonify({"error": "Transaction type is required"}), 400
 
-        # Use SQLAlchemy to get the last record from the DebitCreditNoteHead table
         last_dcid_Head = DebitCreditNoteHead.query.filter_by(tran_type=tran_type,Company_Code=company_code,Year_Code=year_code).order_by(DebitCreditNoteHead.dcid.desc()).first()
 
         if not last_dcid_Head:
             return jsonify({"error": "No records found in dcid table"}), 404
 
-        # Get the last dcid
         last_dcid = last_dcid_Head.dcid
 
-        # Execute the additional SQL query
         additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"dcid": last_dcid})
         additional_data_rows = additional_data.fetchall()
 
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         category = row.BillToName if row else None
 
-        # Convert last_dcid_Head to a dictionary
         last_head_data = {column.name: getattr(last_dcid_Head, column.name) for column in last_dcid_Head.__table__.columns}
         last_head_data.update(format_dates(last_dcid_Head))
 
-
-        # Convert additional_data_rows to a list of dictionaries
         last_details_data = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "last_head_data": last_head_data,
             "last_details_data": last_details_data
@@ -642,9 +609,7 @@ def get_lastdebitcreditnotedata():
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-
 #Navigations API    
-#Get First record from database 
 @app.route(API_URL+"/get-firstdebitcredit-navigation", methods=["GET"])
 def get_firstdebitcredit_navigation():
     try:
@@ -653,41 +618,30 @@ def get_firstdebitcredit_navigation():
         year_code = request.args.get('Year_Code')
         if not tran_type:
             return jsonify({"error": "Transaction type is required"}), 400
-        # Use SQLAlchemy to get the first record from the Task table
         first_task = DebitCreditNoteHead.query.filter_by(tran_type=tran_type,Company_Code=company_code,Year_Code=year_code).order_by(DebitCreditNoteHead.doc_no.asc()).first()
 
         if not first_task:
             return jsonify({"error": "No records found in Task_Entry table"}), 404
 
-        # Get the Taskid of the first record
         first_taskid = first_task.dcid
 
         additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"dcid": first_taskid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
       
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         category = row.BillToName if row else None
 
-        # Convert last_dcid_Head to a dictionary
         last_head_data = {column.name: getattr(first_task, column.name) for column in first_task.__table__.columns}
         last_head_data.update(format_dates(first_task))
 
-
-        # Convert additional_data_rows to a list of dictionaries
         last_details_data = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "last_head_data": last_head_data,
             "last_details_data": last_details_data
         }
-
-
         return jsonify(response), 200
-
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
@@ -696,7 +650,6 @@ def get_firstdebitcredit_navigation():
 @app.route(API_URL+"/get-lastdebitcredit-navigation", methods=["GET"])
 def get_lastdebitcredit_navigation():
     try:
-
         tran_type = request.args.get('tran_type')
         company_code = request.args.get('Company_Code')
         year_code = request.args.get('Year_Code')
@@ -704,41 +657,29 @@ def get_lastdebitcredit_navigation():
         if not tran_type:
             return jsonify({"error": "Transaction type is required"}), 400
     
-        # Use SQLAlchemy to get the last record from the Task table
         last_task =  DebitCreditNoteHead.query.filter_by(tran_type=tran_type,Company_Code=company_code,Year_Code=year_code).order_by(DebitCreditNoteHead.doc_no.desc()).first()
 
         if not last_task:
             return jsonify({"error": "No records found in Task_Entry table"}), 404
 
-        # Get the Taskid of the last record
         last_taskid = last_task.dcid
 
-        # Additional SQL query execution
         additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"dcid": last_taskid})
 
-        # Extracting category name from additional_data
         additional_data_rows = additional_data.fetchall()
       
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
        
-
-        # Convert last_dcid_Head to a dictionary
         last_head_data = {column.name: getattr(last_task, column.name) for column in last_task.__table__.columns}
         last_head_data.update(format_dates(last_task))
 
-
-        # Convert additional_data_rows to a list of dictionaries
         last_details_data = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "last_head_data": last_head_data,
             "last_details_data": last_details_data
         }
-
         return jsonify(response), 200
-
     except Exception as e:
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
     
@@ -754,45 +695,30 @@ def get_previousDebitcreditnote_navigation():
         if not tran_type:
             return jsonify({"error": "Transaction type is required"}), 400
         
-        print("currentTaskNo", current_task_no)
-
-        # Check if the Task_No is provided
         if not current_task_no:
             return jsonify({"error": "Current Task No is required"}), 400
 
-        # Use SQLAlchemy to get the previous record from the Task table
         previous_task = DebitCreditNoteHead.query.filter_by(tran_type=tran_type,Company_Code=company_code,Year_Code=year_code).filter(DebitCreditNoteHead.doc_no < current_task_no).order_by(DebitCreditNoteHead.doc_no.desc()).first()
     
-        
         if not previous_task:
             return jsonify({"error": "No previous records found"}), 404
 
-        # Get the Task_No of the previous record
         previous_task_id = previous_task.dcid
-        print("previous_task_id",previous_task_id)
-        
-        # Additional SQL query execution
+
         additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"dcid": previous_task_id})
-        
-        # Fetch all rows from additional data
         additional_data_rows = additional_data.fetchall()
         
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
-        # Convert last_dcid_Head to a dictionary
+
         last_head_data = {column.name: getattr(previous_task, column.name) for column in previous_task.__table__.columns}
         last_head_data.update(format_dates(previous_task))
 
-
-        # Convert additional_data_rows to a list of dictionaries
         last_details_data = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "last_head_data": last_head_data,
             "last_details_data": last_details_data
         }
-
         return jsonify(response), 200
 
     except Exception as e:
@@ -807,35 +733,26 @@ def get_nextdebitcreditnote_navigation():
         company_code = request.args.get('Company_Code')
         year_code = request.args.get('Year_Code')
         
-        # Check if the currentTaskNo is provided
         if not tran_type:
             return jsonify({"error": "Transaction Type is  required"}), 400
 
-        # Use SQLAlchemy to get the next record from the Task table
         next_task = DebitCreditNoteHead.query.filter(DebitCreditNoteHead.doc_no > current_task_no).filter_by(tran_type=tran_type,Company_Code=company_code,Year_Code=year_code).order_by(DebitCreditNoteHead.doc_no.asc()).first()
 
         if not next_task:
             return jsonify({"error": "No next records found"}), 404
 
-        # Get the Task_No of the next record
         next_task_id = next_task.dcid
 
-        # Query to fetch System_Name_E from nt_1_systemmaster
         additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"dcid": next_task_id})
         
-        # Fetch all rows from additional data
         additional_data_rows = additional_data.fetchall()
         
-        # Extracting category name from additional_data
         row = additional_data_rows[0] if additional_data_rows else None
         last_head_data = {column.name: getattr(next_task, column.name) for column in next_task.__table__.columns}
         last_head_data.update(format_dates(next_task))
 
-
-        # Convert additional_data_rows to a list of dictionaries
         last_details_data = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "last_head_data": last_head_data,
             "last_details_data": last_details_data

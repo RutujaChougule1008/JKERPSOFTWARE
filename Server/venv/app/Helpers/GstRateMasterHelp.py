@@ -22,7 +22,7 @@ def gst_rate_master():
         # Start a database transaction
         with db.session.begin_nested():
             query = db.session.execute(text('''
-                SELECT Doc_no, GST_Name, Rate
+                SELECT Doc_no, GST_Name, Rate, gstid
                 FROM NT_1_GSTRateMaster
                 WHERE Company_Code=:company_code
             '''), {'company_code': Company_Code})
@@ -34,7 +34,8 @@ def gst_rate_master():
             response.append({
                 'Doc_no': row.Doc_no,
                 'GST_Name': row.GST_Name,
-                'Rate': row.Rate
+                'Rate': row.Rate,
+                'gstid': row.gstid
             })
 
         return jsonify(response)

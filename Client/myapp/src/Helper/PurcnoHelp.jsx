@@ -40,7 +40,7 @@ const PurcnoHelp = ({ onAcCodeClick, name, Tenderid, Tenderno, tabIndexHelp, dis
     const fetchTenderDetails = async (tenderNo, tenderId) => {
         try {
            
-            const url = `http://localhost:8080/api/sugarian/getTenderNo_Data?CompanyCode=${CompanyCode}&Tender_No=${tenderNo}&ID=${tenderId}&Year_Code=${YearCode}`;
+            const url = `${API_URL}/getTenderNo_Data?CompanyCode=${CompanyCode}&Tender_No=${tenderNo}&ID=${tenderId}&Year_Code=${YearCode}`;
             const response = await axios.get(url);
             const details = response.data;
             onTenderDetailsFetched(details)

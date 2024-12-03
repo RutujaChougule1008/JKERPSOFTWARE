@@ -29,6 +29,7 @@ function EBuySugarAccountMasterUtility() {
     const [currentPage, setCurrentPage] = useState(1);
     const [gstNo, setGstNo] = useState("");
     const [openModal, setOpenModal] = useState(false);
+    const [eBuyData, setEBuyData] = useState([]);
     const [redirectPathYes, setRedirectPathYes] = useState("/path-yes");
     const [redirectPathNo, setRedirectPathNo] = useState("/path-no");
 
@@ -41,6 +42,7 @@ function EBuySugarAccountMasterUtility() {
             if (gstNo) {
                 const apiUrl = `${API_URL}/getBy_GstNo?gst_no=${gstNo}`;
                 const response = await axios.get(apiUrl);
+                setEBuyData(response.data)
                 if (response.data && Array.isArray(response.data.accountMasterData)) {
                     if (response.data.accountMasterData.length === 0) {
                         handleOpenModal();
@@ -148,7 +150,41 @@ function EBuySugarAccountMasterUtility() {
     const handleCloseModal = () => setOpenModal(false);
 
     const handleYesClick = () => {
-        navigate("/account-master");
+        const userData = eBuyData.eBuyUserData[0];
+
+        const accountMasterData = {
+            Ac_Name_E: userData.company_name || "",
+            Ac_Name_R: userData.company_name || "", 
+            Address_E: userData.address || "", 
+            Pincode: userData.zipcode || "", 
+            Tin_No: userData.tin_no || "", 
+            Cst_no: "",
+            Gst_No: userData.gst_no || "", 
+            Email_Id: userData.email || "",
+            Email_Id_cc: "", 
+            Other_Narration: "", 
+            ECC_No: "", 
+            Bank_Name: userData.bank_name || "", 
+            Bank_Ac_No: userData.account_no || "", 
+            Bank_Opening: 0.0, 
+            Opening_Balance: 0.0, 
+            Short_Name: userData.short_name || "", 
+            Commission: 0.0, 
+            referBy: userData.referred_by || "", 
+            OffPhone: userData.landline_no || "", 
+            Fax: "", 
+            CompanyPan: userData.pan_no || "", 
+            Mobile_No: userData.phone_no || "", 
+            Is_Login: userData.is_login || "", 
+            IFSC: userData.ifsc_code || "",
+            FSSAI: userData.fssai_no || "",
+            GSTStateCode: userData.gst_state_code || "", 
+            cityid: userData.city_id || "", 
+            whatsup_no: userData.whatsapp_no || "",
+            adhar_no: userData.adharcard_no || "", 
+            TDSApplicable: userData.tds_applicable || "Y",
+        };
+     navigate("/account-master", { state: { accountMasterData } });
         handleCloseModal();
     };
 
@@ -170,7 +206,7 @@ function EBuySugarAccountMasterUtility() {
     };
 
     return (
-        <div className="container" style={{ padding: '20px', overflow: 'hidden' }}>
+        <div style={{ padding: '20px', overflow: 'hidden' }}>
             <Typography variant="h4" gutterBottom style={{ textAlign: 'center', marginBottom: '20px' }}>
                 eBuySugar Account Master
             </Typography>

@@ -90,35 +90,35 @@ def getdata_utr():
         if not records:
             return jsonify({"error": "No records found"}), 404
 
-        all_records_data = []
+        query = ('''SELECT        bankAc.Ac_Name_E AS millName, mill.Ac_Name_E AS bankAcName, dbo.nt_1_utr.doc_no, dbo.nt_1_utr.doc_date, dbo.nt_1_utr.amount, dbo.nt_1_utr.utr_no, dbo.nt_1_utr.narration_header, dbo.nt_1_utr.narration_footer, 
+                         dbo.nt_1_utr.utrid, dbo.nt_1_utr.IsDeleted
+FROM            dbo.nt_1_utr LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS mill ON dbo.nt_1_utr.mc = mill.accoid LEFT OUTER JOIN
+                         dbo.nt_1_accountmaster AS bankAc ON dbo.nt_1_utr.ba = bankAc.accoid
+WHERE 
+            dbo.nt_1_utr.Company_Code = :company_code 
+            AND dbo.nt_1_utr.Year_Code = :year_code
+order by dbo.nt_1_utr.doc_no desc
+                                 '''
+            )
+        additional_data = db.session.execute(text(query), {"company_code": Company_Code, "year_code": Year_Code})
 
-        for record in records:
-            utr_head_data = {column.name: getattr(record, column.name) for column in record.__table__.columns}
-            utr_head_data.update(format_dates(record))
+        additional_data_rows = additional_data.fetchall()
+        
+        all_data = [dict(row._mapping) for row in additional_data_rows]
 
-            utrid = record.utrid
-            additional_data = db.session.execute(text(UTR_DETAILS_QUERY), {"utrid": utrid})
-            additional_data_row = additional_data.fetchone()
-
-            label = dict(additional_data_row._mapping) if additional_data_row else {}
-
-            detail_records = UTRDetail.query.filter_by(utrid=utrid).all()
-            detail_data = [{column.name: getattr(detail_record, column.name) for column in detail_record.__table__.columns} for detail_record in detail_records]
-
-            record_response = {
-                "utr_head_data": utr_head_data,
-                "labels": label,
-                "utr_details": detail_data
-            }
-
-            all_records_data.append(record_response)
-
+        for data in all_data:
+            if 'doc_date' in data:
+                data['doc_date'] = data['doc_date'].strftime('%Y-%m-%d') if data['doc_date'] else None
+ 
         response = {
-            "all_data_utr": all_records_data
+            "all_data": all_data
         }
+
         return jsonify(response), 200
 
     except Exception as e:
+        print(e)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 # Get data by the particular doc_no

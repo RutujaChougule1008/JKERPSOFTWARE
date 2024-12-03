@@ -49,6 +49,8 @@ class DebitCreditNoteHead(db.Model):
     TDS_Rate = Column(Numeric(18, 3), nullable=False)
     TDS_Amt = Column(Numeric(18, 2), nullable=False)
     IsDeleted = Column(Integer, nullable=False)
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(String(50),default='',nullable=True)
 
     details = db.relationship('DebitCreditNoteDetail', backref='Dcid', lazy=True)
 

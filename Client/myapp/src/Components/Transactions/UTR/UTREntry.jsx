@@ -60,6 +60,7 @@ const UTREntry = () => {
   //In utility page record doubleClicked that recod show for edit functionality
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const permissions = location.state?.permissionsData;
 
   const initialFormData = {
     doc_no: "",
@@ -690,7 +691,7 @@ useEffect(() => {
   const handlerecordDoubleClicked = async () => {
     try {
       const response = await axios.get(
-        `${API_URL}/getutrByid?Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${selectedRecord.utr_head_data.doc_no}`
+        `${API_URL}/getutrByid?Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${selectedRecord.doc_no}`
       );
       const data = response.data;
       lblBankname = data.labels.bankAcName;
@@ -947,6 +948,7 @@ useEffect(() => {
           cancelButtonEnabled={cancelButtonEnabled}
           handleBack={handleBack}
           backButtonEnabled={backButtonEnabled}
+          permissions={permissions}
         />
         <div>
           {/* Navigation Buttons */}

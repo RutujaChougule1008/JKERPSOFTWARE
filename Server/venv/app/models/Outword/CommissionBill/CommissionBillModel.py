@@ -66,4 +66,5 @@ class CommissionBill(db.Model):
     TDS = db.Column(db.Numeric(18,2),nullable=True)
     ta = db.Column(db.Integer,nullable=True)
     QRCode = db.Column(db.String(1073741823),nullable=True)
-
+    LockedRecord = db.Column(db.Boolean, nullable=False, default=False)
+    LockedUser = db.Column(db.String(50),default='',nullable=True)

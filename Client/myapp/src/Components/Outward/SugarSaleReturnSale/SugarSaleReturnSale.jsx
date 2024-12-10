@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import AccountMasterHelp from "../../../Helper/AccountMasterHelp";
 import GSTRateMasterHelp from "../../../Helper/GSTRateMasterHelp";
 import ItemMasterHelp from "../../../Helper/SystemmasterHelp";
+import { TextField, Grid, InputLabel, FormControl, Select, MenuItem, FormControlLabel, Checkbox, TextareaAutosize, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
@@ -13,7 +14,6 @@ import "./SugarSaleReturnSale.css";
 import { useRecordLocking } from "../../../hooks/useRecordLocking";
 import { HashLoader } from "react-spinners";
 import PurcNoFromReturnSaleHelp from "../../../Helper/PurcNoFromReturnSaleHelp";
-import { TextField, Grid } from '@mui/material';
 import SugarSaleReturnReport from "../SugarSaleReturnSale/report/SugarSaleReturn"
 
 //Global Variables
@@ -37,6 +37,17 @@ var TYPE = "";
 var purchaseNo = "";
 var transportCode = "";
 var transportName = "";
+
+// Common style for all table headers
+const headerCellStyle = {
+  fontWeight: 'bold',
+  backgroundColor: '#3f51b5',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#303f9f',
+    cursor: 'pointer',
+  },
+};
 
 const API_URL = process.env.REACT_APP_API;
 const companyCode = sessionStorage.getItem("Company_Code");
@@ -85,6 +96,7 @@ const SugarSaleReturnSale = () => {
   const setFocusTaskdate = useRef(null);
   const [isHandleChange, setIsHandleChange] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const inputRef=useRef(null)
 
   const initialFormData = {
     doc_no: "",
@@ -178,7 +190,7 @@ const SugarSaleReturnSale = () => {
   );
 
   const formatTruckNumber = (value) => {
-    const cleanedValue = value.replace(/\s+/g, '').toUpperCase();
+    const cleanedValue = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     return cleanedValue.length <= 10 ? cleanedValue : cleanedValue.substring(0, 10);
   };
 
@@ -280,6 +292,9 @@ const SugarSaleReturnSale = () => {
     setUsers([])
     setType("")
     setFormErrors({})
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleEdit = async () => {
@@ -498,7 +513,7 @@ const SugarSaleReturnSale = () => {
         billToName = last_labels_data[0].billtoname;
         billToCode = last_head_data.bill_to;
         gstRateCode = last_head_data.GstRateCode;
-        gstName = last_labels_data[0].GSTName;
+        gstName = last_labels_data[0].GST_Name;
         millName = last_labels_data[0].millname;
         millCode = last_head_data.mill_code;
         itemName = last_labels_data[0].itemname;
@@ -561,7 +576,7 @@ const SugarSaleReturnSale = () => {
         billToName = first_labels_data[0].billtoname;
         billToCode = first_head_data.bill_to;
         gstRateCode = first_head_data.GstRateCode;
-        gstName = first_labels_data[0].GSTName;
+        gstName = first_labels_data[0].GST_Name;
         millName = first_labels_data[0].millname;
         millCode = first_head_data.mill_code;
         itemName = first_labels_data[0].itemname;
@@ -619,7 +634,7 @@ const SugarSaleReturnSale = () => {
         billToName = next_labels_data[0].billtoname;
         billToCode = next_head_data.bill_to;
         gstRateCode = next_head_data.GstRateCode;
-        gstName = next_labels_data[0].GSTName;
+        gstName = next_labels_data[0].GST_Name;
         millName = next_labels_data[0].millname;
         millCode = next_head_data.mill_code;
         itemName = next_labels_data[0].itemname;
@@ -677,7 +692,7 @@ const SugarSaleReturnSale = () => {
         billToName = previous_labels_data[0].billtoname;
         billToCode = previous_head_data.bill_to;
         gstRateCode = previous_head_data.GstRateCode;
-        gstName = previous_labels_data[0].GSTName;
+        gstName = previous_labels_data[0].GST_Name;
         millName = previous_labels_data[0].millname;
         millCode = previous_head_data.mill_code;
         itemName = previous_labels_data[0].itemname;
@@ -758,7 +773,7 @@ const SugarSaleReturnSale = () => {
         billToName = last_labels_data[0].billtoname;
         billToCode = last_head_data.bill_to;
         gstRateCode = last_head_data.GstRateCode;
-        gstName = last_labels_data[0].GSTName;
+        gstName = last_labels_data[0].GST_Name;
         millName = last_labels_data[0].millname;
         millCode = last_head_data.mill_code;
         itemName = last_labels_data[0].itemname;
@@ -816,7 +831,7 @@ const SugarSaleReturnSale = () => {
         billToName = last_labels_data[0].billtoname;
         billToCode = last_head_data.bill_to;
         gstRateCode = last_head_data.GstRateCode;
-        gstName = last_labels_data[0].GSTName;
+        gstName = last_labels_data[0].GST_Name;
         millName = last_labels_data[0].millname;
         millCode = last_head_data.mill_code;
         itemName = last_labels_data[0].itemname;
@@ -1004,7 +1019,7 @@ const SugarSaleReturnSale = () => {
     partyName = details.partyname;
     unitName = details.unitname;
     billToName = details.billtoname;
-    gstName = details.GSTName;
+    gstName = details.GST_Name;
     millName = details.millname;
     itemName = details.itemname;
     brokerName = details.brokername;
@@ -1437,7 +1452,7 @@ const SugarSaleReturnSale = () => {
   const clearForm = () => {
     setFormDataDetail({
       narration: "",
-      packing: 0,
+      packing: 50 || 0,
       Quantal: 0.0,
       bags: 0,
       rate: 0.0,
@@ -1576,18 +1591,20 @@ const SugarSaleReturnSale = () => {
     });
   };
 
-  const handleGstCode = async (code, Rate) => {
+  const handleGstCode = async (code, Rate, name , gstId) => {
     setGstCode(code);
     let rate = parseFloat(Rate);
     setFormData({
       ...formData,
       GstRateCode: code,
+      gstid: gstId
     });
     setGstRate(rate);
 
     const updatedFormData = {
       ...formData,
       GstRateCode: code,
+      gstid: gstId
     };
 
     try {
@@ -1626,7 +1643,7 @@ const SugarSaleReturnSale = () => {
 
   return (
     <>
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <form className="SugarSaleReturnSale-container" onSubmit={handleSubmit}>
         <h5 className="Heading">Sugar Sale Return</h5>
         <div>
@@ -1727,6 +1744,7 @@ const SugarSaleReturnSale = () => {
                 type="date"
                 name="doc_date"
                 value={formData.doc_date}
+                inputRef={inputRef}
                 onChange={(e) => handleDateChange(e, "doc_date")}
                 disabled={!isEditing && addOneButtonEnabled}
                 InputLabelProps={{ shrink: true }}
@@ -1748,6 +1766,7 @@ const SugarSaleReturnSale = () => {
                 CategoryName={partyName}
                 CategoryCode={partyCode}
                 name="Ac_Code"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1764,6 +1783,7 @@ const SugarSaleReturnSale = () => {
                 CategoryName={billToName}
                 CategoryCode={billToCode}
                 name="bill_to"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1780,6 +1800,7 @@ const SugarSaleReturnSale = () => {
                 CategoryName={unitName}
                 CategoryCode={unitCode}
                 name="Unit_Code"
+                Ac_type=""
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1796,6 +1817,7 @@ const SugarSaleReturnSale = () => {
                 CategoryName={millName}
                 CategoryCode={millCode}
                 name="mill_code"
+                Ac_type="M"
                 disabledFeild={!isEditing && addOneButtonEnabled}
               />
             </div>
@@ -1865,6 +1887,7 @@ const SugarSaleReturnSale = () => {
                     CategoryName={brokerName}
                     CategoryCode={brokerCode}
                     name="BROKER"
+                    Ac_type=""
                     disabledFeild={!isEditing && addOneButtonEnabled}
                   />
                 </div>
@@ -2062,19 +2085,19 @@ const SugarSaleReturnSale = () => {
             </div>
           )}
 
-          <div style={{ display: "flex" }}>
+          <div>
             <div
               style={{
                 display: "flex",
                 height: "35px",
-                marginTop: "25px",
+                marginTop: "20px",
                 marginRight: "10px",
               }}
             >
               <button
                 className="btn btn-primary"
                 onClick={() => openPopup("add")}
-                tabIndex="16"
+                
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     openPopup("add");
@@ -2087,88 +2110,88 @@ const SugarSaleReturnSale = () => {
                 className="btn btn-danger"
                 disabled={!isEditing}
                 style={{ marginLeft: "10px" }}
-                tabIndex="17"
+                
               >
                 Close
               </button>
             </div>
-            <table className="table mt-4 table-bordered">
-              <thead>
-                <tr>
-                  <th>Actions</th>
-                  {/* <th>ID</th>
-                <th>RowAction</th> */}
-                  <th>Item</th>
-                  <th>Item Name</th>
-                  <th>Quantal</th>
-                  <th>Packing</th>
-                  <th>Bags</th>
-                  <th>Rate</th>
-                  <th>Item Amount</th>
-                  {/* <th>Saledetailid</th> */}
-                </tr>
-              </thead>
-              <tbody>
-                {console.log("Rendering users:", users)}
+            <TableContainer component={Paper} className="mt-4">
+            <Table sx={{ minWidth: 650 }} aria-label="user table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={headerCellStyle}>Actions</TableCell>
+                  <TableCell sx={headerCellStyle}>Item</TableCell>
+                  <TableCell sx={headerCellStyle}>Item Name</TableCell>
+                  <TableCell sx={headerCellStyle}>Quantal</TableCell>
+                  <TableCell sx={headerCellStyle}>Packing</TableCell>
+                  <TableCell sx={headerCellStyle}>Bags</TableCell>
+                  <TableCell sx={headerCellStyle}>Rate</TableCell>
+                  <TableCell sx={headerCellStyle}>Item Amount</TableCell>
+                  
+                  </TableRow>
+                  </TableHead>
+                  <TableBody>
+            
                 {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>
+                  <TableRow key={user.id}>
+                    <TableCell>
                       {user.rowaction === "add" ||
                         user.rowaction === "update" ||
                         user.rowaction === "Normal" ? (
-                        <>
-                          <button
-                            className="btn btn-warning"
-                            onClick={() => editUser(user)}
-                            disabled={!isEditing}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                editUser(user);
-                              }
-                            }}
-                            tabIndex="18"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger ms-2"
-                            onClick={() => deleteModeHandler(user)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                deleteModeHandler(user);
-                              }
-                            }}
-                            disabled={!isEditing}
-                            tabIndex="19"
-                          >
-                            Delete
-                          </button>
+                          <>
+                             <Button
+                              variant="contained"
+                              color="warning"
+                              onClick={() => editUser(user)}
+                              disabled={!isEditing}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  editUser(user);
+                                }
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              onClick={() => deleteModeHandler(user)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  deleteModeHandler(user);
+                                }
+                              }}
+                              disabled={!isEditing}
+                              sx={{ marginLeft: 2 }}
+                            >
+                              Delete
+                            </Button>
                         </>
                       ) : user.rowaction === "DNU" ||
                         user.rowaction === "delete" ? (
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => openDelete(user)}
-                        >
+                          <Button variant="outlined" color="secondary" onClick={() => openDelete(user)}>
                           Open
-                        </button>
+                        </Button>
                       ) : null}
-                    </td>
+                    </TableCell>
                     {/* <td>{user.id}</td>
                   <td>{user.rowaction}</td> */}
-                    <td>{user.item_code}</td>
-                    <td>{user.item_Name}</td>
-                    <td>{user.Quantal}</td>
-                    <td>{user.packing}</td>
-                    <td>{user.bags}</td>
-                    <td>{user.rate}</td>
-                    <td>{user.item_Amount}</td>
+                    <TableCell>{user.item_code}</TableCell>
+                    <TableCell>{user.item_Name}</TableCell>
+                    <TableCell>{user.Quantal}</TableCell>
+                    <TableCell>{user.packing}</TableCell>
+                    <TableCell>{user.bags}</TableCell>
+                    <TableCell>{user.rate}</TableCell>
+                    <TableCell>{user.item_Amount}</TableCell>
                     {/* <td>{user.saledetailid}</td> */}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </div>
+          <br></br>
+          <br></br>
         </div>
         <div className="SugarSaleReturnSale-row">
           <Grid container spacing={2} className="SugarSaleReturnSale-row">
@@ -2237,6 +2260,7 @@ const SugarSaleReturnSale = () => {
                     CategoryName={transportName}
                     CategoryCode={transportCode}
                     name="Transport_Code"
+                    Ac_type=""
                     disabledFeild={!isEditing && addOneButtonEnabled}
                   />
                 </div>

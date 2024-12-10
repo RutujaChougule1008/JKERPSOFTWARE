@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useDebugValue } from "react";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
@@ -13,6 +13,29 @@ import GSTRateMasterHelp from "../../../Helper/GSTRateMasterHelp";
 import SystemHelpMaster from "../../../Helper/SystemmasterHelp";
 import GradeMasterHelp from "../../../Helper/GradeMasterHelp";
 import { useRecordLocking } from "../../../hooks/useRecordLocking";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  Paper,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Checkbox,
+  FormControlLabel,
+  Select,
+  MenuItem,
+  Grid,
+  InputLabel,
+  FormControl,
+} from "@mui/material";
 
 var millCodeName;
 var newMill_Code;
@@ -47,6 +70,17 @@ var selfAcName;
 var selfAccoid;
 var buyerPartyCode;
 var buyer_party_name;
+
+// Common style for all table headers
+const headerCellStyle = {
+  fontWeight: "bold",
+  backgroundColor: "#3f51b5",
+  color: "white",
+  "&:hover": {
+    backgroundColor: "#303f9f",
+    cursor: "pointer",
+  },
+};
 
 const TenderPurchase = () => {
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
@@ -253,9 +287,7 @@ const TenderPurchase = () => {
     const diff = type === "M" ? 0 : millRate - purchaseRate;
     const exciseAmount = exciseRate;
     const gstAmt = exciseAmount + millRate;
-    const amount = quantal * (type === "M" ? millRate + exciseAmount : diff);
-
-    console.log("Excise Rate", exciseAmount);
+    const amount = quantal * (type === "M" ? millRate + exciseRate : diff);
 
     let tcsAmt = 0;
     let tdsAmt = 0;
@@ -264,17 +296,11 @@ const TenderPurchase = () => {
       tdsAmt = quantal * millRate * (tdsRate / 100);
     } else {
       tcsAmt =
-        quantal *
-        (
-          (type === "M"
-            ? millRate + exciseAmount
-            : purchaseRate + exciseAmount) *
-          (tcsRate / 100)
-        ).toFixed(2);
+      (((quantal * gstAmt) * tcsRate)/100);
     }
 
     // Calculate both regardless of TDS applicability
-    const calculatedTcsAmt = amount * (tcsRate / 100);
+    const calculatedTcsAmt = (((quantal * gstAmt) * tcsRate)/100);
     const calculatedTdsAmt = quantal * millRate * (tdsRate / 100);
     const {
       Buyer_Quantal = 0,
@@ -287,14 +313,16 @@ const TenderPurchase = () => {
     const buyerQuantalNum = parseFloat(Buyer_Quantal) || 0;
     const saleRateNum = parseFloat(Sale_Rate) || 0;
     const bpDetailNum = parseFloat(BP_Detail) || 0;
-    const tcsRateNum = parseFloat(tcs_rate) || 0;
-    const gstRateNum = parseFloat(gst_rate) || 0;
+    const tcsRateNum =
+      parseFloat(tcs_rate) || parseFloat(formData.TCS_Rate) || 0;
+
+    const gstRateNum = parseFloat(gst_rate) || gstCode || 0;
 
     const lblRate = buyerQuantalNum * saleRateNum;
     const gstAmtDetail = lblRate * (gstRateNum / 100);
-    const tcsAmtDetail = lblRate * (tcsRateNum / 100);
-    const lblNetAmount = lblRate + gstAmtDetail + tcsAmtDetail;
-    const lblValue = quantal * millRate;
+    const tcsAmtDetail = (((buyerQuantalNum * saleRateNum) + gstAmtDetail) * tcsRateNum) / 100;
+    const lblNetAmount = lblRate + gstAmtDetail + tcsAmtDetail / buyerQuantalNum;
+    const lblValue = quantal * (millRate + exciseRate);
 
     return {
       bags,
@@ -315,11 +343,6 @@ const TenderPurchase = () => {
   };
 
   useEffect(() => {
-    console.log(
-      "Re-rendering due to gstCode or gstRateCode change:",
-      gstCode,
-      gstRateCode
-    );
     const effectiveGstCode = gstCode || gstRateCode;
     const calculated = calculateValues(
       formData,
@@ -411,9 +434,6 @@ const TenderPurchase = () => {
         Tender_DO: shouldUpdateTenderDO ? code : prevFormData.Tender_DO,
         td: shouldUpdateTenderDO ? accoid : prevFormData.td,
       };
-
-      console.log("Updated Form Data:", updatedFormData);
-
       const calculated = calculateValues(
         updatedFormData,
         formDataDetail,
@@ -563,41 +583,64 @@ const TenderPurchase = () => {
         ...prevFormData,
         [name]: value,
       };
+
       if (name === "Mill_Rate" && prevFormData.type === "M") {
-        updatedFormData.Party_Bill_Rate = parseFloat(value);
+        updatedFormData.Party_Bill_Rate = parseFloat(value) || 0;
       } else if (name === "Purc_Rate" && prevFormData.type !== "M") {
-        updatedFormData.Party_Bill_Rate = parseFloat(value);
+        updatedFormData.Party_Bill_Rate = parseFloat(value) || 0;
       }
-      const newGstRate = name === "gstratecode" ? parseFloat(value) : gstCode;
-      const newTcsRate =
-        name === "TCS_Rate" ? parseFloat(value) : formData.TCS_Rate;
-      setUsers((prevUsers) =>
-        prevUsers.map((user) => ({
-          ...user,
-          tcs_rate: name === "TCS_Rate" ? newTcsRate : user.tcs_rate,
-          tcs_amt:
-            name === "TCS_Rate"
-              ? (user.Buyer_Quantal * user.Sale_Rate * newTcsRate) / 100
-              : user.tcs_amt,
-          gst_rate: name === "gstratecode" ? newGstRate : gstCode,
-          gst_amt:
-            name === "gstratecode"
-              ? (user.Buyer_Quantal * user.Sale_Rate * newGstRate) / 100
-              : user.gst_amt,
-        }))
-      );
-      const calculatedValues = calculateValues(
-        updatedFormData,
-        formDataDetail,
-        tdsApplicable,
-        newGstRate
-      );
 
       return {
         ...updatedFormData,
         Excise_Rate: calculatedValues.exciseAmount,
       };
     });
+
+    setFormDataDetail((prevFormDataDetail) => {
+      const updatedFormDataDetail = {
+        ...prevFormDataDetail,
+        gst_rate:
+          name === "gstratecode"
+            ? parseFloat(value) || 0
+            : prevFormDataDetail.gst_rate,
+        tcs_rate:
+          name === "TCS_Rate"
+            ? parseFloat(value) || 0
+            : prevFormDataDetail.tcs_rate,
+      };
+
+      const calculatedValues = calculateValues(
+        { ...formData, [name]: value },
+        updatedFormDataDetail,
+        tdsApplicable,
+        name === "gstratecode" ? parseFloat(value) : gstCode
+      );
+
+      return {
+        ...updatedFormDataDetail,
+        tcs_amt: calculatedValues.TCSAmt,
+      };
+    });
+
+    if (name === "TCS_Rate" || name === "gstratecode") {
+      const updatedRate = parseFloat(value) || 0;
+
+      setUsers((prevUsers) =>
+        prevUsers.map((user) => ({
+          ...user,
+          tcs_rate: name === "TCS_Rate" ? updatedRate : user.tcs_rate,
+          tcs_amt:
+            name === "TCS_Rate"
+              ? (user.Buyer_Quantal * user.Sale_Rate * updatedRate) / 100
+              : user.tcs_amt,
+          gst_rate: name === "gstratecode" ? updatedRate : user.gst_rate,
+          gst_amt:
+            name === "gstratecode"
+              ? (user.Buyer_Quantal * user.Sale_Rate * updatedRate) / 100
+              : user.gst_amt,
+        }))
+      );
+    }
   };
 
   const handleGradeUpdate = (grade) => {
@@ -609,14 +652,12 @@ const TenderPurchase = () => {
 
   const handleChangeDetail = (e) => {
     const { name, value } = e.target;
+
     setFormDataDetail((prevFormDataDetail) => {
       const updatedFormDataDetail = {
         ...prevFormDataDetail,
-        [name]: value,
+        [name]: name === "tcs_rate" ? parseFloat(value) || 0 : value,
       };
-      if (name === "tcs_rate") {
-        updatedFormDataDetail.tcs_rate = value;
-      }
 
       const calculatedValues = calculateValues(
         formData,
@@ -633,7 +674,7 @@ const TenderPurchase = () => {
   };
 
   const validateNumericInput = (e) => {
-    e.target.value = e.target.value.replace(/[^0-9.]/g, "");
+    e.target.value = e.target.value.replace(/[^0-9.-]/g, "");
   };
 
   const handleDetailDateChange = (event, fieldName) => {
@@ -742,6 +783,7 @@ const TenderPurchase = () => {
   };
 
   const handleSaveOrUpdate = async (event) => {
+    debugger;
     event.preventDefault();
 
     setIsEditing(true);
@@ -753,6 +795,7 @@ const TenderPurchase = () => {
       tdsApplicable,
       gstCode
     );
+
 
     const updatedFormData = {
       ...formData,
@@ -768,6 +811,7 @@ const TenderPurchase = () => {
     if (isEditMode) {
       delete cleanedHeadData.tenderid;
     }
+
 
     const detailData = users.map((user) => {
       return {
@@ -852,9 +896,6 @@ const TenderPurchase = () => {
       )
       .then((response) => {
         const data = response.data;
-
-        console.log(data);
-
         const isLockedNew = data.last_tender_head_data.LockedRecord;
         const isLockedByUserNew = data.last_tender_head_data.LockedUser;
 
@@ -1014,10 +1055,11 @@ const TenderPurchase = () => {
       const response = await axios.get(`${API_URL}/get_SelfAc`, {
         params: { Company_Code: companyCode },
       });
+  
+      const selfAcCode = response.data.SELF_AC;
+      const selfAccoid = response.data.Self_acid;
+      const selfAcName = response.data.Self_acName;
 
-      selfAcCode = response.data.SELF_AC;
-      selfAccoid = response.data.Self_acid;
-      selfAcName = response.data.Self_acName;
       setSelf_ac_code(selfAcCode);
       set_self_accoid(selfAccoid);
       set_self_acName(selfAcName);
@@ -1032,10 +1074,7 @@ const TenderPurchase = () => {
         {
           ...formDataDetail,
           rowaction: "add",
-          id:
-            prevUsers.length > 0
-              ? Math.max(...prevUsers.map((user) => user.id)) + 1
-              : 1,
+          id: prevUsers.length > 0 ? Math.max(...prevUsers.map((user) => user.id)) + 1 : 1,
           Buyer: selfAcCode,
           billtoName: selfAcName,
           buyerid: selfAccoid,
@@ -1061,6 +1100,7 @@ const TenderPurchase = () => {
       console.log(error.response?.data?.error || "An error occurred");
     }
   };
+  
 
   const handleVoucherClick = () => {
     navigate("/commission-bill", {
@@ -1073,7 +1113,7 @@ const TenderPurchase = () => {
 
   //detail part
   const addUser = async (e) => {
-    e.preventDefault();
+    debugger;
     const newUser = {
       ...formDataDetail,
       id: users.length > 0 ? Math.max(...users.map((user) => user.id)) + 1 : 1,
@@ -1095,17 +1135,13 @@ const TenderPurchase = () => {
         (formDataDetail.Buyer_Quantal * formDataDetail.Sale_Rate * gstCode) /
           100 ||
         0.0,
-      tcs_rate: formData.TCS_Rate,
-      tcs_amt:
-        calculatedValues.TCSAmt ||
-        calculatedValues.gstAmtDetail * (formDataDetail.tcs_rate / 100) ||
-        0.0,
+      tcs_rate: formData.TCS_Rate || formDataDetail.tcs_rate,
+      tcs_amt: formDataDetail.tcs_amt || 0.0,
       rowaction: "add",
       Lifting_Date: formData.Lifting_Date || "",
     };
     const updatedUsers = [...users];
     if (updatedUsers.length > 0) {
-      // Deduct the Buyer_Quantal from the first user's Buyer_Quantal
       const firstUser = updatedUsers[0];
       updatedUsers[0] = {
         ...firstUser,
@@ -1154,10 +1190,7 @@ const TenderPurchase = () => {
           gst_rate: formDataDetail.gst_rate || 0.0,
           loding_by_us: formDataDetail.loding_by_us,
           Delivery_Type: formDataDetail.Delivery_Type,
-          tcs_amt:
-            calculatedValues.TCSAmt ||
-            calculatedValues.gstAmtDetail * (formDataDetail.tcs_rate / 100) ||
-            0.0,
+          tcs_amt: formDataDetail.tcs_amt,
           tcs_rate: formDataDetail.tcs_rate || 0.0,
           Broker: newBroker || selfAcCode,
           brokerName: brokerName || selfAcName,
@@ -1360,7 +1393,7 @@ const TenderPurchase = () => {
           sub_broker: detail.sub_broker,
           brokerDetail: detail.brokerDetail,
           BP_Detail: detail.BP_Detail,
-          Buyer_Quantal: detail.Buyer_Quantal,
+          Buyer_Quantal: detail.Buyer_Quantal !== undefined ? detail.Buyer_Quantal : 0,
           CashDiff: detail.CashDiff,
           Commission_Rate: detail.Commission_Rate,
           DetailBrokrage: detail.DetailBrokrage,
@@ -1398,7 +1431,7 @@ const TenderPurchase = () => {
       sub_broker: detail.sub_broker,
       brokerDetail: detail.subbrokername,
       BP_Detail: detail.BP_Detail,
-      Buyer_Quantal: detail.Buyer_Quantal,
+      Buyer_Quantal: detail.Buyer_Quantal !== undefined ? detail.Buyer_Quantal : 0,
       CashDiff: detail.CashDiff,
       Commission_Rate: detail.Commission_Rate,
       DetailBrokrage: detail.DetailBrokrage,
@@ -1453,10 +1486,6 @@ const TenderPurchase = () => {
 
           remainingQuantal -= userQuantal;
 
-          if (remainingQuantal < 0) {
-            remainingQuantal = 0;
-          }
-
           updatedUsers[0].Buyer_Quantal = remainingQuantal;
         }
       }
@@ -1464,6 +1493,69 @@ const TenderPurchase = () => {
       setUsers(updatedUsers);
     }
   }, [formData.Quantal, gstCode]);
+
+
+  const handleBuyerQuantalUpdate = () => {
+      if (users.length > 0) {
+      const updatedUsers = [...users];
+
+      if (formData.Quantal !== undefined) {
+        const firstUser = updatedUsers[0];
+        const newBuyerQuantal = parseFloat(formData.Quantal) || 0;
+        const newGstRate = gstCode || firstUser.gst_rate;
+        const newGstAmt =
+          (newBuyerQuantal * newGstRate * (firstUser.Sale_Rate || 0)) / 100 ||
+          0.0;
+
+        updatedUsers[0] = {
+          ...firstUser,
+          Buyer_Quantal: newBuyerQuantal,
+          gst_rate: newGstRate,
+          gst_amt: newGstAmt,
+          rowaction: firstUser.rowaction === "add" ? "add" : "update",
+        };
+      }
+
+      if (updatedUsers.length > 1) {
+        let remainingQuantal = updatedUsers[0].Buyer_Quantal;
+
+        for (let i = 1; i < updatedUsers.length; i++) {
+          const currentUser = updatedUsers[i];
+          const userQuantal = currentUser.Buyer_Quantal || 0;
+
+          remainingQuantal -= userQuantal;
+          updatedUsers[0].Buyer_Quantal = remainingQuantal;
+        }
+      }
+      setUsers(updatedUsers);
+    }
+      
+
+   };
+  
+  //  const handleKeyDownCalBuyerQuantal = (e) => {
+  //   if (e.key === "Tab") {
+  //     handleBuyerQuantalUpdate();
+  //   }
+  // }
+
+  const TCSCalculationDetail = (e) => {
+    if (e.key === "Tab") {
+      debugger;
+      const updatedCalculatedValues = calculateValues(
+        formData,
+        formDataDetail,
+        tdsApplicable,
+        gstCode
+      );
+      setFormDataDetail((prevFormDataDetail) => ({
+        ...prevFormDataDetail,
+        tcs_amt:
+          updatedCalculatedValues.TCSAmt ||
+          0,
+      }));
+    }
+  };
 
   //common function for navigation and fetching perticular record
   const fetchTenderData = async (endpoint, action) => {
@@ -1506,11 +1598,14 @@ const TenderPurchase = () => {
         buyerPartyCode = detailsData[0]?.Buyer_Party || 0;
         buyer_party_name = detailsData[0]?.buyerpartyname || "";
 
-        const updatedTenderDetailsData = detailsData.map((item, index) => ({
-          ...item,
-          Buyer_Quantal:
-            index === 0 ? detailsData[0].Buyer_Quantal : item.Buyer_Quantal,
-        }));
+        // const updatedTenderDetailsData = detailsData.map((item, index) => ({
+        //   ...item,
+        //   Buyer_Quantal:
+        //   index === 0
+        //     ? parseFloat(detailsData[0].Buyer_Quantal || 0)
+        //     : parseFloat(item.Buyer_Quantal || 0),
+        
+        // }));
 
         setFormData((prevData) => ({
           ...prevData,
@@ -1518,9 +1613,9 @@ const TenderPurchase = () => {
         }));
 
         setLastTenderData(headData || {});
-        setLastTenderDetails(updatedTenderDetailsData || []);
+        setLastTenderDetails(detailsData || []);
         setUsers(
-          updatedTenderDetailsData.map((detail) => ({
+          detailsData.map((detail) => ({
             Buyer: detail.Buyer,
             billtoName: detail.buyername,
             ShipTo: detail.ShipTo,
@@ -1530,7 +1625,7 @@ const TenderPurchase = () => {
             sub_broker: detail.sub_broker,
             brokerDetail: detail.subbrokername,
             BP_Detail: detail.BP_Detail,
-            Buyer_Quantal: detail.Buyer_Quantal,
+            Buyer_Quantal: detail.Buyer_Quantal !== undefined ? detail.Buyer_Quantal : 0,
             CashDiff: detail.CashDiff,
             Commission_Rate: detail.Commission_Rate,
             DetailBrokrage: detail.DetailBrokrage,
@@ -1584,7 +1679,7 @@ const TenderPurchase = () => {
 
   return (
     <>
-      <ToastContainer />
+      <ToastContainer autoClose={500} />
       <form className="SugarTenderPurchase-container" onSubmit={handleSubmit}>
         <h6 className="Heading">Tender Purchase</h6>
         <div>
@@ -1604,8 +1699,6 @@ const TenderPurchase = () => {
             backButtonEnabled={backButtonEnabled}
             permissions={permissions}
           />
-
-          {/* Navigation Buttons */}
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
             handlePreviousButtonClick={handlePreviousButtonClick}
@@ -1613,12 +1706,10 @@ const TenderPurchase = () => {
             handleLastButtonClick={handleCancel}
             highlightedButton={highlightedButton}
             isEditing={isEditing}
-            // isFirstRecord={formData.Company_Code === 1}
           />
         </div>
 
         <div className="SugarTenderPurchase-row"></div>
-
         <div className="SugarTenderPurchase-row">
           <div className="SugarTenderPurchase-col">
             <label
@@ -1704,7 +1795,6 @@ const TenderPurchase = () => {
             >
               Voucher No:
             </label>
-
             <input
               type="text"
               id="Voucher_No"
@@ -1855,6 +1945,7 @@ const TenderPurchase = () => {
                 validateNumericInput(e);
                 handleChange(e);
               }}
+             
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={14}
             />
@@ -2113,8 +2204,8 @@ const TenderPurchase = () => {
               value={formData.Brokrage}
               className="SugarTenderPurchase-form-control"
               onChange={(e) => {
-                validateNumericInput(e); // Validate input to allow only numbers and dot
-                handleChange(e); // Continue with your regular onChange handler
+                validateNumericInput(e);
+                handleChange(e);
               }}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={27}
@@ -2315,11 +2406,13 @@ const TenderPurchase = () => {
         <div className="">
           {showPopup && (
             <div className="custom-modal" role="dialog">
-              <div className="custom-modal-dialog" role="document">
+              <div className="custom-modal-large-dialog" role="document">
                 <div className="custom-modal-content">
                   <div className="custom-modal-header">
                     <h5 className="custom-modal-title">
-                      {selectedUser.id ? "Edit User" : "Add User"}
+                      {selectedUser.id
+                        ? "Edit Tender Detail"
+                        : "Add Tender Detail"}
                     </h5>
                     <button
                       type="button"
@@ -2342,7 +2435,6 @@ const TenderPurchase = () => {
                             CategoryCode={billTo || selfAcCode}
                             name="Buyer"
                             Ac_type=""
-                            tabIndexHelp={38}
                             className="account-master-help"
                             disabledFeild={!isEditing && addOneButtonEnabled}
                           />
@@ -2355,7 +2447,6 @@ const TenderPurchase = () => {
                             CategoryName={selfAcCode ? selfAcName : shiptoName}
                             CategoryCode={shipTo || selfAcCode}
                             name="ShipTo"
-                            tabIndexHelp={39}
                             Ac_type=""
                             className="account-master-help"
                             disabledFeild={!isEditing && addOneButtonEnabled}
@@ -2371,7 +2462,6 @@ const TenderPurchase = () => {
                           value={formDataDetail.Delivery_Type || dispatchType}
                           onChange={handleChangeDetail}
                           disabled={!isEditing && addOneButtonEnabled}
-                          tabIndex={40}
                         >
                           <option value="N">With GST Naka Delivery</option>
                           <option value="A">
@@ -2392,7 +2482,6 @@ const TenderPurchase = () => {
                               buyerParty || selfAcCode || self_ac_Code || 2
                             }
                             name="Buyer_Party"
-                            tabIndexHelp={39}
                             Ac_type=""
                             className="account-master-help"
                             disabledFeild={!isEditing && addOneButtonEnabled}
@@ -2404,7 +2493,6 @@ const TenderPurchase = () => {
                         <label>Brokrage</label>
                         <input
                           type="text"
-                          tabIndex={43}
                           className="form-control"
                           name="DetailBrokrage"
                           autoComplete="off"
@@ -2426,7 +2514,6 @@ const TenderPurchase = () => {
                             2
                           }
                           name="sub_broker"
-                          tabIndexHelp={42}
                           Ac_type=""
                           className="account-master-help"
                           disabledFeild={!isEditing && addOneButtonEnabled}
@@ -2434,15 +2521,14 @@ const TenderPurchase = () => {
                         <label>Buyer Quantal:</label>
                         <input
                           type="text"
-                          tabIndex={43}
                           className="form-control"
                           name="Buyer_Quantal"
                           autoComplete="off"
                           value={formDataDetail.Buyer_Quantal}
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                            handleChangeDetail(e);
                           }}
+                          // onKeyDown={(e) => {handleKeyDownCalBuyerQuantal(e)}}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
                       </div>
@@ -2451,21 +2537,19 @@ const TenderPurchase = () => {
                         <label>Sale Rate</label>
                         <input
                           type="text"
-                          tabIndex="44"
                           className="form-control"
                           name="Sale_Rate"
                           autoComplete="off"
                           value={formDataDetail.Sale_Rate}
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                            validateNumericInput(e);
+                            handleChangeDetail(e);
                           }}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
                         <label>B.P.</label>
                         <input
                           type="text"
-                          tabIndex="45"
                           className="form-control"
                           name="BP_Detail"
                           autoComplete="off"
@@ -2476,14 +2560,13 @@ const TenderPurchase = () => {
                         <label>Commission</label>
                         <input
                           type="text"
-                          tabIndex="45"
                           className="form-control"
                           name="Commission_Rate"
                           autoComplete="off"
                           value={formDataDetail.Commission_Rate}
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                            validateNumericInput(e);
+                            handleChangeDetail(e);
                           }}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
@@ -2492,7 +2575,6 @@ const TenderPurchase = () => {
                       <div className="form-row">
                         <label>Sauda Date</label>
                         <input
-                          tabIndex="46"
                           type="date"
                           className="form-control"
                           id="datePicker"
@@ -2505,7 +2587,6 @@ const TenderPurchase = () => {
                         />
                         <label>Payment Date</label>
                         <input
-                          tabIndex="47"
                           type="date"
                           className="form-control"
                           id="datePicker"
@@ -2521,7 +2602,6 @@ const TenderPurchase = () => {
                       <div className="form-row">
                         <label>Narration:</label>
                         <textarea
-                          tabIndex="48"
                           className="form-control"
                           name="Narration"
                           autoComplete="off"
@@ -2537,7 +2617,6 @@ const TenderPurchase = () => {
                           checked={formDataDetail.loding_by_us === "Y"}
                           onChange={(e) => handleCheckbox(e, "string")}
                           disabled={!isEditing && addOneButtonEnabled}
-                          tabIndex={49}
                         />
                       </div>
 
@@ -2545,20 +2624,18 @@ const TenderPurchase = () => {
                         <label>GST Amount</label>
                         <input
                           type="text"
-                          tabIndex="50"
                           className="form-control"
                           name="gst_rate"
                           autoComplete="off"
-                          value={formDataDetail.gst_rate || gstCode}
+                          value={formDataDetail.gst_rate || gstCode || gstRateCode}
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                            validateNumericInput(e); 
+                            handleChangeDetail(e);
                           }}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
                         <input
                           type="text"
-                          tabIndex="51"
                           className="form-control"
                           name="gst_amt"
                           autoComplete="off"
@@ -2570,8 +2647,8 @@ const TenderPurchase = () => {
                               100
                           }
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                            validateNumericInput(e);
+                            handleChangeDetail(e);
                           }}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
@@ -2581,32 +2658,30 @@ const TenderPurchase = () => {
                         <label>TCS Amount</label>
                         <input
                           type="text"
-                          tabIndex="52"
                           className="form-control"
                           name="tcs_rate"
                           autoComplete="off"
-                          value={formDataDetail.tcs_rate || formData.TCS_Rate}
+                          value={
+                            formDataDetail.tcs_rate || formData.TCS_Rate || ""
+                          }
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                           
+                            handleChangeDetail(e);
                           }}
+                          onKeyDown={TCSCalculationDetail}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
                         <input
                           type="text"
-                          tabIndex="53"
                           className="form-control"
                           name="tcs_amt"
                           autoComplete="off"
-                          value={
-                            formDataDetail.TCSAmt ||
-                            calculatedValues.gstAmtDetail *
-                              (formDataDetail.tcs_rate / 100)
-                          }
+                          value={formDataDetail.tcs_amt}
                           onChange={(e) => {
-                            validateNumericInput(e); // Validate input to allow only numbers and dot
-                            handleChangeDetail(e); // Continue with your regular onChange handler
+                            // validateNumericInput(e);
+                            handleChangeDetail(e);
                           }}
+                          // onKeyDown={TCSCalculationDetail}
                           disabled={!isEditing && addOneButtonEnabled}
                         />
                       </div>
@@ -2619,8 +2694,7 @@ const TenderPurchase = () => {
                       type="button"
                       className="btn btn-secondary"
                       onClick={closePopup}
-                      style={{ marginLeft: "750px" }}
-                      tabIndex="54"
+                      style={{ marginLeft: "950px" }}
                     >
                       Cancel
                     </button>
@@ -2635,20 +2709,19 @@ const TenderPurchase = () => {
                           }
                         }}
                       >
-                        Update User
+                        Update
                       </button>
                     ) : (
                       <button
                         className="btn btn-primary"
                         onClick={addUser}
-                        tabIndex="55"
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
                             addUser();
                           }
                         }}
                       >
-                        Add User
+                        Add
                       </button>
                     )}
                   </div>
@@ -2656,134 +2729,140 @@ const TenderPurchase = () => {
               </div>
             </div>
           )}
-          <div style={{ display: "flex" }}>
-            <div
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: "40px",
+              marginTop: "25px",
+              marginRight: "10px",
+            }}
+          >
+            <button
+              className="btn btn-primary btn-lg"
               style={{
-                display: "flex",
-                height: "35px",
-                marginTop: "25px",
-                marginRight: "10px",
+                padding: "5px 20px",
+                fontSize: "20px",
+                borderRadius: "8px",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+              }}
+              onClick={() => openPopup("add")}
+              tabIndex="37"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  openPopup("add");
+                }
               }}
             >
-              <button
-                className="btn btn-primary"
-                onClick={() => openPopup("add")}
-                tabIndex="37"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    openPopup("add");
-                  }
-                }}
-              >
-                Add
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={!isEditing}
-                style={{ marginLeft: "10px" }}
-                tabIndex="38"
-              >
-                Close
-              </button>
-            </div>
-            <table className="table mt-4 table-bordered">
-              <thead>
-                <tr>
-                  <th>Actions</th>
-                  <th>ID</th>
-                  {/*<th>RowAction</th> */}
-                  <th>Party</th>
-                  <th>Party Name</th>
-                  <th>Broker</th>
-                  <th>Broker Name</th>
-                  <th>ShipTo</th>
-                  <th>ShipTo Name</th>
-                  <th>Quintal</th>
-                  <th>Sale Rate</th>
-                  <th>Cash Difference</th>
-                  <th>Commission</th>
-                  <th>Sauda Date</th>
-                  <th>Lifting_Date</th>
-                  <th>Sauda_Narration</th>
-                  <th>Delivery_Type</th>
-                  <th>GSTRate</th>
-                  <th>GSTAmt</th>
-                  <th>TCSRate</th>
-                  <th>TCSAmount</th>
-                  {/* <th>Saledetailid</th> */}
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user, index) => (
-                  <tr key={user.id}>
-                    <td>
-                      {user.rowaction === "add" ||
-                      user.rowaction === "update" ||
-                      user.rowaction === "Normal" ? (
-                        <>
-                          <button
-                            className="btn btn-warning"
-                            onClick={() => editUser(user)}
-                            disabled={!isEditing || index === 0}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                editUser(user);
-                              }
-                            }}
-                            tabIndex="18"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger ms-2"
-                            onClick={() => deleteModeHandler(user)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                deleteModeHandler(user);
-                              }
-                            }}
-                            disabled={!isEditing || index === 0}
-                            tabIndex="19"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : user.rowaction === "DNU" ||
-                        user.rowaction === "delete" ? (
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => openDelete(user)}
-                        >
-                          Open
-                        </button>
-                      ) : null}
-                    </td>
-                    <td>{user.id}</td>
-                    {/* <td>{user.rowaction}</td> */}
-                    <td>{user.Buyer}</td>
-                    <td>{user.billtoName}</td>
-                    <td>{user.Buyer_Party}</td>
-                    <td>{user.buyerPartyName}</td>
-                    <td>{user.ShipTo}</td>
-                    <td>{user.shiptoName}</td>
-                    <td>{user.Buyer_Quantal}</td>
-                    <td>{user.Sale_Rate}</td>
-                    <td>{user.CashDiff}</td>
-                    <td>{user.Commission_Rate}</td>
-                    <td>{user.Sauda_Date}</td>
-                    <td>{user.Lifting_Date}</td>
-                    <td>{user.Narration}</td>
-                    <td>{user.Delivery_Type || dispatchType}</td>
-                    <td>{user.gst_rate}</td>
-                    <td>{user.gst_amt}</td>
-                    <td>{user.tcs_rate || formData.TCS_Rate}</td>
-                    <td>{user.tcs_amt}</td>
-                    {/* <td>{user.saledetailid}</td> */}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              Add
+            </button>
+
+            <button
+              className="btn btn-danger btn-lg"
+              style={{
+                marginLeft: "15px",
+                padding: "5px 20px",
+                fontSize: "20px",
+                borderRadius: "8px",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+              }}
+              disabled={!isEditing}
+              tabIndex="38"
+            >
+              Close
+            </button>
           </div>
+          <br></br>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={headerCellStyle}>Actions</TableCell>
+                  <TableCell sx={headerCellStyle}>ID</TableCell>
+                  <TableCell sx={headerCellStyle}>Party</TableCell>
+                  <TableCell sx={headerCellStyle}>Party Name</TableCell>
+                  <TableCell sx={headerCellStyle}>Broker</TableCell>
+                  <TableCell sx={headerCellStyle}>Broker Name</TableCell>
+                  <TableCell sx={headerCellStyle}>ShipTo</TableCell>
+                  <TableCell sx={headerCellStyle}>ShipTo Name</TableCell>
+                  <TableCell sx={headerCellStyle}>Quintal</TableCell>
+                  <TableCell sx={headerCellStyle}>Sale Rate</TableCell>
+                  <TableCell sx={headerCellStyle}>Cash Difference</TableCell>
+                  <TableCell sx={headerCellStyle}>Commission</TableCell>
+                  <TableCell sx={headerCellStyle}>Sauda Date</TableCell>
+                  <TableCell sx={headerCellStyle}>Lifting Date</TableCell>
+                  <TableCell sx={headerCellStyle}>Sauda Narration</TableCell>
+                  <TableCell sx={headerCellStyle}>Delivery Type</TableCell>
+                  <TableCell sx={headerCellStyle}>GSTRate</TableCell>
+                  <TableCell sx={headerCellStyle}>GSTAmt</TableCell>
+                  <TableCell sx={headerCellStyle}>TCSRate</TableCell>
+                  <TableCell sx={headerCellStyle}>TCSAmount</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user, index) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <Stack spacing={1}>
+                        {(user.rowaction === "add" ||
+                          user.rowaction === "update" ||
+                          user.rowaction === "Normal") && (
+                          <>
+                            <Button
+                              variant="contained"
+                              color="warning"
+                              onClick={() => editUser(user)}
+                              disabled={!isEditing || index === 0}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              onClick={() => deleteModeHandler(user)}
+                              disabled={!isEditing || index === 0}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
+                        {(user.rowaction === "DNU" ||
+                          user.rowaction === "delete") && (
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={() => openDelete(user)}
+                          >
+                            Open
+                          </Button>
+                        )}
+                      </Stack>
+                    </TableCell>
+                    <TableCell>{user.id}</TableCell>
+                    <TableCell>{user.Buyer}</TableCell>
+                    <TableCell>{user.billtoName}</TableCell>
+                    <TableCell>{user.Buyer_Party}</TableCell>
+                    <TableCell>{user.buyerPartyName}</TableCell>
+                    <TableCell>{user.ShipTo}</TableCell>
+                    <TableCell>{user.shiptoName}</TableCell>
+                    <TableCell>{user.Buyer_Quantal}</TableCell>
+                    <TableCell>{user.Sale_Rate}</TableCell>
+                    <TableCell>{user.CashDiff}</TableCell>
+                    <TableCell>{user.Commission_Rate}</TableCell>
+                    <TableCell>{user.Sauda_Date}</TableCell>
+                    <TableCell>{user.Lifting_Date}</TableCell>
+                    <TableCell>{user.Narration}</TableCell>
+                    <TableCell>{user.Delivery_Type || dispatchType}</TableCell>
+                    <TableCell>{user.gst_rate || gstCode}</TableCell>
+                    <TableCell>{user.gst_amt}</TableCell>
+                    <TableCell>{user.tcs_rate || formData.TCS_Rate}</TableCell>
+                    <TableCell>{user.tcs_amt}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </div>
       </form>
     </>

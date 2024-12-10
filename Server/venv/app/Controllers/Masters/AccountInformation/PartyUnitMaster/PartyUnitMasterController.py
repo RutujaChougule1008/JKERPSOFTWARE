@@ -17,7 +17,6 @@ FROM     dbo.nt_1_partyunit INNER JOIN
 WHERE dbo.nt_1_partyunit.ucid = :ucid
 '''
 
-
 @app.route(API_URL + "/insert-PartyUnitMaster", methods=["POST"])
 def insert_PartyUnitMaster():
     try:
@@ -30,7 +29,6 @@ def insert_PartyUnitMaster():
         
         max_unit_code = db.session.query(func.max(PartyUnitMaster.unit_code)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
 
-       
         if max_unit_code is not None:
             new_record_data['unit_code'] = max_unit_code + 1
         else:
@@ -58,7 +56,6 @@ def update_PartyUnitMaster():
         Company_Code = update_data['Company_Code']
         Year_Code = update_data['Year_Code']
 
-        # Find the existing record
         existing_record = PartyUnitMaster.query.filter_by(unit_code=unit_code, Company_Code=Company_Code, Year_Code=Year_Code).first()
 
         if existing_record:
@@ -164,7 +161,6 @@ def getNext_PartyUnitMaster():
 
         nextRecordData = {column.name: getattr(next_record, column.name) for column in next_record.__table__.columns}
        
-
         additional_labels = [dict(row._mapping) for row in additional_data_rows]
 
         response = {
@@ -186,7 +182,6 @@ def getNextUnitCode_PartyUnitMaster():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Fetch the maximum unit_code for the given Company_Code and Year_Code
         max_unit_code = db.session.query(func.max(PartyUnitMaster.unit_code)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
 
         if max_unit_code is None:
@@ -223,7 +218,6 @@ def getLast_PartyUnitMaster():
 
         lastRecordData = {column.name: getattr(last_record, column.name) for column in last_record.__table__.columns}
         
-
         additional_labels = [dict(row._mapping) for row in additional_data_rows]
 
         response = {
@@ -264,8 +258,7 @@ def getPrevious_PartyUnitMaster():
         additional_data_rows = additional_data.fetchall()
 
         previousRecordData = {column.name: getattr(previous_record, column.name) for column in previous_record.__table__.columns}
-        
-
+    
         additional_labels = [dict(row._mapping) for row in additional_data_rows]
 
         response = {
@@ -298,8 +291,7 @@ def getByunit_code_PartyUnitMaster():
             return jsonify({"error": "No record found"}), 404
 
         recordData = {column.name: getattr(record, column.name) for column in record.__table__.columns}
-        
-
+    
         additional_data = db.session.execute(text(PARTY_UNIT_MASTER_QUERY), {'ucid': record.ucid})
         additional_data_rows = additional_data.fetchall()
         additional_labels = [dict(row._mapping) for row in additional_data_rows]
@@ -323,7 +315,7 @@ def getAll_PartyUnitMaster():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        records = PartyUnitMaster.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).all()
+        records = PartyUnitMaster.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).order_by(PartyUnitMaster.unit_code.desc()).all()
 
         if not records:
             return jsonify({"error": "No records found"}), 404
@@ -331,23 +323,19 @@ def getAll_PartyUnitMaster():
         all_records_data = []
 
         for record in records:
-            # Get the main record data
             recordData = {column.name: getattr(record, column.name) for column in record.__table__.columns}
 
-            # Fetch additional data
             additional_data = db.session.execute(text(PARTY_UNIT_MASTER_QUERY), {'ucid': record.ucid})
-            additional_data_row = additional_data.fetchone()  # Get the first row, if available
+            additional_data_row = additional_data.fetchone() 
 
-            # Merge recordData and additional data into a single object
             if additional_data_row:
                 additional_data_dict = dict(additional_data_row._mapping)
-                combined_record = {**recordData, **additional_data_dict}  # Combine both dictionaries
+                combined_record = {**recordData, **additional_data_dict}  
             else:
-                combined_record = recordData  # Only use recordData if additional data is unavailable
+                combined_record = recordData  
 
             all_records_data.append(combined_record)
 
-        # Final response
         response = {
             "all_records_data": all_records_data
         }

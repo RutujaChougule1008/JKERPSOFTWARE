@@ -220,7 +220,7 @@ const CreateAccountYear = () => {
     return (
         <>
             <div>
-                <ToastContainer />
+                <ToastContainer autoClose={500}/>
                 <ActionButtonGroup
                     handleAddOne={handleAddOne}
                     addOneButtonEnabled={addOneButtonEnabled}

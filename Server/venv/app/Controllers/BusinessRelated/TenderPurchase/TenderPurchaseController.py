@@ -438,7 +438,7 @@ def update_tender_purchase():
                 return jsonify({
                 "message": "Data Updated successfully",
                 "updatedHeadCount": updatedHeadCount,
-                "addedDetails": serialized_created_details,
+                "addedDetails": createdDetails,
                 "updatedDetails": updatedDetails,
                 "deletedDetailIds": deletedDetailIds
             }), 200 
@@ -529,6 +529,7 @@ def update_tender_purchase():
 
             db.session.commit()
             serialized_created_details = createdDetails 
+           
 
             return jsonify({
                 "message": "Data Updated successfully",

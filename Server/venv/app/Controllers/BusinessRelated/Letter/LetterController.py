@@ -268,7 +268,7 @@ def getAll_Letter():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        letters = Letter.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).all()
+        letters = Letter.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).order_by(Letter.DOC_NO.desc()).all()
 
         if not letters:
             return jsonify({"error": "No records found"}), 404
@@ -280,11 +280,8 @@ def getAll_Letter():
             letterData.update(format_dates(letter))
 
 
-            record_response = {
-                "letterData": letterData,
-            }
-
-            all_records_data.append(record_response)
+            
+            all_records_data.append(letterData)
 
         response = {
             "all_letters_data": all_records_data

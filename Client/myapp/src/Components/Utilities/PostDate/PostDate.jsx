@@ -54,7 +54,7 @@ const PostDateManager = () => {
 
     return (
         <div className="PostDate-form-container">
-            <ToastContainer />
+            <ToastContainer autoClose={500}/>
             <h1>Post Date Management</h1>
             <form onSubmit={handleSubmit}>
                 <div className="PostDate-form-group">

@@ -23,7 +23,7 @@ import './Login.css';
 
 const API_URL = process.env.REACT_APP_API;
 
-const LoginForm = () => {
+const Login = () => {
   const navigate = useNavigate();
   const UsernameRef = useRef(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -77,10 +77,10 @@ const LoginForm = () => {
 
   return (
     <Container className="login-container">
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <Box display="flex" flexDirection="column" alignItems="center" mb={3}>
         <img src={logo} alt='' width={100} />
-        <Typography variant="h5" gutterBottom>SignIn</Typography>
+        <Typography variant="h5" gutterBottom>JK Sugars & Commodities Pvt Ltd</Typography>
       </Box>
       <form onSubmit={handleSubmit}>
         <Grid container justifyContent="center" alignItems="center" spacing={2}>
@@ -139,4 +139,4 @@ const LoginForm = () => {
   );
 };
 
-export default LoginForm;
+export default Login;

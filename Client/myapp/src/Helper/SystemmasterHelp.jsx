@@ -5,11 +5,12 @@ import DataTableSearch from "../Common/HelpCommon/DataTableSearch";
 import DataTablePagination from "../Common/HelpCommon/DataTablePagination";
 import "../App.css";
 
-const CompanyCode = sessionStorage.getItem("Company_Code");
+
 var lActiveInputFeild = "";
 const API_URL = process.env.REACT_APP_API;
 
 const SystemHelpMaster = ({ onAcCodeClick, name, CategoryName, CategoryCode, tabIndexHelp, disabledField, SystemType }) => {
+    const CompanyCode = sessionStorage.getItem("Company_Code");
     const [showModal, setShowModal] = useState(false);
     const [popupContent, setPopupContent] = useState([]);
     const [enteredCode, setEnteredCode] = useState("");

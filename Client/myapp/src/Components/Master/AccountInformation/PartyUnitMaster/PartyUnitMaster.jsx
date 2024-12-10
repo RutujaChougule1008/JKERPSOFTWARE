@@ -36,6 +36,7 @@ const PartyUnitMaster = () => {
 
     const acCodeRef = useRef(null)
     const changeNoRef = useRef(null);
+    const inputRef = useRef(null)
 
     const location = useLocation();
     const selectedRecord = location.state?.selectedRecord;
@@ -130,6 +131,9 @@ const PartyUnitMaster = () => {
         partyName = "";
         unitCode = "";
         unitName = "";
+        setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
     }
 
     //Handle Save or update the record.
@@ -368,7 +372,7 @@ const PartyUnitMaster = () => {
 
     return (
         <>
-            <ToastContainer />
+            <ToastContainer autoClose={500}/>
             <ActionButtonGroup
                 handleAddOne={handleAddOne}
                 addOneButtonEnabled={addOneButtonEnabled}

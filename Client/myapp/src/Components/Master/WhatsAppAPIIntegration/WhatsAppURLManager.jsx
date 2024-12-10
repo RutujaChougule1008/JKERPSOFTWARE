@@ -57,7 +57,7 @@ const WhatsAppURLManager = () => {
 
     return (
         <div className="WhatsApp-form-container">
-            <ToastContainer />
+            <ToastContainer autoClose={500}/>
             <h5>WhatsApp URL Configuration</h5>
             <form onSubmit={handleSubmit}>
             <div className="WhatsApp-form-group">

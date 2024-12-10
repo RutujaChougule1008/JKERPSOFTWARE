@@ -28,6 +28,7 @@ def purcno():
                            tenderdoname as doname,Lifting_DateConverted as Lifting_Date,ID,tenderdetailid,tenderid,Delivery_Type,shiptoname,tenderdoshortname,season,Party_Bill_Rate  
                            from qrytenderdobalanceview 
                            where BALANCE!=0 and Company_Code= :CompanyCode and Mill_Code=:MillCode
+                           order by Tender_No desc
             '''),{'CompanyCode':CompanyCode, 'MillCode':MillCode})
 
             result = query.fetchall()

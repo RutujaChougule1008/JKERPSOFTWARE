@@ -59,7 +59,7 @@ const CompanyPrintingInfo = () => {
 
     return (
         <div className="CompanyInfo-form-container">
-            <ToastContainer />
+            <ToastContainer autoClose={500}/>
             <h1>Company Printing Information</h1>
             <form onSubmit={handleSubmit}>
                 <div className="CompanyInfo-form-group">

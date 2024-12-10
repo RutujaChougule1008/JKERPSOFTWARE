@@ -19,8 +19,10 @@ def PurcNoFromReturnSale():
         with db.session.begin_nested():
             query = db.session.execute(text('''
                 Select doc_no,doc_dateConverted as doc_date,millshortname as MillName,billtoname as PartyName, Bill_Amount, Quantal,
-                             Year_Code,prid from  qrysugarpurchasereturnbalance where IsDeleted!=0 and Company_Code=:CompanyCode
+                             Year_Code,prid from  qrysugarpurchasereturnbalance 
+                             where IsDeleted!=0 and Company_Code=:CompanyCode
                              and Quantal!=0 
+                             order by doc_no desc
             '''), {'CompanyCode': CompanyCode})
 
             result = query.fetchall()

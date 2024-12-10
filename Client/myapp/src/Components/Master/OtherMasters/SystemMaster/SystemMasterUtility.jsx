@@ -93,6 +93,9 @@ function SystemMasterUtility() {
         setCurrentPage(1);
     }, [searchTerm, filterValue, fetchedData]);
 
+    if (canView === false) {
+        return <PageNotFound />;
+    }
 
     const handlePerPageChange = (event) => {
         setPerPage(event.target.value);

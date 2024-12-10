@@ -74,6 +74,7 @@ const RecieptPayment = () => {
   const [tenderDetails, setTenderDetails] = useState({});
   const [lastTenderDetails, setLastTenderDetails] = useState([]);
   const [lastTenderData, setLastTenderData] = useState({});
+  const inputRef= useRef(null)
 
   const options = {
     CP: [
@@ -357,6 +358,9 @@ const RecieptPayment = () => {
       tran_type: TyanTypeState || tranType,
     }));
     handleDetailDropdownChange(TyanTypeState || tranType);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleSaveOrUpdate = async () => {
@@ -1018,7 +1022,7 @@ const RecieptPayment = () => {
   return (
     <>
       <div>
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <h4>Receipt Payment</h4>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
@@ -1105,6 +1109,7 @@ const RecieptPayment = () => {
             name="doc_date"
             type="date"
             value={formData.doc_date}
+            inputRef={inputRef}
             onChange={handleChange}
             disabled={!isEditing && addOneButtonEnabled}
             fullWidth

@@ -419,7 +419,7 @@ const CityMaster = ({ isPopup = false }, ref) => {
       </div>
       {!isPopup && (
         <div>
-          <ToastContainer />
+          <ToastContainer autoClose={500}/>
           <ActionButtonGroup
             handleAddOne={handleAddOne}
             addOneButtonEnabled={addOneButtonEnabled}

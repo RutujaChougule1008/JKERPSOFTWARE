@@ -147,6 +147,7 @@ FROM  dbo.nt_1_sugarpurchase INNER JOIN
         WHERE 
             dbo.nt_1_sugarpurchase.Company_Code = :company_code 
             AND dbo.nt_1_sugarpurchase.Year_Code = :year_code
+        order by dbo.nt_1_sugarpurchase.doc_no desc
         '''
 
         additional_data = db.session.execute(text(query), {"company_code": company_code, "year_code": year_code})
@@ -383,7 +384,7 @@ def delete_data_SugarPurchase():
                 'TRAN_TYPE': tran_type,
             }
 
-            response = requests.delete(API_URL+"/delete-Record-gLedger", params=query_params)
+            response = requests.delete(API_URL_SERVER +"/delete-Record-gLedger", params=query_params)
             
             if response.status_code != 200:
                 raise Exception("Failed to create record in gLedger")

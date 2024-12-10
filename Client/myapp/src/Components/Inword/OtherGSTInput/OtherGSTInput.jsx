@@ -129,9 +129,9 @@ const OtherGSTInput = () => {
     setAccountCode("");
     Exps_Name = "";
     newExps_Ac = "";
-    if (dateInputRef.current) {
-      dateInputRef.current.focus();
-    }
+    setTimeout(() => {
+      dateInputRef.current?.focus();
+    }, 0);
   };
 
   const handleSaveOrUpdate = () => {
@@ -419,7 +419,7 @@ const OtherGSTInput = () => {
     <>
       <div>
       <h5>Other GST Input</h5>
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}

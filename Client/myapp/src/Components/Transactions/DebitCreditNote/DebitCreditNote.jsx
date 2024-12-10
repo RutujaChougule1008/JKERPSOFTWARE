@@ -12,7 +12,7 @@ import "react-toastify/dist/ReactToastify.css";
 import "./DebitCreditNote.css";
 import { HashLoader } from "react-spinners";
 import {
-  TextField,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField,
   Grid
 } from '@mui/material';
 import { useRecordLocking } from '../../../hooks/useRecordLocking';
@@ -37,6 +37,16 @@ var HSN = "";
 var CGSTRate = 0.0;
 var SGSTRate = 0.0;
 var IGSTRate = 0.0;
+
+const headerCellStyle = {
+  fontWeight: 'bold',
+  backgroundColor: '#3f51b5',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#303f9f',
+    cursor: 'pointer',
+  },
+};
 
 const API_URL = process.env.REACT_APP_API;
 
@@ -1120,12 +1130,12 @@ const DebitCreditNote = () => {
   };
 
   const validateNumericInput = (e) => {
-    e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+    e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
   };
 
   return (
     <>
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <h4 className="mt-4 mb-4 text-center custom-heading">
         Debit Credit Note
       </h4>
@@ -1351,7 +1361,7 @@ const DebitCreditNote = () => {
                 <div className="modal-content">
                   <div className="modal-header">
                     <h5 className="modal-title">
-                      {selectedUser.id ? "Edit" : "Add"}
+                      {selectedUser.id ? "Update Debit-Credit Note" : "Add Debit-Credit Note"}
                     </h5>
                     <button
                       type="button"
@@ -1449,7 +1459,7 @@ const DebitCreditNote = () => {
                           }
                         }}
                       >
-                        Update User
+                        Update
                       </button>
                     ) : (
                       <button
@@ -1461,7 +1471,7 @@ const DebitCreditNote = () => {
                           }
                         }}
                       >
-                        Add User
+                        Add
                       </button>
                     )}
                     <button
@@ -1477,81 +1487,84 @@ const DebitCreditNote = () => {
             </div>
           )}
 
-          <table className="table mt-4 table-bordered">
-            <thead>
-              <tr>
-                <th>Actions</th>
-                <th>Rowaction</th>
-                <th>ID</th>
-                <th>Expac Code</th>
-                <th>Expac name</th>
-                <th>item Code</th>
-                <th>item Name</th>
-                <th>Value</th>
-                <th>HSN</th>
-                <th>Quantal</th>
-                <th>dcdetailid</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>
-                    {user.rowaction === "add" ||
-                      user.rowaction === "update" ||
-                      user.rowaction === "Normal" ? (
-                      <>
-                        <button
-                          className="btn btn-warning"
-                          onClick={() => editUser(user)}
-                          disabled={!isEditing}
-                          onKeyDown={(event) => {
-                            if (event.key === 13) {
-                              editUser(user);
-                            }
-                          }}
+          <TableContainer component={Paper} className="mt-4">
+            <Table sx={{ minWidth: 650 }} aria-label="user table">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={headerCellStyle}>Actions</TableCell>
+                  <TableCell sx={headerCellStyle}>Rowaction</TableCell>
+                  <TableCell sx={headerCellStyle}>ID</TableCell>
+                  <TableCell sx={headerCellStyle}>Expac Code</TableCell>
+                  <TableCell sx={headerCellStyle}>Expac Name</TableCell>
+                  <TableCell sx={headerCellStyle}>Item Code</TableCell>
+                  <TableCell sx={headerCellStyle}>Item Name</TableCell>
+                  <TableCell sx={headerCellStyle}>Value</TableCell>
+                  <TableCell sx={headerCellStyle}>HSN</TableCell>
+                  <TableCell sx={headerCellStyle}>Quantal</TableCell>
+                  <TableCell sx={headerCellStyle}>DC Detail ID</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      {user.rowaction === 'add' || user.rowaction === 'update' || user.rowaction === 'Normal' ? (
+                        <>
+                          <Button
+                            variant="contained"
+                            color="warning"
+                            onClick={() => editUser(user)}
+                            disabled={!isEditing}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                editUser(user);
+                              }
+                            }}
+                            sx={{ mr: 1 }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => deleteModeHandler(user)}
+                            disabled={!isEditing}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                deleteModeHandler(user);
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : user.rowaction === 'DNU' || user.rowaction === 'delete' ? (
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={() => openDelete(user)}
                         >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-danger ms-2"
-                          onClick={() => deleteModeHandler(user)}
-                          onKeyDown={(event) => {
-                            if (event.key === 13) {
-                              deleteModeHandler(user);
-                            }
-                          }}
-                          disabled={!isEditing}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    ) : user.rowaction === "DNU" ||
-                      user.rowaction === "delete" ? (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => openDelete(user)}
-                      >
-                        Open
-                      </button>
-                    ) : null}
-                  </td>
-                  <td>{user.rowaction}</td>
-                  <td>{user.id}</td>
-                  <td>{user.expac_code}</td>
-                  <td>{user.expacName}</td>
-                  <td>{user.Item_Code}</td>
-                  <td>{user.itemName}</td>
-                  <td>{user.value}</td>
-                  <td>{user.HSN}</td>
-                  <td>{user.Quantal}</td>
-                  <td>{user.dcdetailid}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                          Open
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>{user.rowaction}</TableCell>
+                    <TableCell>{user.id}</TableCell>
+                    <TableCell>{user.expac_code}</TableCell>
+                    <TableCell>{user.expacName}</TableCell>
+                    <TableCell>{user.Item_Code}</TableCell>
+                    <TableCell>{user.itemName}</TableCell>
+                    <TableCell>{user.value}</TableCell>
+                    <TableCell>{user.HSN}</TableCell>
+                    <TableCell>{user.Quantal}</TableCell>
+                    <TableCell>{user.dcdetailid}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </div>
-
+        <br></br>
         <div className="debitCreditNote-row">
           <label htmlFor="gst_code" >
             GST Rate Code:

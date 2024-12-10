@@ -10,7 +10,6 @@ API_URL = os.getenv('API_URL')
 @app.route(API_URL+"/getall-cities", methods=["GET"])
 def getAll_Cities():
     try:
-        # Extract Company_Code from query parameters
         company_code = request.args.get('company_code')
         if company_code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
@@ -19,11 +18,8 @@ def getAll_Cities():
             company_code = int(company_code)
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
-
-        # Fetch groups by Company_Code
-        groups = CityMaster.query.filter_by(company_code=company_code).all()
-
-        # Convert groups to a list of dictionaries
+        
+        groups = CityMaster.query.filter_by(company_code=company_code).order_by(CityMaster.city_code.desc()).all()
         groups_data = []
         for group in groups:
             group_data = {column.key: getattr(group, column.key) for column in group.__table__.columns}
@@ -38,7 +34,6 @@ def getAll_Cities():
 @app.route(API_URL + "/getlast-city", methods=["GET"])
 def getLast_City():
     try:
-        # Extract Company_Code from query parameters
         company_code = request.args.get('company_code')
         if company_code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
@@ -48,13 +43,11 @@ def getLast_City():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        # Fetch the last group by Company_Code ordered by group_Code
         last_group = CityMaster.query.filter_by(company_code=company_code).order_by(CityMaster.city_code.desc()).first()
 
         if last_group is None:
             return jsonify({'error': 'No group found for the provided Company_Code'}), 404
 
-        # Convert group to a dictionary
         last_group_data = {column.key: getattr(last_group, column.key) for column in last_group.__table__.columns}
 
         return jsonify(last_group_data)
@@ -66,7 +59,6 @@ def getLast_City():
 @app.route(API_URL + "/get-citybycitycode", methods=["GET"])
 def get_CityByCityCode():
     try:
-        # Extract group_Code and Company_Code from query parameters
         city_code = request.args.get('city_code')
         company_code = request.args.get('company_code')
 
@@ -79,13 +71,11 @@ def get_CityByCityCode():
         except ValueError:
             return jsonify({'error': 'Invalid city_code or Company_Code parameter'}), 400
 
-        # Fetch group by group_Code and Company_Code
         group = CityMaster.query.filter_by(city_code=city_code, company_code=company_code).first()
 
         if group is None:
             return jsonify({'error': 'city_code not found'}), 404
 
-        # Convert group to a dictionary
         group_data = {column.key: getattr(group, column.key) for column in group.__table__.columns}
 
         return jsonify(group_data)
@@ -96,15 +86,13 @@ def get_CityByCityCode():
 @app.route(API_URL + "/get-citybyName", methods=["GET"])
 def CitybyPinCode():
     try:
-        # Extract pinCode or city_name_e from query parameters
-       
         city_name_e = request.args.get('city_name_e')
 
         if city_name_e is None:
             return jsonify({'error': 'Missing pincode or city_name_e parameter'}), 400
 
         if city_name_e:
-            # Handle the case when pinCode is provided
+
             try:
                 City = CityMaster.query.filter_by(city_name_e=city_name_e).first()
             except ValueError:
@@ -113,7 +101,6 @@ def CitybyPinCode():
         if City is None:
             return jsonify({'error': 'City not found'}), 404
 
-        # Convert City to a dictionary
         city_data = {'city_code': City.city_code, 'city_name_e': City.city_name_e}
 
         return jsonify(city_data)
@@ -121,13 +108,10 @@ def CitybyPinCode():
         print(e)
         return jsonify({'error': 'Internal server error'}), 500
 
-
-
 # Create a new City
 @app.route(API_URL + "/create-city", methods=["POST"])
 def create_city():
     try:
-        # Extract Company_Code from query parameters
         company_code = request.args.get('company_code')
         if company_code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
@@ -137,10 +121,8 @@ def create_city():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        # Fetch the maximum group_Code for the given Company_Code
         max_group_code = db.session.query(db.func.max(CityMaster.city_code)).filter_by(company_code=company_code).scalar() or 0
 
-        # Create a new GroupMaster entry with the generated group_Code
         new_group_data = request.json
         new_group_data['city_code'] = max_group_code + 1
         new_group_data['company_code'] = company_code
@@ -166,7 +148,6 @@ def create_city():
 @app.route(API_URL+"/update-city", methods=["PUT"])
 def update_City():
     try:
-        # Extract Company_Code and group_Code from query parameters
         company_code = request.args.get('company_code')
         city_code = request.args.get('city_code')
         if company_code is None or city_code is None:
@@ -178,12 +159,10 @@ def update_City():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code or city_code parameter'}), 400
 
-        # Fetch the group to update
         group = CityMaster.query.filter_by(company_code=company_code, city_code=city_code).first()
         if group is None:
             return jsonify({'error': 'City not found'}), 404
 
-        # Update group data
         update_data = request.json
         for key, value in update_data.items():
             setattr(group, key, value)
@@ -202,7 +181,6 @@ def update_City():
 @app.route(API_URL+"/delete-city", methods=["DELETE"])
 def delete_city():
     try:
-        # Extract Company_Code and group_Code from query parameters
         company_code = request.args.get('company_code')
         city_code = request.args.get('city_code')
         if company_code is None or city_code is None:
@@ -214,7 +192,6 @@ def delete_city():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code or city_code parameter'}), 400
 
-        # Fetch the group to delete
         group = CityMaster.query.filter_by(company_code=company_code, city_code=city_code).first()
         if group is None:
             return jsonify({'error': 'City not found'}), 404
@@ -233,7 +210,6 @@ def get_First_Record():
     try:
         first_user_creation = CityMaster.query.order_by(CityMaster.city_code.asc()).first()
         if first_user_creation:
-            # Convert SQLAlchemy object to dictionary
             serialized_user_creation = {key: value for key, value in first_user_creation.__dict__.items() if not key.startswith('_')}
             return jsonify([serialized_user_creation])
         else:
@@ -268,7 +244,6 @@ def get_previous_record():
         previous_selected_record = CityMaster.query.filter(CityMaster.city_code < Selected_Record)\
             .order_by(CityMaster.city_code.desc()).first()
         if previous_selected_record:
-            # Serialize the GroupMaster object to a dictionary
             serialized_previous_selected_record = {key: value for key, value in previous_selected_record.__dict__.items() if not key.startswith('_')}
             return jsonify(serialized_previous_selected_record)
         else:
@@ -287,7 +262,6 @@ def get_next_record():
         next_Selected_Record = CityMaster.query.filter(CityMaster.city_code > Selected_Record)\
             .order_by(CityMaster.city_code.asc()).first()
         if next_Selected_Record:
-            # Serialize the GroupMaster object to a dictionary
             serialized_next_Selected_Record = {key: value for key, value in next_Selected_Record.__dict__.items() if not key.startswith('_')}
             return jsonify({'nextSelectedRecord': serialized_next_Selected_Record})
         else:

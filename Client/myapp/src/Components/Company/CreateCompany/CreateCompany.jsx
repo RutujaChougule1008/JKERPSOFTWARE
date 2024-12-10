@@ -72,7 +72,6 @@ function CompanyCreation() {
 
   useEffect(() => {
     fetchLastCompany_Code();
-    window.sessionStorage.setItem("username", "Pankaj");
   }, []);
 
   const fetchLastCompany_Code = () => {

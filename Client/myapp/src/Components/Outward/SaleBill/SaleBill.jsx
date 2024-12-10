@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { TextField, Grid, InputLabel, FormControl, Select, MenuItem, FormControlLabel, Checkbox, TextareaAutosize, Button } from '@mui/material';
+import { TextField, Grid, InputLabel, FormControl, Select, MenuItem, FormControlLabel, Checkbox, TextareaAutosize, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import "bootstrap/dist/css/bootstrap.min.css";
 import AccountMasterHelp from "../../../Helper/AccountMasterHelp";
 import GSTRateMasterHelp from "../../../Helper/GSTRateMasterHelp";
@@ -15,6 +15,7 @@ import { HashLoader } from "react-spinners";
 import SaleBillReport from './SaleBillReport'
 import EWayBillReport from "./EWayBillReport/EWayBillReport";
 import { useRecordLocking } from '../../../hooks/useRecordLocking';
+
 
 //Global Variables
 var newSaleid = "";
@@ -44,10 +45,24 @@ var UnitMobNo = "";
 var millgstno = "";
 
 const API_URL = process.env.REACT_APP_API;
-const companyCode = sessionStorage.getItem("Company_Code");
-const Year_Code = sessionStorage.getItem("Year_Code");
+
+// Common style for all table headers
+const headerCellStyle = {
+  fontWeight: 'bold',
+  backgroundColor: '#3f51b5',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#303f9f',
+    cursor: 'pointer',
+  },
+};
 
 const SaleBill = () => {
+
+  //GET Values from session
+  const companyCode = sessionStorage.getItem("Company_Code");
+  const Year_Code = sessionStorage.getItem("Year_Code");
+
   const [users, setUsers] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMode, setPopupMode] = useState("add");
@@ -87,9 +102,11 @@ const SaleBill = () => {
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
   const navigate = useNavigate();
-  const setFocusTaskdate = useRef(null);
+
   const [isHandleChange, setIsHandleChange] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const inputRef = useRef(null)
 
 
   const initialFormData = {
@@ -159,7 +176,7 @@ const SaleBill = () => {
     TDS_Rate: 0.0,
     SBNarration: "",
     QRCode: "",
-    Insured: "",
+    Insured: "N",
     gstid: 0,
   };
 
@@ -184,13 +201,13 @@ const SaleBill = () => {
   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no, undefined, companyCode, Year_Code, "sugar_sale");
 
   const validateNumericInput = (e) => {
-    e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+    e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     const formatTruckNumber = (value) => {
-      const cleanedValue = value.replace(/\s+/g, '').toUpperCase();
+      const cleanedValue = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
       return cleanedValue.length <= 10 ? cleanedValue : cleanedValue.substring(0, 10);
     };
     const updatedValue = name === "LORRYNO" ? formatTruckNumber(value) : value;
@@ -310,6 +327,9 @@ const SaleBill = () => {
     billToCode = "";
     gstName = "";
     setLastTenderDetails([]);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   //handle Edit record functionality.
@@ -632,7 +652,7 @@ const SaleBill = () => {
     } else {
       handleAddOne();
     }
-    setFocusTaskdate.current.focus();
+
   }, [selectedRecord]);
 
   const handlerecordDoubleClicked = async () => {
@@ -724,7 +744,7 @@ const SaleBill = () => {
           ...data.last_head_data,
         });
         setLastTenderData(data.last_head_data || {});
-        setLastTenderDetails(data.last.details.data || []);
+        setLastTenderDetails(data.last_details_data || []);
         setIsEditing(false);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -987,7 +1007,6 @@ const SaleBill = () => {
     );
 
     setFormData(updatedFormData);
-
     closePopup();
   };
 
@@ -1042,15 +1061,14 @@ const SaleBill = () => {
     }
 
     updatedFormData = await calculateDependentValues(
-      "GstRateCode", 
-      gstRate, 
+      "GstRateCode",
+      gstRate,
       updatedFormData,
       matchStatus,
-      gstRate 
+      gstRate
     );
 
     setFormData(updatedFormData);
-
     closePopup();
   };
 
@@ -1103,13 +1121,12 @@ const SaleBill = () => {
     }
 
     updatedFormData = await calculateDependentValues(
-      "GstRateCode", 
+      "GstRateCode",
       gstRate,
       updatedFormData,
       matchStatus,
-      gstRate 
+      gstRate
     );
-
     setFormData(updatedFormData);
   };
 
@@ -1155,10 +1172,10 @@ const SaleBill = () => {
 
     updatedFormData = await calculateDependentValues(
       "GstRateCode",
-      gstRate, 
+      gstRate,
       updatedFormData,
       matchStatus,
-      gstRate 
+      gstRate
     );
 
     setFormData(updatedFormData);
@@ -1181,7 +1198,7 @@ const SaleBill = () => {
   const clearForm = () => {
     setFormDataDetail({
       narration: "",
-      packing: 0,
+      packing: 50 || 0,
       Quantal: 0.0,
       bags: 0,
       rate: 0.0,
@@ -1319,7 +1336,7 @@ const SaleBill = () => {
         rate,
         updatedFormData,
         matchStatusResult,
-        rate 
+        rate
       );
 
       setFormData(newFormData);
@@ -1346,40 +1363,38 @@ const SaleBill = () => {
 
   return (
     <>
-      <ToastContainer />
-      <form className="SaleBill-container" onSubmit={handleSubmit}>
-        <h6 className="Heading">Sugar Bill For GST</h6>
-        <div>
-          <ActionButtonGroup
-            handleAddOne={handleAddOne}
-            addOneButtonEnabled={addOneButtonEnabled}
-            handleSaveOrUpdate={handleSaveOrUpdate}
-            saveButtonEnabled={saveButtonEnabled}
-            isEditMode={isEditMode}
-            handleEdit={handleEdit}
-            editButtonEnabled={editButtonEnabled}
-            handleDelete={handleDelete}
-            deleteButtonEnabled={deleteButtonEnabled}
-            handleCancel={handleCancel}
-            cancelButtonEnabled={cancelButtonEnabled}
-            handleBack={handleBack}
-            backButtonEnabled={backButtonEnabled}
-          />
-          <NavigationButtons
-            handleFirstButtonClick={handleFirstButtonClick}
-            handlePreviousButtonClick={handlePreviousButtonClick}
-            handleNextButtonClick={handleNextButtonClick}
-            handleLastButtonClick={handleLastButtonClick}
-            highlightedButton={highlightedButton}
-            isEditing={isEditing}
-          />
-        </div>
+      <h5 >Sugar Bill For GST</h5>
+      <ToastContainer autoClose={500}/>
+      <ActionButtonGroup
+        handleAddOne={handleAddOne}
+        addOneButtonEnabled={addOneButtonEnabled}
+        handleSaveOrUpdate={handleSaveOrUpdate}
+        saveButtonEnabled={saveButtonEnabled}
+        isEditMode={isEditMode}
+        handleEdit={handleEdit}
+        editButtonEnabled={editButtonEnabled}
+        handleDelete={handleDelete}
+        deleteButtonEnabled={deleteButtonEnabled}
+        handleCancel={handleCancel}
+        cancelButtonEnabled={cancelButtonEnabled}
+        handleBack={handleBack}
+        backButtonEnabled={backButtonEnabled}
+      />
+      <NavigationButtons
+        handleFirstButtonClick={handleFirstButtonClick}
+        handlePreviousButtonClick={handlePreviousButtonClick}
+        handleNextButtonClick={handleNextButtonClick}
+        handleLastButtonClick={handleLastButtonClick}
+        highlightedButton={highlightedButton}
+        isEditing={isEditing}
+      />
 
-        <div style={{ marginBottom: '10px', marginRight: "10px" }}>
-          <SaleBillReport doc_no={formData.doc_no} disabledFeild={!addOneButtonEnabled} />
-          <EWayBillReport doc_no={formData.doc_no} disabledFeild={!addOneButtonEnabled} />
-        </div>
+      <div style={{ marginBottom: '10px', float: "right", display: 'flex', flexDirection: 'row' }}>
+        <SaleBillReport doc_no={formData.doc_no} disabledFeild={!addOneButtonEnabled} />
+        <EWayBillReport saleId={newSaleid} disabledFeild={!addOneButtonEnabled} />
+      </div>
 
+      <form onSubmit={handleSubmit}>
         <Grid container alignItems="center" spacing={2}>
           <Grid item xs={12} sm={1}>
             <FormControl fullWidth>
@@ -1415,7 +1430,7 @@ const SaleBill = () => {
           <Grid item xs={6} sm={2}>
             <FormControl fullWidth>
               <TextField
-                inputRef={setFocusTaskdate}
+                inputRef={inputRef}
                 type="date"
                 label="Date"
                 variant="outlined"
@@ -1779,117 +1794,117 @@ const SaleBill = () => {
             </div>
           )}
 
-          <div style={{ display: "flex" }}>
-            <div
-              style={{
-                display: "flex",
-                height: "35px",
-                marginTop: "25px",
-                marginRight: "10px",
+
+          <div
+            style={{
+              display: "flex",
+              height: "35px",
+              marginTop: "25px",
+              marginRight: "10px",
+            }}
+          >
+            <button
+              className="btn btn-primary"
+              onClick={() => openPopup("add")}
+              onKeyDown={(event) => {
+                if (event.key === 13) {
+                  openPopup("add");
+                }
               }}
             >
-              <button
-                className="btn btn-primary"
-                onClick={() => openPopup("add")}
-                tabIndex="12"
-                onKeyDown={(event) => {
-                  if (event.key === 13) {
-                    openPopup("add");
-                  }
-                }}
-              >
-                Add
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={!isEditing}
-                style={{ marginLeft: "10px" }}
-                tabIndex=""
-              >
-                Close
-              </button>
+              Add
+            </button>
+            <button
+              className="btn btn-danger"
+              disabled={!isEditing}
+              style={{ marginLeft: "10px" }}
+            >
+              Close
+            </button>
 
-            </div>
-            <table className="table mt-4 table-bordered">
-              <thead>
-                <tr>
-                  <th>Actions</th>
-                  {/* <th>ID</th>
-                <th>RowAction</th> */}
-                  <th>Item</th>
-                  <th>Item Name</th>
-                  <th>Brand Code</th>
-                  <th>Brand Name</th>
-                  <th>Quantal</th>
-                  <th>Packing</th>
-                  <th>Bags</th>
-                  <th>Rate</th>
-                  <th>Item Amount</th>
-                  {/* <th>Saledetailid</th> */}
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      {user.rowaction === "add" ||
-                        user.rowaction === "update" ||
-                        user.rowaction === "Normal" ? (
-                        <>
-                          <button
-                            className="btn btn-warning"
-                            onClick={() => editUser(user)}
-                            disabled={!isEditing}
-                            onKeyDown={(event) => {
-                              if (event.key === 13) {
-                                editUser(user);
-                              }
-                            }}
-                            tabIndex="18"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger ms-2"
-                            onClick={() => deleteModeHandler(user)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                deleteModeHandler(user);
-                              }
-                            }}
-                            disabled={!isEditing}
-                            tabIndex="19"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : user.rowaction === "DNU" ||
-                        user.rowaction === "delete" ? (
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => openDelete(user)}
-                        >
-                          Open
-                        </button>
-                      ) : null}
-                    </td>
-                    {/* <td>{user.id}</td>
-                  <td>{user.rowaction}</td> */}
-                    <td>{user.item_code}</td>
-                    <td>{user.item_Name}</td>
-                    <td>{user.Brand_Code}</td>
-                    <td>{user.brand_name}</td>
-                    <td>{user.Quantal}</td>
-                    <td>{user.packing}</td>
-                    <td>{user.bags}</td>
-                    <td>{user.rate}</td>
-                    <td>{user.item_Amount}</td>
-                    {/* <td>{user.saledetailid}</td> */}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
+          <div >
+
+            <TableContainer component={Paper} className="mt-4">
+              <Table sx={{ minWidth: 650 }} aria-label="user table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={headerCellStyle}>Actions</TableCell>
+                    {/* <TableCell sx={headerCellStyle}>RowAction</TableCell> */}
+                    <TableCell sx={headerCellStyle}>ID</TableCell>
+                    <TableCell sx={headerCellStyle}>Item</TableCell>
+                    <TableCell sx={headerCellStyle}>Item Name</TableCell>
+                    <TableCell sx={headerCellStyle}>Brand Code</TableCell>
+                    <TableCell sx={headerCellStyle}>Brand Name</TableCell>
+                    <TableCell sx={headerCellStyle}>Quantal</TableCell>
+                    <TableCell sx={headerCellStyle}>Packing</TableCell>
+                    <TableCell sx={headerCellStyle}>Bags</TableCell>
+                    <TableCell sx={headerCellStyle}>Rate</TableCell>
+                    <TableCell sx={headerCellStyle}>Item Amount</TableCell>
+                    {/* <TableCell sx={headerCellStyle}>Saledetailid</TableCell> */}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        {user.rowaction === "add" || user.rowaction === "update" || user.rowaction === "Normal" ? (
+                          <>
+                            <Button
+                              variant="contained"
+                              color="warning"
+                              onClick={() => editUser(user)}
+                              disabled={!isEditing}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  editUser(user);
+                                }
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              onClick={() => deleteModeHandler(user)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  deleteModeHandler(user);
+                                }
+                              }}
+                              disabled={!isEditing}
+                              sx={{ marginLeft: 2 }}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        ) : user.rowaction === "DNU" || user.rowaction === "delete" ? (
+                          <Button variant="outlined" color="secondary" onClick={() => openDelete(user)}>
+                            Open
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                      {/* <TableCell>{user.rowaction}</TableCell> */}
+                      <TableCell>{user.id}</TableCell>
+                      <TableCell>{user.item_code}</TableCell>
+                      <TableCell>{user.item_Name}</TableCell>
+                      <TableCell>{user.Brand_Code}</TableCell>
+                      <TableCell>{user.brand_name}</TableCell>
+                      <TableCell>{user.Quantal}</TableCell>
+                      <TableCell>{user.packing}</TableCell>
+                      <TableCell>{user.bags}</TableCell>
+                      <TableCell>{user.rate}</TableCell>
+                      <TableCell>{user.item_Amount}</TableCell>
+                      {/* <TableCell>{user.saledetailid}</TableCell> */}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+          </div>
+          <br></br>
+          <br></br>
         </div>
 
         <div className="SaleBill-row">

@@ -22,6 +22,7 @@ def PurcNoFromReturnPurchase():
                 Select doc_no, Tran_Type, convert(varchar(10), doc_date, 103) as doc_date, PartyName, MillName, Bill_Amount, NETQNTL as Quantal, Year_Code, saleid from 
                 qrySugarSaleAndVouchersForReturnNew  
                 where Company_Code= :CompanyCode and Year_Code= :yearCode
+                order by doc_no desc
             '''), {'CompanyCode': CompanyCode, 'yearCode': yearCode})
 
             result = query.fetchall()

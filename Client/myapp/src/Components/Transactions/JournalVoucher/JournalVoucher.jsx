@@ -10,12 +10,26 @@ import AccountMasterHelp from "../../../Helper/AccountMasterHelp";
 import { HashLoader } from "react-spinners";
 import { TextField, Box, Typography } from "@mui/material";
 import { useRecordLocking } from "../../../hooks/useRecordLocking";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
+
 
 var newDebit_ac;
 var lblacname;
 var globalTotalAmount = 0.0;
 var globalCreditTotalAmount = 0.0;
 var globalDebitTotalAmount = 0.0;
+
+//Common table Heading style
+const headerCellStyle = {
+  fontWeight: 'bold',
+  backgroundColor: '#3f51b5',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#303f9f',
+    cursor: 'pointer',
+  },
+};
+
 
 const JournalVoucher = () => {
   const API_URL = process.env.REACT_APP_API;
@@ -864,10 +878,18 @@ const JournalVoucher = () => {
     await handleNavigation(url, "last_head_data", "last_details_data");
   };
 
+  //Validate the input feilds
+  const validateNumericInput = (e) => {
+    e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+  };
+
   return (
     <>
-      <div className="container">
-        <ToastContainer />
+      <div>
+        <Typography variant="h5" >
+          Journal Voucher
+        </Typography>
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -885,7 +907,6 @@ const JournalVoucher = () => {
           permissions={permissions}
         />
         <div>
-          {/* Navigation Buttons */}
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
             handlePreviousButtonClick={handlePreviousButtonClick}
@@ -899,9 +920,6 @@ const JournalVoucher = () => {
       </div>
 
       <div>
-        <Typography variant="h4" sx={{ marginBottom: 2 }}>
-          Journal Voucher
-        </Typography>
         <Box
           component="form"
           sx={{
@@ -916,6 +934,7 @@ const JournalVoucher = () => {
               label="Change No"
               id="changeNo"
               name="changeNo"
+              autoComplete="off"
               onKeyDown={handleKeyDown}
               disabled={!addOneButtonEnabled}
               variant="outlined"
@@ -958,14 +977,29 @@ const JournalVoucher = () => {
           </div>
         )}
 
-        <div style={{ alignItems: "center" }}>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            height: "40px",
+            marginTop: "25px",
+            marginRight: "10px",
+          }}
+        >
           <button
-            className="btn btn-primary"
+            className="btn btn-primary btn-lg"
+            style={{
+              padding: "5px 20px",
+              fontSize: "20px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+            }}
             onClick={openPopup}
             disabled={!isEditing}
             tabIndex="16"
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === 13) {
                 openPopup();
               }
             }}
@@ -973,20 +1007,28 @@ const JournalVoucher = () => {
             Add
           </button>
           <button
-            className="btn btn-danger"
+            className="btn btn-danger btn-lg"
+            style={{
+              marginLeft: "15px",
+              padding: "5px 20px",
+              fontSize: "20px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+            }}
             disabled={!isEditing}
-            style={{ marginLeft: "10px" }}
-            tabIndex="17"
+            tabIndex="38"
           >
             Close
           </button>
+        </div>
+        <div >
           {showPopup && (
             <div className="modal" role="dialog">
               <div className="modal-dialog" role="document">
                 <div className="modal-content">
                   <div className="modal-header">
                     <h5 className="modal-title">
-                      {selectedUser.id ? "Edit User" : "Add User"}
+                      {selectedUser.id ? "Update Journal Voucher" : "Add Journal Voucher"}
                     </h5>
                     <button
                       type="button"
@@ -1082,7 +1124,7 @@ const JournalVoucher = () => {
                           }
                         }}
                       >
-                        Update User
+                        Update
                       </button>
                     ) : (
                       <button
@@ -1094,7 +1136,7 @@ const JournalVoucher = () => {
                           }
                         }}
                       >
-                        Add User
+                        Add
                       </button>
                     )}
                     <button
@@ -1110,82 +1152,83 @@ const JournalVoucher = () => {
             </div>
           )}
 
-          <table className="table mt-4 table-bordered">
-            <thead>
-              <tr>
-                <th>Actions</th>
-                <th>ID</th>
-                <th>AcCode</th>
-                <th>AcName</th>
-                <th>DRCR</th>
-                <th>amount</th>
-                <th>narration</th>
-                <th>trandetailid</th>
-                <th>Debitid</th>
-                <th>Rowaction</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>
-                    {user.rowaction === "add" ||
-                    user.rowaction === "update" ||
-                    user.rowaction === "Normal" ? (
-                      <>
-                        <button
-                          className="btn btn-warning"
-                          onClick={() => editUser(user)}
-                          disabled={!isEditing}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              editUser(user);
-                            }
-                          }}
-                          tabIndex="18"
+          <TableContainer component={Paper} className="mt-4">
+            <Table sx={{ minWidth: 650 }} aria-label="simple table">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={headerCellStyle}>Actions</TableCell>
+                  <TableCell sx={headerCellStyle}>ID</TableCell>
+                  <TableCell sx={headerCellStyle}>AcCode</TableCell>
+                  <TableCell sx={headerCellStyle}>AcName</TableCell>
+                  <TableCell sx={headerCellStyle}>DRCR</TableCell>
+                  <TableCell sx={headerCellStyle}>Amount</TableCell>
+                  <TableCell sx={headerCellStyle}>Narration</TableCell>
+                  <TableCell sx={headerCellStyle}>Trandetailid</TableCell>
+                  <TableCell sx={headerCellStyle}>Debitid</TableCell>
+                  <TableCell sx={headerCellStyle}>Rowaction</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      {user.rowaction === "add" || user.rowaction === "update" || user.rowaction === "Normal" ? (
+                        <>
+                          <Button
+                            variant="contained"
+                            color="warning"
+                            onClick={() => editUser(user)}
+                            disabled={!isEditing}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                editUser(user);
+                              }
+                            }}
+                            tabIndex="18"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            sx={{ ml: 2 }}
+                            onClick={() => deleteModeHandler(user)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                deleteModeHandler(user);
+                              }
+                            }}
+                            disabled={!isEditing}
+                            tabIndex="19"
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : user.rowaction === "DNU" || user.rowaction === "delete" ? (
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={() => openDelete(user)}
                         >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-danger ms-2"
-                          onClick={() => deleteModeHandler(user)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              deleteModeHandler(user);
-                            }
-                          }}
-                          disabled={!isEditing}
-                          tabIndex="19"
-                        >
-                          Delete
-                        </button>
-                      </>
-                    ) : user.rowaction === "DNU" ||
-                      user.rowaction === "delete" ? (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => openDelete(user)}
-                      >
-                        Open
-                      </button>
-                    ) : null}
-                  </td>
-
-                  <td>{user.detail_id}</td>
-                  <td>{user.debit_ac}</td>
-                  <td>{user.AcName}</td>
-                  <td>{user.drcr || "C"}</td>
-                  <td>{user.amount}</td>
-                  <td>{user.narration}</td>
-                  <td>{user.trandetailid}</td>
-                  <td>{user.da}</td>
-                  <td>{user.rowaction}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                          Open
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>{user.detail_id}</TableCell>
+                    <TableCell>{user.debit_ac}</TableCell>
+                    <TableCell>{user.AcName}</TableCell>
+                    <TableCell>{user.drcr || "C"}</TableCell>
+                    <TableCell>{user.amount}</TableCell>
+                    <TableCell>{user.narration}</TableCell>
+                    <TableCell>{user.trandetailid}</TableCell>
+                    <TableCell>{user.da}</TableCell>
+                    <TableCell>{user.rowaction}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </div>
-
         <Box
           sx={{
             display: "flex",
@@ -1201,9 +1244,15 @@ const JournalVoucher = () => {
             name="total"
             value={formData.total}
             onChange={handleChange}
-            disabled={!isEditing && addOneButtonEnabled}
+            disabled
             variant="outlined"
             size="small"
+            inputProps={{
+              sx: { textAlign: 'right' },
+              inputMode: 'decimal',
+              pattern: '[0-9]*[.,]?[0-9]+',
+              onInput: validateNumericInput,
+            }}
           />
           <TextField
             label="Credit Total"
@@ -1211,9 +1260,15 @@ const JournalVoucher = () => {
             name="creditTotal"
             value={creditTotal}
             onChange={handleChange}
-            disabled={!isEditing && addOneButtonEnabled}
+            disabled
             variant="outlined"
             size="small"
+            inputProps={{
+              sx: { textAlign: 'right' },
+              inputMode: 'decimal',
+              pattern: '[0-9]*[.,]?[0-9]+',
+              onInput: validateNumericInput,
+            }}
           />
           <TextField
             label="Debit Total"
@@ -1221,9 +1276,15 @@ const JournalVoucher = () => {
             name="debitTotal"
             value={debitTotal}
             onChange={handleChange}
-            disabled={!isEditing && addOneButtonEnabled}
+            disabled
             variant="outlined"
             size="small"
+            inputProps={{
+              sx: { textAlign: 'right' },
+              inputMode: 'decimal',
+              pattern: '[0-9]*[.,]?[0-9]+',
+              onInput: validateNumericInput,
+            }}
           />
           <TextField
             label="Difference"
@@ -1233,6 +1294,12 @@ const JournalVoucher = () => {
             disabled
             variant="outlined"
             size="small"
+            inputProps={{
+              sx: { textAlign: 'right' },
+              inputMode: 'decimal',
+              pattern: '[0-9]*[.,]?[0-9]+',
+              onInput: validateNumericInput,
+            }}
           />
         </Box>
       </div>

@@ -29,8 +29,7 @@ const SelectAccoungYear = () => {
 
     const handleAccountYear = (accountingyear) => {
         sessionStorage.setItem('Year_Code', accountingyear.yearCode);
-        // Handle any additional logic here
-        navigate('/dashboard'); // Example: Navigate to dashboard after selecting year
+        navigate('/dashboard'); 
     };
 
     const handleKeyDown = (event, accountingyear) => {

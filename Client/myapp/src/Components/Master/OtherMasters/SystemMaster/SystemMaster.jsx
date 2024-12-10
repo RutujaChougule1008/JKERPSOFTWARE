@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import NavigationButtons from "../../../../Common/CommonButtons/NavigationButtons";
 import ActionButtonGroup from "../../../../Common/CommonButtons/ActionButtonGroup";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -26,6 +26,7 @@ var selectedfilter = "";
 const SystemMaster = () => {
   const location = useLocation();
   selectedfilter = location.state?.selectedfilter;
+  const inputRef = useRef(null)
 
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
@@ -153,6 +154,9 @@ const SystemMaster = () => {
     SaleCode = "";
     GStrateCode = "";
     GStrateName = "";
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   useEffect(() => {
@@ -402,7 +406,7 @@ const SystemMaster = () => {
     <>
       <div>
         <h5 className="mt-4 mb-4 text-center custom-heading">System Master</h5>
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -484,6 +488,7 @@ const SystemMaster = () => {
               id="System_Name_E"
               Name="System_Name_E"
               value={formData.System_Name_E}
+              ref={inputRef}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
               tabIndex={1}

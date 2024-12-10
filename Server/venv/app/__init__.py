@@ -47,12 +47,12 @@ from app.Controllers.LoginAndCompanyList.Login.LoginController import *
 from app.Controllers.LoginAndCompanyList.CompanyList.CompanyList import *
 from app.Controllers.Company.AccountingYear.AccountingYear import *
 from app.Controllers.LoginAndCompanyList.UserLogin.UserLoginController import *
-from app.Controllers.Masters.AccountInformation.FinicialMastersController import *
+from app.Controllers.Masters.AccountInformation.FinicialMaster.FinicialMastersController import *
 from app.Controllers.Masters.OtherMasters.GstStateMasterController import *
-from app.Controllers.Masters.AccountInformation.CityMasterController import *
+from app.Controllers.Masters.AccountInformation.CityMaster.CityMasterController import *
 from app.Controllers.Masters.OtherMasters.BrandMasterController import *
 from app.Controllers.Masters.OtherMasters.GstRateMasterController import *
-from app.Controllers.Transactions.OtherPurchaseController import *
+from app.Controllers.Transactions.OtherPurchase.OtherPurchaseController import *
 from app.Controllers.BusinessRelated.DeliveryOrder.DeliveryOrderController import *
 from app.Controllers.Masters.OtherMasters.SysytemMasterController import *
 from app.Controllers.BusinessRelated.TenderPurchase.TenderPurchaseController import *

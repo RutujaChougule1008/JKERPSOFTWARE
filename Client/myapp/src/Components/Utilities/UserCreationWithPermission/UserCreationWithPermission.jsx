@@ -14,8 +14,21 @@ import {
 import ActionButtonGroup from "../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../Common/CommonButtons/NavigationButtons";
 import { Button } from "react-bootstrap";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Checkbox, FormControlLabel } from '@mui/material';
 
 var uid;
+
+// Common style for all table headers
+const headerCellStyle = {
+  fontWeight: 'bold',
+  backgroundColor: '#3f51b5',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#303f9f',
+    cursor: 'pointer',
+  },
+};
+
 const UserCreationWithPermission = () => {
   const API_URL = process.env.REACT_APP_API;
   const companyCode = sessionStorage.getItem("Company_Code");
@@ -60,22 +73,24 @@ const UserCreationWithPermission = () => {
   };
   const [userData, setUserData] = useState(initialFormData);
   const [permissions, setPermissions] = useState([]);
+  const [programNames, setProgramNames] = useState([]);
+  const [menuNames, setMenuNames] = useState([]);
 
+  //default showing list of forms with permission
   const fetchProgramNames = () => {
     axios
       .get(`${API_URL}/getProgramNames`)
       .then((response) => {
-        const maxLength = Math.max(
-          response.data.programNames.length,
-          response.data.menuNames.length
-        );
+        const programNames = [...new Set(response.data.programNames)];
+        const menuNames = [...new Set(response.data.menuNames)];
 
+        const maxLength = Math.max(programNames.length, menuNames.length);
         const permissionsList = Array.from(
           { length: maxLength },
           (_, index) => ({
             Detail_Id: index + 1,
-            Program_Name: response.data.programNames[index] || null,
-            menuNames: response.data.menuNames[index] || null,
+            Program_Name: programNames[index] || null,
+            menuNames: menuNames[index] || null,
             canView: "Y",
             canSave: "Y",
             canEdit: "Y",
@@ -85,6 +100,8 @@ const UserCreationWithPermission = () => {
         );
 
         setPermissions(permissionsList);
+        setProgramNames(programNames);
+        setMenuNames(menuNames);
       })
       .catch((error) =>
         console.error("Error fetching program and menu names:", error)
@@ -103,43 +120,44 @@ const UserCreationWithPermission = () => {
     }
   }, [selectedRecord]);
 
+  //for input field state changing
   const handleUserChange = (e) => {
     setUserData({ ...userData, [e.target.name]: e.target.value });
   };
 
   // Toggle permission checkboxes with "Y" or "N" values
-const handlePermissionChange = (Detail_Id, field) => {
-  setPermissions((prevPermissions) =>
-    prevPermissions.map((perm) => {
-      if (perm.Detail_Id === Detail_Id) {
-        if (field === "DND" && perm[field] === "N") {
-          return {
-            ...perm,
-            DND: "Y",
-            canView: "N",
-            canSave: "N",
-            canEdit: "N",
-            canDelete: "N",
-          };
-        } else if (field === "DND" && perm[field] === "Y") {
-          return {
-            ...perm,
-            DND: "N",
-            canView: "Y",
-            canSave: "Y",
-            canEdit: "Y",
-            canDelete: "Y",
-          };
-        } else {
-          return { ...perm, [field]: perm[field] === "Y" ? "N" : "Y" };
+  const handlePermissionChange = (Detail_Id, field) => {
+    setPermissions((prevPermissions) =>
+      prevPermissions.map((perm) => {
+        if (perm.Detail_Id === Detail_Id) {
+          if (field === "DND" && perm[field] === "N") {
+            return {
+              ...perm,
+              DND: "Y",
+              canView: "N",
+              canSave: "N",
+              canEdit: "N",
+              canDelete: "N",
+            };
+          } else if (field === "DND" && perm[field] === "Y") {
+            return {
+              ...perm,
+              DND: "N",
+              canView: "Y",
+              canSave: "Y",
+              canEdit: "Y",
+              canDelete: "Y",
+            };
+          } else {
+            return { ...perm, [field]: perm[field] === "Y" ? "N" : "Y" };
+          }
         }
-      }
-      return perm;
-    })
-  );
-};
+        return perm;
+      })
+    );
+  };
 
-
+  //fetching next doc_no
   const fetchNextDocNo = () => {
     fetch(`${API_URL}/get-next-user-Id?Company_Code=${companyCode}`)
       .then((response) => {
@@ -176,7 +194,7 @@ const handlePermissionChange = (Detail_Id, field) => {
     setIsEditing(true);
 
     const updatedPermissions = permissions.map((perm) => {
-      const { udid, ...rest } = perm; 
+      const { udid, ...rest } = perm;
       return {
         ...rest,
         Year_Code: yearCode,
@@ -197,8 +215,7 @@ const handlePermissionChange = (Detail_Id, field) => {
     apiMethod(apiUrl, requestData)
       .then(() => {
         toast.success(
-          `User and permissions ${
-            isEditMode ? "updated" : "inserted"
+          `User and permissions ${isEditMode ? "updated" : "inserted"
           } successfully!`
         );
         setUserData(initialFormData);
@@ -250,32 +267,98 @@ const handlePermissionChange = (Detail_Id, field) => {
     setIsEditing(true);
   };
 
-  const handleCancel = async () => {
-    setIsEditing(false);
-    setIsEditMode(false);
-    setAddOneButtonEnabled(true);
-    setEditButtonEnabled(true);
-    setDeleteButtonEnabled(true);
-    setBackButtonEnabled(true);
-    setSaveButtonEnabled(false);
-    setCancelButtonEnabled(false);
-    setCancelButtonClicked(true);
+  const handleDelete = async () => {
+    const isConfirmed = window.confirm(
+      `Are you sure you want to delete this record ${userData.User_Id}?`
+    );
+    if (isConfirmed) {
+      setIsEditMode(false);
+      setAddOneButtonEnabled(true);
+      setEditButtonEnabled(true);
+      setDeleteButtonEnabled(true);
+      setBackButtonEnabled(true);
+      setSaveButtonEnabled(false);
+      setCancelButtonEnabled(false);
+      //setIsLoading(true);
+      try {
+        const deleteApiUrl = `${API_URL}/delete_user?uid=${uid}&Company_Code=${companyCode}`;
+        const response = await axios.delete(deleteApiUrl);
 
+        if (response.status === 200) {
+          if (response.data) {
+            toast.success("Data delete successfully!");
+            handleCancel();
+          } else if (response.status === 404) {
+          }
+        } else {
+          console.error(
+            "Failed to delete tender:",
+            response.status,
+            response.statusText
+          );
+        }
+      } catch (error) {
+        console.error("Error during API call:", error);
+      } finally {
+        // setIsLoading(false)
+      }
+    } else {
+      console.log("Deletion cancelled");
+    }
+  };
+
+  const handleBack = () => {
+    navigate("/user-permission-utility");
+  };
+
+  //Reusable function for navigations
+  const fetchAndSetUserData = async (endpoint, params = {}) => {
     try {
-      const response = await axios.get(
-        `${API_URL}/getLastUserWithPermissions?Company_Code=${companyCode}`
-      );
+      const queryString = new URLSearchParams({
+        Company_Code: companyCode,
+        ...params,
+      }).toString();
+      const response = await axios.get(`${API_URL}/${endpoint}?${queryString}`);
+
       if (response.status === 200) {
         const data = response.data;
-        uid = data.lastUserData.uid;
+
         setUserData((prevData) => ({
           ...prevData,
           ...data.lastUserData,
         }));
-        setPermissions(data.lastUserPermissionData || []);
+
+        const distinctProgramNames = [...new Set(programNames)];
+        const permissions = data.lastUserPermissionData || [];
+
+        const distinctMenuNames = [...new Set(menuNames)];
+        const defaultMenuNames = distinctMenuNames.length
+          ? distinctMenuNames
+          : distinctProgramNames.map(() => "No Menu");
+
+        const combinedPermissions = distinctProgramNames.map(
+          (program, index) => {
+            const userPermission = permissions.find(
+              (perm) => perm.Program_Name === program
+            );
+
+            return {
+              Detail_Id: index + 1,
+              Program_Name: program,
+              menuNames: defaultMenuNames[index],
+              canView: userPermission?.canView || "N",
+              canSave: userPermission?.canSave || "N",
+              canEdit: userPermission?.canEdit || "N",
+              canDelete: userPermission?.canDelete || "N",
+              DND: userPermission?.DND || "N",
+            };
+          }
+        );
+
+        setPermissions(combinedPermissions);
       } else {
         console.error(
-          "Failed to fetch last data:",
+          "Failed to fetch data:",
           response.status,
           response.statusText
         );
@@ -286,78 +369,22 @@ const handlePermissionChange = (Detail_Id, field) => {
   };
 
   const handleFirstButtonClick = async () => {
-    try {
-      const response = await axios.get(
-        `${API_URL}/getFirstUserWithPermissions?Company_Code=${companyCode}`
-      );
-      if (response.status === 200) {
-        const data = response.data;
-        uid = data.lastUserData.uid;
-        setUserData((prevData) => ({
-          ...prevData,
-          ...data.lastUserData,
-        }));
-        setPermissions(data.lastUserPermissionData || []);
-      } else {
-        console.error(
-          "Failed to fetch last data:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Error during API call:", error);
-    }
+    resetUIState();
+    await fetchAndSetUserData("getFirstUserWithPermissions");
   };
 
   const handleNextButtonClick = async () => {
-    try {
-      const response = await axios.get(
-        `${API_URL}/getNextUserWithPermissions?Company_Code=${companyCode}&User_Id=${userData.User_Id}`
-      );
-      if (response.status === 200) {
-        const data = response.data;
-        uid = data.lastUserData.uid;
-        setUserData((prevData) => ({
-          ...prevData,
-          ...data.lastUserData,
-        }));
-        setPermissions(data.lastUserPermissionData || []);
-      } else {
-        console.error(
-          "Failed to fetch last data:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Error during API call:", error);
-    }
+    resetUIState();
+    await fetchAndSetUserData("getNextUserWithPermissions", {
+      User_Id: userData.User_Id,
+    });
   };
 
   const handlePreviousButtonClick = async () => {
-    try {
-      const response = await axios.get(
-        `${API_URL}/getPreviousUserWithPermissions?Company_Code=${companyCode}&User_Id=${userData.User_Id}`
-      );
-      if (response.status === 200) {
-        const data = response.data;
-        uid = data.lastUserData.uid;
-        setUserData((prevData) => ({
-          ...prevData,
-          ...data.lastUserData,
-        }));
-        setPermissions(data.lastUserPermissionData || []);
-      } else {
-        console.error(
-          "Failed to fetch last data:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Error during API call:", error);
-    }
+    resetUIState();
+    await fetchAndSetUserData("getPreviousUserWithPermissions", {
+      User_Id: userData.User_Id,
+    });
   };
 
   const handlerecordDoubleClicked = async () => {
@@ -370,79 +397,91 @@ const handlePermissionChange = (Detail_Id, field) => {
     setSaveButtonEnabled(false);
     setCancelButtonEnabled(false);
     setCancelButtonClicked(true);
+
     try {
-      const response = await axios.get(
+      const programMenuResponse = await axios.get(`${API_URL}/getProgramNames`);
+      const programNames = [...new Set(programMenuResponse.data.programNames)];
+      const menuNames = [...new Set(programMenuResponse.data.menuNames)];
+      const defaultMenuNames = menuNames.length
+        ? menuNames
+        : programNames.map(() => "No Menu");
+      const maxLength = Math.max(programNames.length, defaultMenuNames.length);
+      const permissionsList = Array.from({ length: maxLength }, (_, index) => ({
+        Detail_Id: index + 1,
+        Program_Name: programNames[index] || null,
+        menuNames: defaultMenuNames[index] || null,
+        canView: "N",
+        canSave: "N",
+        canEdit: "N",
+        canDelete: "N",
+        DND: "Y",
+      }));
+
+      setPermissions(permissionsList);
+      setProgramNames(programNames);
+      setMenuNames(defaultMenuNames);
+      const userPermissionResponse = await axios.get(
         `${API_URL}/getUserWithPermissionById?Company_Code=${companyCode}&User_Id=${selectedRecord.User_Id}`
       );
-      if (response.status === 200) {
-        const data = response.data;
-        uid = data.lastUserData.uid;
+
+      if (userPermissionResponse.status === 200) {
+        const data = userPermissionResponse.data;
+        const permissions = data.lastUserPermissionData || [];
+
+        const combinedPermissions = programNames.map((program, index) => {
+          const userPermission = permissions.find(
+            (perm) => perm.Program_Name === program
+          );
+
+          return {
+            Detail_Id: index + 1,
+            Program_Name: program,
+            menuNames: defaultMenuNames[index] || "No Menu",
+            canView: userPermission?.canView || "N",
+            canSave: userPermission?.canSave || "N",
+            canEdit: userPermission?.canEdit || "N",
+            canDelete: userPermission?.canDelete || "N",
+            DND: userPermission?.DND || "N",
+          };
+        });
+
+        setPermissions(combinedPermissions);
         setUserData((prevData) => ({
           ...prevData,
           ...data.lastUserData,
         }));
-        setPermissions(data.lastUserPermissionData || []);
       } else {
         console.error(
-          "Failed to fetch last data:",
-          response.status,
-          response.statusText
+          "Failed to fetch user data:",
+          userPermissionResponse.status,
+          userPermissionResponse.statusText
         );
       }
     } catch (error) {
-      console.error("Error during API call:", error);
+      console.error("Error during API calls:", error);
     }
   };
 
-  const handleDelete = async () => {
-    const isConfirmed = window.confirm(
-        `Are you sure you want to delete this record ${userData.User_Id}?`
-    );
-    if (isConfirmed) {
-        setIsEditMode(false);
-        setAddOneButtonEnabled(true);
-        setEditButtonEnabled(true);
-        setDeleteButtonEnabled(true);
-        setBackButtonEnabled(true);
-        setSaveButtonEnabled(false);
-        setCancelButtonEnabled(false);
-        //setIsLoading(true);
-        try {
-            const deleteApiUrl = `${API_URL}/delete_user?uid=${uid}&Company_Code=${companyCode}`;
-            const response = await axios.delete(deleteApiUrl);
+  const handleCancel = async () => {
+    resetUIState();
+    await fetchAndSetUserData("getLastUserWithPermissions");
+  };
 
-            if (response.status === 200) {
-                if (response.data) {
-                    toast.success('Data delete successfully!');
-                    handleCancel();
-                }
-                else if (response.status === 404) {
-                }
-            } else {
-                console.error(
-                    "Failed to delete tender:",
-                    response.status,
-                    response.statusText
-                );
-            }
-        } catch (error) {
-            console.error("Error during API call:", error);
-        } finally {
-            // setIsLoading(false)
-        }
-    } else {
-        console.log("Deletion cancelled");
-    }
-};
-
-
-  const handleBack = () => {
-    navigate("/user-permission-utility");
+  const resetUIState = () => {
+    setIsEditing(false);
+    setIsEditMode(false);
+    setAddOneButtonEnabled(true);
+    setEditButtonEnabled(true);
+    setDeleteButtonEnabled(true);
+    setBackButtonEnabled(true);
+    setSaveButtonEnabled(false);
+    setCancelButtonEnabled(false);
+    setCancelButtonClicked(true);
   };
 
   return (
     <div>
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <h2>User Management</h2>
       <ActionButtonGroup
         handleAddOne={handleAddOne}
@@ -458,10 +497,9 @@ const handlePermissionChange = (Detail_Id, field) => {
         cancelButtonEnabled={cancelButtonEnabled}
         handleBack={handleBack}
         backButtonEnabled={backButtonEnabled}
-        permissions={permissionsData} 
+        permissions={permissionsData}
       />
       <div>
-        {/* Navigation Buttons */}
         <NavigationButtons
           handleFirstButtonClick={handleFirstButtonClick}
           handlePreviousButtonClick={handlePreviousButtonClick}
@@ -555,79 +593,91 @@ const handlePermissionChange = (Detail_Id, field) => {
           </Button>
         </Grid>
       </Grid>
-      <table className="table mt-4 table-bordered">
-        <thead>
-          <tr>
-            <th>Detail ID</th>
-            <th>Program Name</th>
-            <th>Menu Name</th>
-            <th>Can View</th>
-            <th>Can Save</th>
-            <th>Can Edit</th>
-            <th>Can Delete</th>
-            <th>DND</th>
-          </tr>
-        </thead>
-        <tbody>
-          {permissions.map((permission) => (
-            <tr key={permission.Detail_Id}>
-              <td>{permission.Detail_Id}</td>
-              <td>{permission.Program_Name}</td>
-              <td>{permission.menuNames}</td>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={permission.canView === "Y"}
-                  onChange={() =>
-                    handlePermissionChange(permission.Detail_Id, "canView")
-                  }
-                  disabled={!isEditing && addOneButtonEnabled}
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={permission.canSave === "Y"}
-                  onChange={() =>
-                    handlePermissionChange(permission.Detail_Id, "canSave")
-                  }
-                  disabled={!isEditing && addOneButtonEnabled}
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={permission.canEdit === "Y"}
-                  onChange={() =>
-                    handlePermissionChange(permission.Detail_Id, "canEdit")
-                  }
-                  disabled={!isEditing && addOneButtonEnabled}
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={permission.canDelete === "Y"}
-                  onChange={() =>
-                    handlePermissionChange(permission.Detail_Id, "canDelete")
-                  }
-                  disabled={!isEditing && addOneButtonEnabled}
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={permission.DND === "Y"}
-                  onChange={() =>
-                    handlePermissionChange(permission.Detail_Id, "DND")
-                  }
-                  disabled={!isEditing && addOneButtonEnabled}
-                />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <TableContainer component={Paper} className="mt-4">
+        <Table sx={{ minWidth: 650 }} aria-label="permissions table">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={headerCellStyle}>Detail ID</TableCell>
+              <TableCell sx={headerCellStyle}>Program Name</TableCell>
+              <TableCell sx={headerCellStyle}>Menu Name</TableCell>
+              <TableCell sx={headerCellStyle}>Can View</TableCell>
+              <TableCell sx={headerCellStyle}>Can Save</TableCell>
+              <TableCell sx={headerCellStyle}>Can Edit</TableCell>
+              <TableCell sx={headerCellStyle}>Can Delete</TableCell>
+              <TableCell sx={headerCellStyle}>DND</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {permissions.map((permission) => (
+              <TableRow key={permission.Detail_Id}>
+                <TableCell>{permission.Detail_Id}</TableCell>
+                <TableCell>{permission.Program_Name}</TableCell>
+                <TableCell>{permission.menuNames}</TableCell>
+                <TableCell>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={permission.canView === "Y"}
+                        onChange={() => handlePermissionChange(permission.Detail_Id, "canView")}
+                        disabled={!isEditing && addOneButtonEnabled}
+                      />
+                    }
+                    label=""
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={permission.canSave === "Y"}
+                        onChange={() => handlePermissionChange(permission.Detail_Id, "canSave")}
+                        disabled={!isEditing && addOneButtonEnabled}
+                      />
+                    }
+                    label=""
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={permission.canEdit === "Y"}
+                        onChange={() => handlePermissionChange(permission.Detail_Id, "canEdit")}
+                        disabled={!isEditing && addOneButtonEnabled}
+                      />
+                    }
+                    label=""
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={permission.canDelete === "Y"}
+                        onChange={() => handlePermissionChange(permission.Detail_Id, "canDelete")}
+                        disabled={!isEditing && addOneButtonEnabled}
+                      />
+                    }
+                    label=""
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={permission.DND === "Y"}
+                        onChange={() => handlePermissionChange(permission.Detail_Id, "DND")}
+                        disabled={!isEditing && addOneButtonEnabled}
+                      />
+                    }
+                    label=""
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   );
 };

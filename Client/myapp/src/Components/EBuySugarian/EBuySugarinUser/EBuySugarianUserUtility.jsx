@@ -94,7 +94,7 @@ function EBuySugarianUserUtility() {
 
     return (
         <div style={{ padding: '20px', overflow: 'hidden' }}>
-            <ToastContainer/>
+            <ToastContainer autoClose={500}/>
             <Typography variant="h4" gutterBottom style={{ textAlign: 'center', marginBottom: '20px' }}>
                 Users List
             </Typography>

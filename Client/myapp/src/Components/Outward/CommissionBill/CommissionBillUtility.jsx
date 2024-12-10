@@ -162,7 +162,6 @@ function CommissionBillUtility() {
   const handleTranTypeChange = (event) => {
     const value = event.target.value;
     setTranType(value);
-    sessionStorage.setItem("Tran_Type", value);
   };
 
   return (

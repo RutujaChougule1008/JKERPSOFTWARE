@@ -28,7 +28,7 @@ const SugarPurchaseDetail = ({
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">
-              {selectedUser.id ? "Edit User" : "Add User"}
+              {selectedUser.id ? "Update Sugar Purchase" : "Add Sugar Purchase"}
             </h5>
             <button
               type="button"
@@ -162,26 +162,29 @@ const SugarPurchaseDetail = ({
                 className="btn btn-primary"
                 onClick={updateUser}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") updateUser();
+                  if (event.key === 13) updateUser();
                 }}
               >
-                Update User
+                Update
               </button>
             ) : (
               <button
                 className="btn btn-primary"
                 onClick={addUser}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") addUser();
+                  if (event.key === 13) addUser();
                 }}
               >
-                Add User
+                Add
               </button>
             )}
             <button
               type="button"
               className="btn btn-secondary"
               onClick={onClose}
+              onKeyDown={(event) => {
+                if (event.key === 13) onClose();
+              }}
             >
               Cancel
             </button>

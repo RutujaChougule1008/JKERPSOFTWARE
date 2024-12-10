@@ -11,6 +11,16 @@ import { HashLoader } from 'react-spinners';
 import { Grid, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { useRecordLocking } from '../../../hooks/useRecordLocking';
 import SugarPurchaseDetail from "./SugarPurchaseDetail";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Button,
+    Paper,
+  } from '@mui/material';
 
 //Global Variables
 var purchaseidNew = ""
@@ -38,6 +48,17 @@ var newAcCode = 0
 
 var selectedfilter = ""
 
+// Common style for all table headers
+const headerCellStyle = {
+    fontWeight: 'bold',
+    backgroundColor: '#3f51b5',
+    color: 'white',
+    '&:hover': {
+      backgroundColor: '#303f9f',
+      cursor: 'pointer',
+    },
+  };
+
 const SugarPurchase = () => {
 
 const API_URL = process.env.REACT_APP_API;
@@ -48,13 +69,14 @@ const Year_Code = sessionStorage.getItem("Year_Code");
 
     const [users, setUsers] = useState([]);
     const [showPopup, setShowPopup] = useState(false);
+    const [popupMode, setPopupMode] = useState("add");
     const [selectedUser, setSelectedUser] = useState({});
     const [deleteMode, setDeleteMode] = useState(false);
     const [brandCode, setBrandCode] = useState("");
     const [brandCodeAccoid, setBrandCodeAccoid] = useState("");
     const [itemSelect, setItemSelect] = useState("");
     const [itemSelectAccoid, setItemSelectAccoid] = useState("");
-    
+
 
     // Sugar Purchase Detail States.
     const [formDataDetail, setFormDataDetail] = useState({
@@ -86,7 +108,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     const selectedRecord = location.state?.selectedRecord;
     const permissions = location.state?.permissionsData;
     const navigate = useNavigate();
-    const setFocusTaskdate = useRef(null);
     const [isHandleChange, setIsHandleChange] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [itemNameLabel, setItemNameLabel] = useState('')
@@ -146,6 +167,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         TDS_Amt: 0.00,
         Retail_Stock: "N",
         purchaseidnew: 1,
+        gstid:0
     };
 
     const [formData, setFormData] = useState(initialFormData);
@@ -161,10 +183,12 @@ const Year_Code = sessionStorage.getItem("Year_Code");
      //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
      const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no,undefined,companyCode,Year_Code,"sugar_purchase");
 
-    const formatTruckNumber = (value) => {
-        const cleanedValue = value.replace(/\s+/g, '').toUpperCase();
+     const formatTruckNumber = (value) => {
+        const cleanedValue = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
         return cleanedValue.length <= 10 ? cleanedValue : cleanedValue.substring(0, 10);
-    };
+      };
+
+
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -181,7 +205,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             handleCancel();
             setIsHandleChange(false);
         }
-        setFocusTaskdate.current.focus();
     }, []);
 
 
@@ -270,6 +293,9 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         subTotal = ""
         globalQuantalTotal = ""
         setLastTenderDetails([])
+        setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
     };
 
     //Edit button Functionality
@@ -352,16 +378,13 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                 await unlockRecord();
                 toast.success('Data updated successfully!');
 
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000)
-
             } else {
                 const response = await axios.post(
                     `${API_URL}/insert_SugarPurchase`,
                     requestData
                 );
                 toast.success('Data saved successfully!');
+            }
                 setIsEditMode(false);
                 setAddOneButtonEnabled(true);
                 setEditButtonEnabled(true);
@@ -373,7 +396,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000)
-            }
+         
         } catch (error) {
             console.error("Error during API call:", error);
             toast.error("Error occurred while saving data");
@@ -409,7 +432,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                 setCancelButtonEnabled(false);
                 setIsLoading(true);
 
-                const deleteApiUrl = `${API_URL}/delete_data_SugarPurchase?purchaseid=${purchaseidNew}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${formData.Tran_Type}`;
+                const deleteApiUrl = `${API_URL}/delete_data_SugarPurchase?purchaseid=${formData.purchaseid}&Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&tran_type=${formData.Tran_Type}`;
                 const deleteResponse = await axios.delete(deleteApiUrl);
 
                 if (deleteResponse.status === 200) {
@@ -719,9 +742,13 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
 
     //open popup function
-    const openPopup = () => {
+    const openPopup = (mode) => {
+        setPopupMode(mode);
         setShowPopup(true);
-    };
+        if (mode === "add") {
+          clearForm();
+        }
+      };
 
     //close popup function
     const closePopup = () => {
@@ -733,12 +760,17 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     const clearForm = () => {
         setFormDataDetail({
             Quantal: "",
-            packing: "",
+            packing: 50||"",
             bags: "",
             rate: 0.00,
             item_Amount: 0.00,
             narration: ""
         });
+        setItemSelect("");
+        setItemNameLabel("");
+        setBrandCode("");
+        setBrandName("");
+        setSelectedUser({});
     };
 
     const editUser = (user) => {
@@ -755,7 +787,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
             item_Amount: user.item_Amount || "",
             narration: user.narration || ""
         });
-        openPopup();
+        openPopup("edit");
     };
 
     const fetchMatchStatus = async (params) => {
@@ -769,6 +801,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
 
     const handleMatchStatus = (match_status, subTotal) => {
+        debugger;
         const gstRateDivide = parseFloat(gstRate);
 
         // Calculate CGST, SGST, and IGST rates based on the given GST rate
@@ -828,8 +861,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
 
     const addUser = async () => {
-        debugger
-
         const newUser = {
             id: users.length > 0 ? Math.max(...users.map((user) => user.id)) + 1 : 1,
             item_code: itemSelect,
@@ -934,7 +965,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
 
 
     const deleteModeHandler = async (userToDelete) => {
-        debugger;
         let updatedUsers;
 
         if (isEditMode && userToDelete.rowaction === "add") {
@@ -998,6 +1028,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         let updatedUsers;
         setDeleteMode(true);
         setSelectedUser(user);
+    
         if (isEditMode && user.rowaction === "delete") {
             updatedUsers = users.map((u) =>
                 u.id === user.id ? { ...u, rowaction: "Normal" } : u
@@ -1007,43 +1038,48 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                 u.id === user.id ? { ...u, rowaction: "add" } : u
             );
         }
+    
         const totalItemAmount = updatedUsers.reduce((total, u) => {
-            return total + parseFloat(u.item_Amount || 0);
+            if (u.rowaction !== "DNU" && u.rowaction !== "delete") {
+                return total + parseFloat(u.item_Amount || 0);
+            }
+            return total;
         }, 0);
+    
         const updatedSubTotal = totalItemAmount.toFixed(2);
-        subTotal = updatedSubTotal
+        subTotal = updatedSubTotal; 
+    
         const totalQuantal = updatedUsers.reduce((total, u) => {
-
-            return total + parseFloat(u.Quantal || 0);
-
+            if (u.rowaction !== "DNU" && u.rowaction !== "delete") {
+                return total + parseFloat(u.Quantal || 0);
+            }
+            return total;
         }, 0);
-
+    
         globalQuantalTotal = totalQuantal;
 
-        const updatedFormData = {
-            ...formData
-        }
-
-        setFormDataDetail({
-            ...formDataDetail,
-            subTotal: updatedSubTotal
-        });
-
+        setFormDataDetail((prevData) => ({
+            ...prevData,
+            subTotal: updatedSubTotal,
+        }));
+    
         if (from !== "" || FromCode !== "") {
             const match_status = await fetchMatchStatus({
                 Company_Code: companyCode,
                 Year_Code: Year_Code,
-                Ac_Code: cancelButtonClicked ? FromCode || updatedFormData.Ac_Code : from
+                Ac_Code: cancelButtonClicked ? FromCode || formData.Ac_Code : from
             });
 
             if (match_status) {
-                handleMatchStatus(match_status, subTotal);
+                handleMatchStatus(match_status, updatedSubTotal);
             }
         }
+    
+    
         setUsers(updatedUsers);
         setSelectedUser({});
     };
-
+    
     const handleItemSelect = (code, accoid, HSN, Name) => {
         setItemSelect(code);
         setItemSelectAccoid(accoid)
@@ -1151,14 +1187,15 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
     
     
-    const handleGstCode = async (code, Rate) => {
-        debugger;
+    const handleGstCode = async (code, Rate, name, gstId) => {
         setGstCode(code);
         setGstRate(Rate);
     
         setFormData(prevFormData => ({
             ...prevFormData,
-            GstRateCode: code
+            GstRateCode: code,
+            gstid:gstId
+            
         }));
     
         if (from != "" || FromCode != "") {
@@ -1175,7 +1212,6 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
     
     const handleFrom = async (code, accoid) => {
-        debugger;
         setFrom(code);
     
         setFormData(prevFormData => ({
@@ -1218,12 +1254,12 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     };
 
     const validateNumericInput = (e) => {
-        e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
     };
 
     return (
         <>
-            <ToastContainer />
+            <ToastContainer autoClose={500} />
             {/* <button style={{ marginBottom: "-80px" }} className="btn btn-primary">Print</button> */}
             <div className="main-container" >
                 <h5 className="mt-4 mb-4 text-center custom-heading">
@@ -1308,8 +1344,8 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                 <TextField
                                     label="Date"
                                     type="date"
+                                    inputRef={inputRef}
                                     variant="outlined"
-                                    inputRef={setFocusTaskdate}
                                     name="doc_date"
                                     value={formData.doc_date}
                                     onChange={handleChange}
@@ -1548,12 +1584,12 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                         <div className="mt-4" style={{ float: 'left', marginBottom: '10px' }}>
                             <button
                                 className="btn btn-primary"
-                                onClick={openPopup}
+                                onClick={() => openPopup("add")}
                                 disabled={!isEditing}
                                 tabIndex="16"
                                 onKeyDown={(event) => {
                                     if (event.key === "Enter") {
-                                        openPopup();
+                                        openPopup("add");
                                     }
                                 }}
                             >
@@ -1587,89 +1623,93 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                         />
 
 
-                        <table className="table mt-4 table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Actions</th>
-                                    <th>ID</th>
-                                    <th>Rowaction</th>
-                                    <th>Item Code</th>
-                                    <th>Item Name</th>
-                                    <th>Brand Code</th>
-                                    <th>Brand Name</th>
-                                    <th>Quantal</th>
-                                    <th>packing</th>
-                                    <th>rate</th>
-                                    <th>bags</th>
-                                    <th>item_Amount</th>
-                                    <th>narration</th>
-
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map((user) => (
-                                    <tr key={user.id}>
-                                        <td>
-                                            {user.rowaction === "add" ||
-                                                user.rowaction === "update" ||
-                                                user.rowaction === "Normal" ? (
-                                                <>
-                                                    <button
-                                                        className="btn btn-warning"
-                                                        onClick={() => editUser(user)}
-                                                        disabled={!isEditing}
-                                                        onKeyDown={(event) => {
-                                                            if (event.key === "Enter") {
-                                                                editUser(user);
-                                                            }
-                                                        }}
-                                                        tabIndex="18"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-danger ms-2"
-                                                        onClick={() => deleteModeHandler(user)}
-                                                        onKeyDown={(event) => {
-                                                            if (event.key === "Enter") {
-                                                                deleteModeHandler(user)
-                                                            }
-                                                        }}
-                                                        disabled={!isEditing}
-                                                        tabIndex="19"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </>
-                                            ) : user.rowaction === "DNU" ||
-                                                user.rowaction === "delete" ? (
-                                                <button
-                                                    className="btn btn-secondary"
-                                                    onClick={() => openDelete(user)}
-                                                >
-                                                    Open
-                                                </button>
-                                            ) : null}
-                                        </td>
-                                        <td>{user.id}</td>
-                                        <td>{user.rowaction}</td>
-                                        <td>{user.item_code}</td>
-                                        <td>{user.itemNameLabel}</td>
-                                        <td>{user.Brand_Code}</td>
-                                        <td>{user.brandName}</td>
-                                        <td>{user.Quantal}</td>
-                                        <td>{user.packing}</td>
-                                        <td>{user.rate}</td>
-                                        <td>{user.bags}</td>
-                                        <td>{user.item_Amount}</td>
-                                        <td>{user.narration}</td>
-
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={headerCellStyle}>Actions</TableCell>
+            <TableCell sx={headerCellStyle}>Row Action</TableCell>
+            <TableCell sx={headerCellStyle}>ID</TableCell>
+            <TableCell sx={headerCellStyle}>Item Code</TableCell>
+            <TableCell sx={headerCellStyle}>Item Name</TableCell>
+            <TableCell sx={headerCellStyle}>Brand Code</TableCell>
+            <TableCell sx={headerCellStyle}>Brand Name</TableCell>
+            <TableCell sx={headerCellStyle}>Quantal</TableCell>
+            <TableCell sx={headerCellStyle}>Packing</TableCell>
+            <TableCell sx={headerCellStyle}>Rate</TableCell>
+            <TableCell sx={headerCellStyle}>Bags</TableCell>
+            <TableCell sx={headerCellStyle}>Item Amount</TableCell>
+            <TableCell sx={headerCellStyle}>Narration</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell>
+                {(user.rowaction === 'add' ||
+                  user.rowaction === 'update' ||
+                  user.rowaction === 'Normal') && (
+                  <>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      onClick={() => editUser(user)}
+                      disabled={!isEditing}
+                      tabIndex={18}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          editUser(user);
+                        }
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={() => deleteModeHandler(user)}
+                      disabled={!isEditing}
+                      tabIndex={19}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          deleteModeHandler(user);
+                        }
+                      }}
+                      sx={{ ml: 2 }}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
+                {(user.rowaction === 'DNU' || user.rowaction === 'delete') && (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => openDelete(user)}
+                  >
+                    Open
+                  </Button>
+                )}
+              </TableCell>
+              <TableCell>{user.rowaction}</TableCell>
+              <TableCell>{user.id}</TableCell>
+              <TableCell>{user.item_code}</TableCell>
+              <TableCell>{user.itemNameLabel}</TableCell>
+              <TableCell>{user.Brand_Code}</TableCell>
+              <TableCell>{user.brandName}</TableCell>
+              <TableCell>{user.Quantal}</TableCell>
+              <TableCell>{user.packing}</TableCell>
+              <TableCell>{user.rate}</TableCell>
+              <TableCell>{user.bags}</TableCell>
+              <TableCell>{user.item_Amount}</TableCell>
+              <TableCell>{user.narration}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
                     </div>
-
+                    <br></br>
                     <div className="debitCreditNote-row">
                         <Grid container spacing={2}>
                             <Grid item xs={4}>
@@ -1972,6 +2012,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                         inputMode: 'decimal',
                                         pattern: '[0-9]*[.,]?[0-9]+',
                                         onInput: validateNumericInput,
+                            
                                     }}
                                 />
                             </Grid>
@@ -1996,6 +2037,8 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                     inputProps={{
                                         sx: { textAlign: 'right' },
                                         inputMode: 'decimal',
+                                        pattern: '[0-9]*[.,]?[0-9]+',
+                                        onInput: validateNumericInput,
                                     }}
 
                                 />
@@ -2169,9 +2212,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
                                 />
                             </Grid>
                         </Grid>
-
                     </div>
-
                 </form>
             </div>
         </>

@@ -11,13 +11,25 @@ import { TextField, Grid, Checkbox, Box, Container } from "@mui/material";
 import "react-toastify/dist/ReactToastify.css";
 import { HashLoader } from "react-spinners";
 import UTRReport from "./UTRReport";
-import {useRecordLocking} from "../../../hooks/useRecordLocking"
+import { useRecordLocking } from "../../../hooks/useRecordLocking"
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
 
 var lblBankname;
 var newbank_ac;
 var lblmillname;
 var newmill_code;
 var newLot_no;
+
+//Common css for the table.
+const headerCellStyle = {
+  fontWeight: 'bold',
+  backgroundColor: '#3f51b5',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: '#303f9f',
+    cursor: 'pointer',
+  },
+};
 
 const API_URL = process.env.REACT_APP_API;
 
@@ -104,8 +116,8 @@ const UTREntry = () => {
 
   const [formData, setFormData] = useState(initialFormData);
 
-   // Manage the lock-unlock record at the same time multiple users edit the same record.
-   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no,"",companyCode,Year_Code,"utr_entry");
+  // Manage the lock-unlock record at the same time multiple users edit the same record.
+  const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(formData.doc_no, "", companyCode, Year_Code, "utr_entry");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -221,11 +233,10 @@ const UTREntry = () => {
     apiMethod(apiEndpoint, requestData)
       .then((response) => {
         const successMessage = isEditMode
-          ?   unlockRecord() && "Record updated successfully!"
+          ? "Record updated successfully!"
           : "Record created successfully!";
-        console.log(successMessage, response.data);
         toast.success(successMessage);
-
+        unlockRecord();
         setIsEditMode(false);
         setAddOneButtonEnabled(true);
         setEditButtonEnabled(true);
@@ -248,38 +259,38 @@ const UTREntry = () => {
       });
   };
 
-    //handle Edit record functionality.
-    const handleEdit = async () => {
-      axios.get(`${API_URL}/getutrByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}`)
-        .then((response) => {
-          const data = response.data;
-          const isLockedNew = data.utr_head.LockedRecord;
-          const isLockedByUserNew = data.utr_head.LockedUser;
-  
-          if (isLockedNew) {
-            console.log("isLockedNew",isLockedNew)
-            window.alert(`This record is locked by ${isLockedByUserNew}`);
-            return;
-          } else {
-            lockRecord()
-          }
-          setFormData({
-            ...formData,
-            ...data.utr_head
-          });
-          setIsEditMode(true);
-          setAddOneButtonEnabled(false);
-          setSaveButtonEnabled(true);
-          setCancelButtonEnabled(true);
-          setEditButtonEnabled(false);
-          setDeleteButtonEnabled(false);
-          setBackButtonEnabled(true);
-          setIsEditing(true);
-        })
-        .catch((error) => {
-          window.alert("This record is already deleted! Showing the previous record.");
+  //handle Edit record functionality.
+  const handleEdit = async () => {
+    axios.get(`${API_URL}/getutrByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}`)
+      .then((response) => {
+        const data = response.data;
+        const isLockedNew = data.utr_head.LockedRecord;
+        const isLockedByUserNew = data.utr_head.LockedUser;
+
+        if (isLockedNew) {
+          console.log("isLockedNew", isLockedNew)
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        } else {
+          lockRecord()
+        }
+        setFormData({
+          ...formData,
+          ...data.utr_head
         });
-    };
+        setIsEditMode(true);
+        setAddOneButtonEnabled(false);
+        setSaveButtonEnabled(true);
+        setCancelButtonEnabled(true);
+        setEditButtonEnabled(false);
+        setDeleteButtonEnabled(false);
+        setBackButtonEnabled(true);
+        setIsEditing(true);
+      })
+      .catch((error) => {
+        window.alert("This record is already deleted! Showing the previous record.");
+      });
+  };
 
   const handleCancel = async () => {
     const response = await axios.get(
@@ -314,7 +325,7 @@ const UTREntry = () => {
       setDiff(totalDiff.toFixed(2));
       setLastTenderData(data.last_head_data || {});
       setLastTenderDetails(detailsArray);
-      
+
     } else {
       toast.error(
         "Failed to fetch last data:",
@@ -335,51 +346,51 @@ const UTREntry = () => {
 
   const handleDelete = async () => {
     axios.get(`${API_URL}/getutrByid?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}`)
-        .then(async (response) => {
-            const data = response.data;
-            const isLockedNew = data.utr_head.LockedRecord;
-            const isLockedByUserNew = data.utr_head.LockedUser;
-  
-            if (isLockedNew) {
-                console.log("isLockedNew", isLockedNew);
-                window.alert(`This record is locked by ${isLockedByUserNew}`);
-                return;
-            }
+      .then(async (response) => {
+        const data = response.data;
+        const isLockedNew = data.utr_head.LockedRecord;
+        const isLockedByUserNew = data.utr_head.LockedUser;
 
-            const isConfirmed = window.confirm(`Are you sure you want to delete this UtrEntry ${formData.doc_no}?`);
+        if (isLockedNew) {
+          console.log("isLockedNew", isLockedNew);
+          window.alert(`This record is locked by ${isLockedByUserNew}`);
+          return;
+        }
 
-            if (isConfirmed) {
-                setIsEditMode(false);
-                setAddOneButtonEnabled(true);
-                setEditButtonEnabled(true);
-                setDeleteButtonEnabled(true);
-                setBackButtonEnabled(true);
-                setSaveButtonEnabled(false);
-                setCancelButtonEnabled(false);
+        const isConfirmed = window.confirm(`Are you sure you want to delete this UtrEntry ${formData.doc_no}?`);
 
-                try {
-                    const deleteApiUrl = `${API_URL}/delete_data_by_utrid?utrid=${formData.utrid}&Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${formData.doc_no}`;
-                    const response = await axios.delete(deleteApiUrl);
-                    toast.success("Record deleted successfully!");
-                    handleCancel();
-                } catch (error) {
-                    toast.error("Deletion failed");
-                    console.error("Error during API call:", error);
-                }
-            } else {
-                console.log("Deletion cancelled");
-            }
-        })
-        .catch((error) => {
-            console.error("Error fetching record lock status:", error);
-            toast.error("Error fetching record status");
-        });
-};
+        if (isConfirmed) {
+          setIsEditMode(false);
+          setAddOneButtonEnabled(true);
+          setEditButtonEnabled(true);
+          setDeleteButtonEnabled(true);
+          setBackButtonEnabled(true);
+          setSaveButtonEnabled(false);
+          setCancelButtonEnabled(false);
 
-useEffect(() => {
-  const totalDiff = (parseFloat(formData.amount) || 0) - parseFloat(globalTotalAmount);
-  setDiff(totalDiff.toFixed(2));
-}, [formData.amount, globalTotalAmount]);
+          try {
+            const deleteApiUrl = `${API_URL}/delete_data_by_utrid?utrid=${formData.utrid}&Company_Code=${companyCode}&Year_Code=${Year_Code}&doc_no=${formData.doc_no}`;
+            const response = await axios.delete(deleteApiUrl);
+            toast.success("Record deleted successfully!");
+            handleCancel();
+          } catch (error) {
+            toast.error("Deletion failed");
+            console.error("Error during API call:", error);
+          }
+        } else {
+          console.log("Deletion cancelled");
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching record lock status:", error);
+        toast.error("Error fetching record status");
+      });
+  };
+
+  useEffect(() => {
+    const totalDiff = (parseFloat(formData.amount) || 0) - parseFloat(globalTotalAmount);
+    setDiff(totalDiff.toFixed(2));
+  }, [formData.amount, globalTotalAmount]);
 
 
   const handleBack = () => {
@@ -513,8 +524,8 @@ useEffect(() => {
         selectedUser && selectedUser.id
           ? selectedUser.amount
           : users.length === 0
-          ? formData.amount
-          : diff;
+            ? formData.amount
+            : diff;
 
       setFormDataDetail({
         ...formDataDetail,
@@ -776,7 +787,7 @@ useEffect(() => {
       );
       if (response.ok) {
         const data = await response.json();
-        // Access the first element of the array
+
         lblBankname = data.labels.bankAcName;
         lblmillname = data.labels.millName;
         newbank_ac = data.first_head_data.bank_ac;
@@ -932,8 +943,8 @@ useEffect(() => {
   return (
     <>
       <div>
-        <h2>UTR Entry</h2>
-        <ToastContainer />
+        <h5>UTR Entry</h5>
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -951,7 +962,6 @@ useEffect(() => {
           permissions={permissions}
         />
         <div>
-          {/* Navigation Buttons */}
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
             handlePreviousButtonClick={handlePreviousButtonClick}
@@ -962,14 +972,13 @@ useEffect(() => {
             isFirstRecord={formData.Company_Code === 1}
           />
         </div>
-        <div style={{ marginBottom: "10px", marginRight: "10px" }}>
+        <div>
           <UTRReport
             doc_no={formData.doc_no}
             disabledFeild={!addOneButtonEnabled}
           />
         </div>
       </div>
-
       <div>
         <form>
           <br />
@@ -981,24 +990,24 @@ useEffect(() => {
                 gap: "1.5rem",
                 width: "1500px",
                 margin: "auto",
-                padding: "24px",
                 backgroundColor: "#fff",
               }}
             >
-              <Grid item xs={12} sm={1}>
-                <TextField
-                  label="Change No"
-                  name="changeNo"
-                  variant="outlined"
-                  fullWidth
-                  onKeyDown={handleKeyDown}
-                  disabled={!addOneButtonEnabled}
-                  size="small"
-                  style={{ width: "150px" }}
-                />
-              </Grid>
 
               <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    label="Change No"
+                    name="changeNo"
+                    variant="outlined"
+                    autoComplete="off"
+                    fullWidth
+                    onKeyDown={handleKeyDown}
+                    disabled={!addOneButtonEnabled}
+                    size="small"
+                    style={{ width: "150px" }}
+                  />
+                </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     label="Entry No"
@@ -1031,8 +1040,7 @@ useEffect(() => {
               <Grid
                 item
                 xs={12}
-                sm={6}
-                md={6}
+
                 style={{ display: "flex", alignItems: "center" }}
               >
                 <label
@@ -1052,7 +1060,6 @@ useEffect(() => {
                 />
               </Grid>
 
-              {/* Mill Code Field */}
               <Grid
                 item
                 xs={12}
@@ -1134,13 +1141,13 @@ useEffect(() => {
                   size="small"
                 />
               </Grid>
+              
               <Grid
                 item
                 xs={12}
                 sm={1}
                 style={{ display: "flex", alignItems: "center" }}
               ></Grid>
-
               <Grid item xs={12} sm={1}>
                 <TextField
                   label="Payment Detail:"
@@ -1164,35 +1171,57 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          height: "40px",
+          marginTop: "25px",
+          marginRight: "10px",
+        }}
+      >
         <button
-          className="btn btn-primary"
+          className="btn btn-primary btn-lg"
+          style={{
+            padding: "5px 20px",
+            fontSize: "20px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          }}
           onClick={() => openPopup("add")}
-          disabled={!isEditing}
-          tabIndex="16"
+          tabIndex="37"
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
+            if (event.key === 13) {
               openPopup("add");
             }
           }}
         >
           Add
         </button>
+
         <button
-          className="btn btn-danger"
+          className="btn btn-danger btn-lg"
+          style={{
+            marginLeft: "15px",
+            padding: "5px 20px",
+            fontSize: "20px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          }}
           disabled={!isEditing}
-          style={{ marginLeft: "10px" }}
-          tabIndex="17"
+          tabIndex="38"
         >
           Close
         </button>
+      </div>
+      <div >
         {showPopup && (
           <div className="modal" role="dialog" style={{ display: "block" }}>
             <div className="modal-dialog" role="document">
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">
-                    {selectedUser.id ? "Edit User" : "Add User"}
+                    {selectedUser.id ? "Update UTR Entry" : "Add UTR Entry"}
                   </h5>
                   <button
                     type="button"
@@ -1313,7 +1342,7 @@ useEffect(() => {
                         }
                       }}
                     >
-                      Update User
+                      Update
                     </button>
                   ) : (
                     <button
@@ -1325,7 +1354,7 @@ useEffect(() => {
                         }
                       }}
                     >
-                      Add User
+                      Add
                     </button>
                   )}
                   <button
@@ -1341,79 +1370,83 @@ useEffect(() => {
           </div>
         )}
 
-        <table className="table mt-4 table-bordered">
-          <thead>
-            <tr>
-              <th>Actions</th>
-              <th>ID</th>
-              <th>lot_no</th>
-              <th>grade no</th>
-              <th>amount</th>
-              <th>lotCompany_Code</th>
-              <th>lotYear_Code</th>
-              <th>Adjusted_Amt</th>
-              <th>Tenderid</th>
-              <th>Rowaction</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>
-                  {user.rowaction === "add" ||
-                  user.rowaction === "update" ||
-                  user.rowaction === "Normal" ? (
-                    <>
-                      <button
-                        className="btn btn-warning"
-                        onClick={() => editUser(user)}
-                        disabled={!isEditing}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            editUser(user);
-                          }
-                        }}
-                        tabIndex="18"
+        <TableContainer component={Paper} className="mt-4">
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={headerCellStyle}>Actions</TableCell>
+                <TableCell sx={headerCellStyle}>ID</TableCell>
+                <TableCell sx={headerCellStyle}>lot_no</TableCell>
+                <TableCell sx={headerCellStyle}>grade no</TableCell>
+                <TableCell sx={headerCellStyle}>amount</TableCell>
+                <TableCell sx={headerCellStyle}>lotCompany_Code</TableCell>
+                <TableCell sx={headerCellStyle}>lotYear_Code</TableCell>
+                <TableCell sx={headerCellStyle}>Adjusted_Amt</TableCell>
+                <TableCell sx={headerCellStyle}>Tenderid</TableCell>
+                <TableCell sx={headerCellStyle}>Rowaction</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    {user.rowaction === "add" || user.rowaction === "update" || user.rowaction === "Normal" ? (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="warning"
+                          onClick={() => editUser(user)}
+                          disabled={!isEditing}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              editUser(user);
+                            }
+                          }}
+                          tabIndex="18"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          sx={{ ml: 2 }}
+                          onClick={() => deleteModeHandler(user)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              deleteModeHandler(user);
+                            }
+                          }}
+                          disabled={!isEditing}
+                          tabIndex="19"
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    ) : user.rowaction === "DNU" || user.rowaction === "delete" ? (
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => openDelete(user)}
                       >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-danger ms-2"
-                        onClick={() => deleteModeHandler(user)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            deleteModeHandler(user);
-                          }
-                        }}
-                        disabled={!isEditing}
-                        tabIndex="19"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  ) : user.rowaction === "DNU" ||
-                    user.rowaction === "delete" ? (
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => openDelete(user)}
-                    >
-                      Open
-                    </button>
-                  ) : null}
-                </td>
-                <td>{user.id}</td>
-                <td>{user.lot_no}</td>
-                <td>{user.grade_no}</td>
-                <td>{user.amount}</td>
-                <td>{user.lotCompany_Code}</td>
-                <td>{user.lotYear_Code}</td>
-                <td>{user.Adjusted_Amt}</td>
-                <td>{user.ln}</td>
-                <td>{user.rowaction}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                        Open
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{user.id}</TableCell>
+                  <TableCell>{user.lot_no}</TableCell>
+                  <TableCell>{user.grade_no}</TableCell>
+                  <TableCell>{user.amount}</TableCell>
+                  <TableCell>{user.lotCompany_Code}</TableCell>
+                  <TableCell>{user.lotYear_Code}</TableCell>
+                  <TableCell>{user.Adjusted_Amt}</TableCell>
+                  <TableCell>{user.ln}</TableCell>
+                  <TableCell>{user.rowaction}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <br></br>
       </div>
       <Grid container alignItems="center" spacing={1}>
         <Grid item>

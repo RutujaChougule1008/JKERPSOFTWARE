@@ -13,8 +13,7 @@ import "../CommissionBill/CommissionBill.css";
 import { HashLoader } from 'react-spinners';
 
 
-const companyCode = sessionStorage.getItem("Company_Code");
-const Year_Code = sessionStorage.getItem("Year_Code");
+
 const API_URL = process.env.REACT_APP_API;
 
 let SupplierName = "";
@@ -37,6 +36,8 @@ let TdsName = "";
 let newTDS_Ac = "";
 
 const CommissionBill = () => {
+  const companyCode = sessionStorage.getItem("Company_Code");
+const Year_Code = sessionStorage.getItem("Year_Code");
   const [updateButtonClicked, setUpdateButtonClicked] = useState(false);
   const [saveButtonClicked, setSaveButtonClicked] = useState(false);
   const [addOneButtonEnabled, setAddOneButtonEnabled] = useState(false);
@@ -164,7 +165,7 @@ const CommissionBill = () => {
   //Using the useRecordLocking to manage the multiple user cannot edit the same record at a time.
   const { isRecordLockedByUser, lockRecord, unlockRecord } = useRecordLocking(
     formData.doc_no,
-    tranType||selectedVoucherType,
+    tranType || selectedVoucherType,
     companyCode,
     Year_Code,
     "commission_bill"
@@ -903,7 +904,6 @@ const CommissionBill = () => {
     setEditButtonEnabled(false);
     setDeleteButtonEnabled(false);
     setIsEditing(true);
-    fetchLastRecord(tranType);
     const itemCode = await fetchItemCode();
     const brokerCode = await fetchBrokerCode();
     const gstRateCode = await fetchGSTRateCode();
@@ -919,6 +919,7 @@ const CommissionBill = () => {
       Company_Code: companyCode,
       Year_Code: Year_Code,
     }));
+    fetchLastRecord(tranType);
     ItemName = itemCode.label;
     BrokerName = brokerCode.label;
     GstRateName = gstRateCode.label;
@@ -961,10 +962,10 @@ const CommissionBill = () => {
     apiCall
       .then((response) => {
         const successMessage = isEditMode
-          ? "Record updated successfully!" && unlockRecord()
+          ? "Record updated successfully!" 
           : "Record created successfully!";
         toast.success(successMessage);
-        // Reset button states
+        unlockRecord();
         setIsEditMode(false);
         setAddOneButtonEnabled(true);
         setEditButtonEnabled(true);
@@ -988,6 +989,7 @@ const CommissionBill = () => {
   };
   
   const handleEdit = async () => {
+    debugger
     axios
       .get(
         `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
@@ -1255,7 +1257,8 @@ const CommissionBill = () => {
         setFormData({
           ...formData,
           ...record,
-          doc_date: record.Formatted_Doc_Date
+          doc_date:record.Formatted_Doc_Date
+         
         });
       } else {
         console.error(
@@ -1303,7 +1306,7 @@ const CommissionBill = () => {
       <div>
         <h5>Commission Bill</h5>
         <div className="commission-form-container">
-          <ToastContainer />
+          <ToastContainer autoClose={500}/>
           <ActionButtonGroup
             handleAddOne={handleAddOne}
             addOneButtonEnabled={addOneButtonEnabled}

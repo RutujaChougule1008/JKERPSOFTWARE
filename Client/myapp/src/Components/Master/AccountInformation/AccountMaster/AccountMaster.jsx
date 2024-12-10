@@ -1165,7 +1165,7 @@ const AccountMaster = () => {
 
   return (
     <>
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <div ref={ref} className="main-container" >
         <h5 className="mt-4 mb-4 text-center custom-heading">Account Master</h5>
         <div>
@@ -1382,6 +1382,7 @@ const AccountMaster = () => {
                 variant="contained"
                 size="small"
                 onClick={(e) => handleAddCity(e)}
+                disabled={!isEditing && addOneButtonEnabled}
               >
                 Add City
               </Button>
@@ -1688,6 +1689,7 @@ const AccountMaster = () => {
               variant="contained"
               size="small"
               onClick={(e) => handleAddGroup(e)}
+              disabled={!isEditing && addOneButtonEnabled}
             >
               Add Group
             </Button>
@@ -1710,7 +1712,6 @@ const AccountMaster = () => {
                   borderRadius: 2,
                 }}
               >
-                {/* Close Button */}
                 <Button
                   sx={{
                     position: "absolute",
@@ -1726,10 +1727,8 @@ const AccountMaster = () => {
                   &times;
                 </Button>
 
-                {/* FinicialMaster Component */}
                 <FinicialMaster isPopup={true} ref={groupMasterRef} />
 
-                {/* Action Buttons */}
                 <Box
                   sx={{
                     display: "flex",
@@ -1754,8 +1753,7 @@ const AccountMaster = () => {
                 </Box>
               </Box>
             </Modal>
-
-            {/* Overlay for Modal */}
+            
             {showGroupPopup && (
               <Box
                 sx={{

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, Paper, Typography, FormControl, Select, MenuItem, InputLabel } from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, Paper, Typography, FormControl, Select, MenuItem, InputLabel, CircularProgress, Box } from "@mui/material";
 import Pagination from "../../Common/UtilityCommon/Pagination";
 import SearchBar from "../../Common/UtilityCommon/SearchBar";
 import PerPageSelect from "../../Common/UtilityCommon/PerPageSelect";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import PageNotFound from "./../PageNotFound/PageNotFound";
+import { RingLoader } from 'react-spinners';
 
 function TableUtility({
     title,
@@ -16,7 +17,7 @@ function TableUtility({
     detailUrl,
     permissionUrl,
     dropdownOptions = null,
-    dropdownValue, 
+    dropdownValue,
     onDropdownChange,
     queryParams = {}
 }) {
@@ -31,7 +32,8 @@ function TableUtility({
     const [currentPage, setCurrentPage] = useState(1);
     const [canView, setCanView] = useState(null);
     const [permissionsData, setPermissionData] = useState({});
-    const [localDropdownValue, setLocalDropdownValue] = useState(dropdownValue); 
+    const [localDropdownValue, setLocalDropdownValue] = useState(dropdownValue);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -53,12 +55,12 @@ function TableUtility({
         };
 
         const fetchData = async () => {
+            setLoading(true);
             try {
-                // Include queryParams in the URL for dynamic filtering
-                const params = new URLSearchParams({ 
-                    Company_Code: companyCode, 
+                const params = new URLSearchParams({
+                    Company_Code: companyCode,
                     Year_Code,
-                    ...queryParams 
+                    ...queryParams
                 });
                 const response = await axios.get(`${apiUrl}?${params.toString()}`);
                 if (response.data) {
@@ -68,11 +70,13 @@ function TableUtility({
                 }
             } catch (error) {
                 console.error("Error fetching data:", error);
+            } finally {
+                setLoading(false);
             }
         };
 
         checkPermissions();
-    }, [apiUrl, JSON.stringify(queryParams)]); 
+    }, [apiUrl, JSON.stringify(queryParams)]);
 
 
     useEffect(() => {
@@ -117,16 +121,16 @@ function TableUtility({
 
     const handleAddClick = () => {
         const stateData = { permissionsData };
-    
+
         if (localDropdownValue) {
             stateData.selectedfilter = localDropdownValue;
         }
-    
+
         navigate(addUrl, { state: stateData });
     };
 
     const handleBackClick = () => {
-        navigate("/DashBoard");
+        navigate("/dashboard");
     };
 
     const pageCount = Math.ceil(filteredData.length / perPage);
@@ -149,11 +153,11 @@ function TableUtility({
                     <Grid item xs={3} sm={3}>
                         <FormControl fullWidth>
                             <InputLabel>Filter by Type</InputLabel>
-                            <Select 
-                                value={localDropdownValue} 
+                            <Select
+                                value={localDropdownValue}
                                 onChange={(e) => {
-                                    setLocalDropdownValue(e.target.value); // Update local state
-                                    onDropdownChange(e); // Trigger parent update
+                                    setLocalDropdownValue(e.target.value);
+                                    onDropdownChange(e);
                                 }}
                             >
                                 {dropdownOptions.map((option, index) => (
@@ -171,28 +175,34 @@ function TableUtility({
                 <Grid item xs={12}>
                     <Paper elevation={20}>
                         <TableContainer>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        {columns.map((column, index) => (
-                                            <TableCell key={index}>{column.label}</TableCell>
-                                        ))}
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {paginatedPosts.map((post) => (
-                                        <TableRow
-                                            key={post[rowKey]}
-                                            style={{ cursor: "pointer" }}
-                                            onDoubleClick={() => handleRowClick(post[rowKey])}
-                                        >
+                            {loading ? (
+                                <Box display="flex" justifyContent="center" alignItems="center" height="300px">
+                                    <RingLoader />
+                                </Box>
+                            ) : (
+                                <Table>
+                                    <TableHead>
+                                        <TableRow>
                                             {columns.map((column, index) => (
-                                                <TableCell key={index}>{post[column.key]}</TableCell>
+                                                <TableCell key={index}>{column.label}</TableCell>
                                             ))}
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHead>
+                                    <TableBody>
+                                        {paginatedPosts.map((post) => (
+                                            <TableRow
+                                                key={post[rowKey]}
+                                                style={{ cursor: "pointer" }}
+                                                onDoubleClick={() => handleRowClick(post[rowKey])}
+                                            >
+                                                {columns.map((column, index) => (
+                                                    <TableCell key={index}>{post[column.key]}</TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
                         </TableContainer>
                     </Paper>
                 </Grid>

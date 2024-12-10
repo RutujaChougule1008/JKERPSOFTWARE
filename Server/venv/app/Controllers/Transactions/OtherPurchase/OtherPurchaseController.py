@@ -33,37 +33,31 @@ def format_dates(task):
 @app.route(API_URL + "/getall-OtherPurchase", methods=["GET"])
 def get_OtherPurchase():
     try:
-        Company_Code = request.args.get('Company_Code')
-        Year_Code = request.args.get('Year_Code')
-        if not all([Company_Code, Year_Code]):
-            return jsonify({"error": "Missing required parameters"}), 400
+        company_code = request.args.get('Company_Code')
+        year_code = request.args.get('Year_Code')
 
-        records = OtherPurchase.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).all()
+        if not company_code or not year_code:
+            return jsonify({"error": "Missing 'Company_Code' or 'Year_Code' parameter"}), 400
 
-        if not records:
-            return jsonify({"error": "No records found"}), 404
+        query = ('''SELECT       qrymstsuppiler.Ac_Name_E AS SupplierName, dbo.nt_1_other_purchase.Doc_No, dbo.nt_1_other_purchase.Doc_Date, dbo.nt_1_other_purchase.Bill_Amount, dbo.nt_1_other_purchase.Narration, 
+                         dbo.nt_1_other_purchase.opid
+FROM            dbo.nt_1_other_purchase LEFT OUTER JOIN
+                         dbo.qrymstaccountmaster AS qrymstsuppiler ON dbo.nt_1_other_purchase.sc = qrymstsuppiler.accoid
+ORDER BY dbo.nt_1_other_purchase.Doc_No DESC
+                                 '''
+            )
+        additional_data = db.session.execute(text(query), {"company_code": company_code, "year_code": year_code})
 
-        all_records_data = []
+        additional_data_rows = additional_data.fetchall()
+        
+        all_data = [dict(row._mapping) for row in additional_data_rows]
 
-        for record in records:
-            other_purchase_data = {column.name: getattr(record, column.name) for column in record.__table__.columns}
-            other_purchase_data.update(format_dates(record))
-
-            opid = record.opid
-            additional_data = db.session.execute(text(TASK_DETAILS_QUERY), {"opid": opid})
-            additional_data_row = additional_data.fetchone()
-
-            labels = dict(additional_data_row._mapping) if additional_data_row else {}
-
-            record_response = {
-                "other_purchase_data": other_purchase_data,
-                "labels": labels
-            }
-
-            all_records_data.append(record_response)
+        for data in all_data:
+            if 'Doc_Date' in data:
+                data['Doc_Date'] = data['Doc_Date'].strftime('%Y-%m-%d') if data['Doc_Date'] else None
 
         response = {
-            "all_other_purchase_data": all_records_data
+            "all_data": all_data
         }
         return jsonify(response), 200
 
@@ -86,17 +80,13 @@ def get_next_doc_no_OtherPurchase():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code or Year_Code parameter'}), 400
 
-        # Fetch the maximum Doc_No for the given Company_Code and Year_Code
         max_doc_no = db.session.query(func.max(OtherPurchase.Doc_No)).filter_by(Company_Code=Company_Code, Year_Code=Year_Code).scalar()
 
-        # If no records exist, set Doc_No to 1
         if max_doc_no is None:
             next_doc_no = 1
         else:
-            # Increment the Doc_No by 1
             next_doc_no = max_doc_no + 1
 
-        # Return the new Doc_No
         return jsonify({"next_doc_no": next_doc_no}), 200
 
     except Exception as e:

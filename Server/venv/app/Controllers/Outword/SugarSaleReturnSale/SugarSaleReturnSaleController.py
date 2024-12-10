@@ -198,6 +198,7 @@ FROM     dbo.nt_1_accountmaster AS accode RIGHT OUTER JOIN
                   dbo.nt_1_sugarsalereturn ON accode.accoid = dbo.nt_1_sugarsalereturn.ac LEFT OUTER JOIN
                   dbo.nt_1_sugarsaledetailsreturn ON dbo.nt_1_sugarsalereturn.srid = dbo.nt_1_sugarsaledetailsreturn.srid
                  where dbo.nt_1_sugarsalereturn.Company_Code = :company_code and dbo.nt_1_sugarsalereturn.Year_Code = :year_code
+                 order by dbo.nt_1_sugarsalereturn.doc_no desc
                                  '''
             )
         additional_data = db.session.execute(text(query), {"company_code": company_code, "year_code": year_code})

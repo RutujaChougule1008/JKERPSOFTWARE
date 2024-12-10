@@ -75,6 +75,7 @@ const OtherPurchase = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
+  const inputRef = useRef(null)
 
   const initialFormData = {
     Doc_Date: new Date().toISOString().slice(0, 10),
@@ -159,6 +160,9 @@ const OtherPurchase = () => {
     TDSAcName = ""
     GStrateCode = ""
     GStrateName = ""
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   //Validation Part
@@ -234,7 +238,7 @@ const OtherPurchase = () => {
           toast.success("Record Create successfully!");
           setTimeout(() => {
             window.location.reload();
-          }, 1000); // Delay of 1 seconds
+          }, 1000); 
           setIsEditMode(false);
           setAddOneButtonEnabled(true);
           setEditButtonEnabled(true);
@@ -585,26 +589,11 @@ const OtherPurchase = () => {
   }
 
 
-  //Set focus functionality After First Time Page Load
-  const lastFocusableElementRef = useRef(null);
-  useEffect(() => {
-    // Focus the first input field when the component mounts
-    document.getElementById('Doc_Date').focus();
-  }, []);
-
-  const handleKeyDownNew = (e) => {
-    // Handle Tab key press
-    if (e.key === 'Tab' && lastFocusableElementRef.current && document.activeElement === lastFocusableElementRef.current) {
-      e.preventDefault();
-      document.getElementById('Doc_Date').focus();
-    }
-  };
-
-
   return (
     <>
-      <div className="container" >
-        <ToastContainer />
+      <div>
+      <h5>Other Purchase</h5>
+        <ToastContainer autoClose={500} />
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -621,7 +610,6 @@ const OtherPurchase = () => {
           backButtonEnabled={backButtonEnabled}
         />
         <div>
-          {/* Navigation Buttons */}
           <NavigationButtons
             handleFirstButtonClick={handleFirstButtonClick}
             handlePreviousButtonClick={handlePreviousButtonClick}
@@ -632,9 +620,8 @@ const OtherPurchase = () => {
           />
         </div>
       </div>
-      <div className="form-container-New" onKeyDown={handleKeyDownNew}>
+      <div className="form-container-New">
         <form>
-          <h2>Other Purchase</h2>
           <br />
           <div className="form-group">
             <label htmlFor="changeNo">Change No:</label>
@@ -663,6 +650,7 @@ const OtherPurchase = () => {
               type="date"
               id="Doc_Date"
               Name="Doc_Date"
+              ref={inputRef}
               value={formData.Doc_Date}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}

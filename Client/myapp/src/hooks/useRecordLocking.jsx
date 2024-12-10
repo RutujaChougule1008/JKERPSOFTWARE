@@ -21,6 +21,7 @@ export const useRecordLocking = (recordId,tran_type,company_code,year_code,model
         params.append("id", recordId);
         if (tran_type) {
             params.append("tran_type", tran_type);
+            console.log(tran_type)
         }
         params.append("company_code", company_code);  
         params.append("year_code", year_code); 
@@ -39,6 +40,7 @@ export const useRecordLocking = (recordId,tran_type,company_code,year_code,model
             .then(() => {
                 setIsRecordLockedByUser(true);
                 sessionStorage.setItem(storageKey, JSON.stringify(true));
+                console.log("+++")
             })
             .catch((error) => {
                 console.error("Error locking record:", error);
@@ -65,9 +67,24 @@ export const useRecordLocking = (recordId,tran_type,company_code,year_code,model
         }
     };
 
+    // useEffect(() => {
+    //     const handleBeforeUnload = (event) => {
+    //         event.preventDefault();
+    //         if (isRecordLockedByUser) {
+    //             unlockRecord();
+    //         }
+    //     };
+    //     window.addEventListener('beforeunload', handleBeforeUnload);
+    //     return () => {
+    //         window.removeEventListener('beforeunload', handleBeforeUnload);
+    //         if (isRecordLockedByUser) {
+    //             unlockRecord();
+    //         }
+    //     };
+    // }, [isRecordLockedByUser, recordId]);
+
     useEffect(() => {
         const handleBeforeUnload = (event) => {
-            event.preventDefault();
             if (isRecordLockedByUser) {
                 unlockRecord();
             }

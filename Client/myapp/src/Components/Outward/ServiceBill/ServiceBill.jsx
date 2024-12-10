@@ -69,9 +69,9 @@ const ServiceBill = () => {
   const selectedRecord = location.state?.selectedRecord;
   const permissions = location.state?.permissionsData;
   const navigate = useNavigate();
-  const setFocusTaskdate = useRef(null);
   const [isHandleChange, setIsHandleChange] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const inputRef=useRef(null)
 
   const initialFormData = {
     Doc_No: '',
@@ -217,6 +217,9 @@ const ServiceBill = () => {
     billToName = "";
     billToCode = "";
     setLastTenderDetails([]);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleEdit = async () => {
@@ -1162,7 +1165,7 @@ const ServiceBill = () => {
 
   return (
     <>
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <form className="ServiceBill-container" onSubmit={handleSubmit}>
         <h6 className="Heading">Service Bill</h6>
         <div>
@@ -1212,7 +1215,6 @@ const ServiceBill = () => {
               name="Doc_No"
               variant="outlined"
               fullWidth
-              inputRef={setFocusTaskdate}
               value={formData.Doc_No}
               onChange={handleChange}
               disabled
@@ -1229,7 +1231,7 @@ const ServiceBill = () => {
               InputLabelProps={{
                 shrink: true,
               }}
-              inputRef={setFocusTaskdate}
+              inputRef={inputRef}
               value={formData.Date}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}

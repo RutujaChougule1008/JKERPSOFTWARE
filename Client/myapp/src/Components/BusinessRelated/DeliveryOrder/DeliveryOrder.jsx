@@ -2967,7 +2967,7 @@ const CommisionBillCalculation = async (name, input, formData, gstRate) => {
       <div>
 
         <DeliveryOrderOurDoReport doc_no={formData.doc_no}/>
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}

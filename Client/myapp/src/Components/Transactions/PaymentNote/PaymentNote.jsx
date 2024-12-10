@@ -27,7 +27,7 @@ const PaymentNote = () => {
     const [highlightedButton, setHighlightedButton] = useState(null);
     const [cancelButtonClicked, setCancelButtonClicked] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-
+    const inputRef=useRef(null)
     //GET values from session storage 
     const companyCode = sessionStorage.getItem('Company_Code')
     const yearCode = sessionStorage.getItem('Year_Code')
@@ -35,7 +35,6 @@ const PaymentNote = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const dateInputRef = useRef(null);
     const changeNoRef = useRef(null);
     const selectedRecord = location.state?.selectedRecord;
     const permissions = location.state?.permissionsData;
@@ -60,12 +59,7 @@ const PaymentNote = () => {
     const [paymentTo, setPaymentTo] = useState('')
 
     useEffect(() => {
-        if (isEditing) {
-            if (dateInputRef.current) {
-                dateInputRef.current.focus();
-            }
-        }
-        else if (isCancel) {
+         if (isCancel) {
             if (changeNoRef.current) {
                 changeNoRef.current.focus();
             }
@@ -139,6 +133,9 @@ const PaymentNote = () => {
         paymentToName = ""
         bankCode = ""
         bankName = ""
+        setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
     }
 
     const handleSaveOrUpdate = () => {
@@ -426,7 +423,7 @@ const PaymentNote = () => {
         <>
             <div>
                 <h5>Payment Note</h5>
-                <ToastContainer />
+                <ToastContainer autoClose={500}/>
                 <ActionButtonGroup
                     handleAddOne={handleAddOne}
                     addOneButtonEnabled={addOneButtonEnabled}
@@ -505,7 +502,7 @@ const PaymentNote = () => {
                                 value={formData.doc_date}
                                 onChange={(e) => handleDateChange(e, 'doc_date')}
                                 disabled={!isEditing && addOneButtonEnabled}
-                                inputRef={dateInputRef}
+                                inputRef={inputRef}
                                 sx={{ width: 300 }}
                                 InputLabelProps={{
                                     shrink: true,

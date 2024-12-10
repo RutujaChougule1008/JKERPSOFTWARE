@@ -16,7 +16,6 @@ API_URL = os.getenv('API_URL')
 @app.route(API_URL+"/getall-finicial-groups", methods=["GET"])
 def get_groups_by_company_code():
     try:
-        # Extract Company_Code from query parameters
         company_code = request.args.get('Company_Code')
         if company_code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
@@ -26,10 +25,7 @@ def get_groups_by_company_code():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        # Fetch groups by Company_Code
-        groups = GroupMaster.query.filter_by(Company_Code=company_code).all()
-
-        # Convert groups to a list of dictionaries
+        groups = GroupMaster.query.filter_by(Company_Code=company_code).order_by(GroupMaster.group_Code.desc()).all()
         groups_data = []
         for group in groups:
             group_data = {column.key: getattr(group, column.key) for column in group.__table__.columns}
@@ -44,7 +40,6 @@ def get_groups_by_company_code():
 @app.route(API_URL + "/get_last_group_by_company_code", methods=["GET"])
 def get_last_group_by_company_code():
     try:
-        # Extract Company_Code from query parameters
         company_code = request.args.get('Company_Code')
         if company_code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
@@ -54,13 +49,11 @@ def get_last_group_by_company_code():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        # Fetch the last group by Company_Code ordered by group_Code
         last_group = GroupMaster.query.filter_by(Company_Code=company_code).order_by(GroupMaster.group_Code.desc()).first()
 
         if last_group is None:
             return jsonify({'error': 'No group found for the provided Company_Code'}), 404
 
-        # Convert group to a dictionary
         last_group_data = {column.key: getattr(last_group, column.key) for column in last_group.__table__.columns}
 
         return jsonify(last_group_data)
@@ -72,7 +65,6 @@ def get_last_group_by_company_code():
 @app.route(API_URL + "/get-group-by-codes", methods=["GET"])
 def get_group_by_codes():
     try:
-        # Extract group_Code and Company_Code from query parameters
         group_code = request.args.get('group_Code')
         company_code = request.args.get('Company_Code')
 
@@ -85,13 +77,11 @@ def get_group_by_codes():
         except ValueError:
             return jsonify({'error': 'Invalid group_Code or Company_Code parameter'}), 400
 
-        # Fetch group by group_Code and Company_Code
         group = GroupMaster.query.filter_by(group_Code=group_code, Company_Code=company_code).first()
 
         if group is None:
             return jsonify({'error': 'Group not found'}), 404
 
-        # Convert group to a dictionary
         group_data = {column.key: getattr(group, column.key) for column in group.__table__.columns}
 
         return jsonify(group_data)
@@ -104,7 +94,6 @@ def get_group_by_codes():
 @app.route(API_URL+"/create-finicial-group", methods=["POST"])
 def create_group():
     try:
-        # Extract Company_Code from query parameters
         company_code = request.args.get('Company_Code')
         if company_code is None:
             return jsonify({'error': 'Missing Company_Code parameter'}), 400
@@ -114,12 +103,10 @@ def create_group():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code parameter'}), 400
 
-        # Fetch the maximum group_Code for the given Company_Code
         max_group_code = db.session.query(db.func.max(GroupMaster.group_Code)).filter_by(Company_Code=company_code).scalar() or 0
 
-        # Create a new GroupMaster entry with the generated group_Code
         new_group_data = request.json
-        new_group_data.pop('bsid', None)  # Remove bsid from the data
+        new_group_data.pop('bsid', None) 
         new_group_data['group_Code'] = max_group_code + 1
         new_group_data['Company_Code'] = company_code
 
@@ -127,8 +114,6 @@ def create_group():
 
         db.session.add(new_group)
         db.session.commit()
-
-        # Emit the addgroup data to all connected clients
         socketio.emit('addGroup',new_group_data)
 
         return jsonify({
@@ -143,7 +128,6 @@ def create_group():
 @app.route(API_URL+"/update-finicial-group", methods=["PUT"])
 def update_group():
     try:
-        # Extract Company_Code and group_Code from query parameters
         company_code = request.args.get('Company_Code')
         group_code = request.args.get('group_Code')
         if company_code is None or group_code is None:
@@ -155,19 +139,16 @@ def update_group():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code or group_Code parameter'}), 400
 
-        # Fetch the group to update
         group = GroupMaster.query.filter_by(Company_Code=company_code, group_Code=group_code).first()
         if group is None:
             return jsonify({'error': 'Group not found'}), 404
 
-        # Update group data
         update_data = request.json
         for key, value in update_data.items():
             setattr(group, key, value)
 
         db.session.commit()
 
-        # Emit the updated group data to all connected clients
         socketio.emit('updateGroup',update_data)
 
         return jsonify({
@@ -182,7 +163,6 @@ def update_group():
 @app.route(API_URL+"/delete-finicial-group", methods=["DELETE"])
 def delete_group():
     try:
-        # Extract Company_Code and group_Code from query parameters
         company_code = request.args.get('Company_Code')
         group_code = request.args.get('group_Code')
         if company_code is None or group_code is None:
@@ -194,7 +174,6 @@ def delete_group():
         except ValueError:
             return jsonify({'error': 'Invalid Company_Code or group_Code parameter'}), 400
 
-        # Fetch the group to delete
         group = GroupMaster.query.filter_by(Company_Code=company_code, group_Code=group_code).first()
         if group is None:
             return jsonify({'error': 'Group not found'}), 404
@@ -202,7 +181,6 @@ def delete_group():
         db.session.delete(group)
         db.session.commit()
 
-        # Emit the updated group data to all connected clients
         socketio.emit('deleteGroup', {'group_Code': group_code})
 
         return jsonify({
@@ -219,7 +197,6 @@ def get_First_GroupMaster():
     try:
         first_user_creation = GroupMaster.query.order_by(GroupMaster.group_Code.asc()).first()
         if first_user_creation:
-            # Convert SQLAlchemy object to dictionary
             serialized_user_creation = {key: value for key, value in first_user_creation.__dict__.items() if not key.startswith('_')}
             return jsonify([serialized_user_creation])
         else:
@@ -254,7 +231,6 @@ def get_previous_GroupMaster():
         previous_selected_record = GroupMaster.query.filter(GroupMaster.group_Code < Selected_Record)\
             .order_by(GroupMaster.group_Code.desc()).first()
         if previous_selected_record:
-            # Serialize the GroupMaster object to a dictionary
             serialized_previous_selected_record = {key: value for key, value in previous_selected_record.__dict__.items() if not key.startswith('_')}
             return jsonify(serialized_previous_selected_record)
         else:
@@ -273,7 +249,6 @@ def get_next_GroupMaster():
         next_Selected_Record = GroupMaster.query.filter(GroupMaster.group_Code > Selected_Record)\
             .order_by(GroupMaster.group_Code.asc()).first()
         if next_Selected_Record:
-            # Serialize the GroupMaster object to a dictionary
             serialized_next_Selected_Record = {key: value for key, value in next_Selected_Record.__dict__.items() if not key.startswith('_')}
             return jsonify({'nextSelectedRecord': serialized_next_Selected_Record})
         else:

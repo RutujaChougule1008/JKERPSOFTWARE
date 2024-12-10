@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   forwardRef,
+  useRef,
 } from "react";
 import ActionButtonGroup from "../../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../../Common/CommonButtons/NavigationButtons";
@@ -42,6 +43,8 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
   const selectedRecord = location.state?.selectedRecord;
   const permissions = location.state?.permissionsData;
   const type = location.state?.type;
+
+  const inputRef = useRef(null)
 
   const initialFormData = {
     group_Code: "",
@@ -98,6 +101,9 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
     setIsEditing(true);
     fetchLastGrouCode();
     setFormData(initialFormData);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleSaveOrUpdate = () => {
@@ -377,7 +383,7 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
               Modified By: {formData.Modified_By}
             </h2>
           </div>
-          <ToastContainer />
+          <ToastContainer autoClose={500}/>
           <ActionButtonGroup
             handleAddOne={handleAddOne}
             addOneButtonEnabled={addOneButtonEnabled}
@@ -461,6 +467,7 @@ const FinicialMaster = ({ isPopup = false }, ref) => {
             name="group_Name_E"
             value={formData.group_Name_E}
             onChange={handleChange}
+            inputRef={inputRef}
             variant="outlined"
             fullWidth
             disabled={!isEditing && addOneButtonEnabled}

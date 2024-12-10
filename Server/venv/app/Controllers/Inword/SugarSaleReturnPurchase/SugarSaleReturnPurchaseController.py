@@ -256,6 +256,7 @@ def create_sugarpurchasereturn():
         if response.status_code == 201:
             db.session.commit()
         else:
+            print(traceback.format_exc())
             db.session.rollback()
             return jsonify({"error": "Failed to create gLedger record", "details": response.json()}), response.status_code
 

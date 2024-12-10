@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ActionButtonGroup from "../../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../../Common/CommonButtons/NavigationButtons";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -31,6 +31,8 @@ const BrandMaster = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [itemSelect, setItemSelect] = useState("");
   const [itemSelectAccoid, setItemSelectAccoid] = useState("");
+
+  const inputRef = useRef(null)
 
   const navigate = useNavigate();
   //In utility page record doubleClicked that recod show for edit functionality
@@ -99,6 +101,9 @@ const BrandMaster = () => {
     setItemSelect("")
     ItemName = "";
     ItemCodeNew = "";
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleSaveOrUpdate = () => {
@@ -421,7 +426,7 @@ const BrandMaster = () => {
         <h2 class="modified-by-heading">Modified By: {formData.Modified_By}</h2>
       </div>
       <div className="container">
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -485,6 +490,7 @@ const BrandMaster = () => {
               type="text"
               id="Marka"
               name="Marka"
+              ref={inputRef}
               value={formData.Marka}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}

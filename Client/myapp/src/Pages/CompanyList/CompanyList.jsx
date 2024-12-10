@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Modal, Button, Form } from 'react-bootstrap';
 import ForgotPasswordModal from './Modal/ForgotPassword';
 import ChangePasswordModal from './Modal/ChangePassword';
@@ -80,7 +80,7 @@ const CompanyList = () => {
     setPassword('');
   };
 
-  let formattedAccountingYear=null
+  let formattedAccountingYear = null
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -96,21 +96,21 @@ const CompanyList = () => {
         sessionStorage.setItem('Year_Code', selectedAccountingYear.yearCode);
         sessionStorage.setItem('username', username);
         formattedAccountingYear = `${selectedAccountingYear.Start_Date} - ${selectedAccountingYear.End_Date}`;
-        sessionStorage.setItem('Accounting_Year', formattedAccountingYear); 
+        sessionStorage.setItem('Accounting_Year', formattedAccountingYear);
         sessionStorage.setItem('Company_Name', selectedCompany.Company_Name_E);
-        sessionStorage.setItem('uid',response.data.user_id)
-      
+        sessionStorage.setItem('uid', response.data.user_id)
+
       }
 
-      const selfAcResponse = await axios.get(`${API_URL}/get_self_ac?Company_Code=${ selectedCompany.Company_Code}&Year_Code=${selectedAccountingYear.yearCode}`)
-      console.log("selfAcResponse",selfAcResponse)
+      const selfAcResponse = await axios.get(`${API_URL}/get_self_ac?Company_Code=${selectedCompany.Company_Code}&Year_Code=${selectedAccountingYear.yearCode}`)
+      console.log("selfAcResponse", selfAcResponse)
       sessionStorage.setItem('SELF_AC', selfAcResponse.data.SELF_AC);
       sessionStorage.setItem('Self_acid', selfAcResponse.data.Self_acid);
 
       sessionStorage.setItem('Year_Code', selectedAccountingYear.yearCode);
       sessionStorage.setItem('username', username);
       formattedAccountingYear = `${selectedAccountingYear.Start_Date} - ${selectedAccountingYear.End_Date}`;
-      sessionStorage.setItem('Accounting_Year', formattedAccountingYear); 
+      sessionStorage.setItem('Accounting_Year', formattedAccountingYear);
       sessionStorage.setItem('Company_Name', selectedCompany.Company_Name_E);
 
       setIsLoggedIn(true);
@@ -167,7 +167,7 @@ const CompanyList = () => {
 
   return (
     <div className="companyListContainer">
-      <ToastContainer />
+      <ToastContainer autoClose={500}/>
       <div className="companyList">
         {companies.map((company, index) => (
           <div
@@ -184,7 +184,7 @@ const CompanyList = () => {
         ))}
       </div>
 
-      <Modal show={showModal} onHide={handleClose}>
+      <Modal show={showModal} onHide={handleClose} dialogClassName="custom-small-modal">
         <Modal.Header closeButton>
           <Modal.Title>Company Login</Modal.Title>
         </Modal.Header>
@@ -204,7 +204,7 @@ const CompanyList = () => {
                 required
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                ref={usernameRef} // Set the ref here
+                ref={usernameRef}
               />
             </Form.Group>
             <Form.Group controlId="formBasicPassword">
@@ -239,10 +239,10 @@ const CompanyList = () => {
         <Modal.Footer>
           <ForgotPasswordModal show={showForgotPassword} handleClose={() => setShowForgotPassword(false)} />
           <ChangePasswordModal show={showChangePassword} handleClose={() => setShowChangePassword(false)} />
-          <a href="#" onClick={() => setShowForgotPassword(true)}>Forgot Password?</a>
-          <Button variant="primary" style={{width:"80px"}} onClick={handleLogin} type="submit">Login</Button>
+          <Link onClick={() => setShowForgotPassword(true)}>Forgot Password?</Link>
+          <Button variant="primary" style={{ width: "80px" }} onClick={handleLogin} type="submit">Login</Button>
           <Button variant="secondary" onClick={handleClose}>Cancel</Button>
-          <a href="#" onClick={() => setShowChangePassword(true)}>Change Password</a>
+          <Link onClick={() => setShowChangePassword(true)}>Change Password</Link>
         </Modal.Footer>
       </Modal>
     </div>

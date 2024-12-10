@@ -338,7 +338,7 @@ const CompanyParameters = () => {
   return (
     <>
       <div>
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <form onSubmit={handleSaveOrUpdate}>
           <Typography variant="h4" sx={{ mb: 3, fontWeight: "bold" }}>
             Company Parameter

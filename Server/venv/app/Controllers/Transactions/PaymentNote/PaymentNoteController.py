@@ -35,7 +35,7 @@ def getData_PaymentNote():
         if not all([Company_Code, Year_Code]):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        paymentNotesData = PaymentNote.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).all()
+        paymentNotesData = PaymentNote.query.filter_by(Company_Code=Company_Code, Year_Code=Year_Code).order_by(PaymentNote.doc_no.desc()).all()
 
         if not paymentNotesData:
             return jsonify({"error": "No records found"}), 404
@@ -259,7 +259,6 @@ def getNext_PaymentNote():
 
         paymentNoteLabels = [dict(row._mapping) for row in additional_data_rows]
 
-        # Prepare response data
         response = {
             "nextPaymentNoteData": nextPaymentNoteData,
             "paymentNoteLabels": paymentNoteLabels

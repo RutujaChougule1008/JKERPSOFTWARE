@@ -26,8 +26,8 @@ MODEL_INFO = {
     "sugar_sale": {
         "model": SaleBillHead,
         "filter_field": "doc_no",
-        "company_code_field": "company_code",
-        "year_code_field": "year_code",
+        "company_code_field": "Company_Code",
+        "year_code_field": "Year_Code",
     },
     "utr_entry": {
         "model": UTRHead,
@@ -74,7 +74,7 @@ MODEL_INFO = {
     ,
      "commission_bill": {
         "model": CommissionBill,
-        "filter_field": "doc_no",
+        "filter_field": ["doc_no", "Tran_Type"],
         "company_code_field": "Company_Code",
         "year_code_field": "Year_Code",
     }
@@ -118,16 +118,25 @@ def record_lock():
             query_conditions.append(getattr(model_class, filter_field) == record_id)
         elif isinstance(filter_field, list):
             for field in filter_field:
-                if field == "tran_type" and tran_type:
-                    query_conditions.append(getattr(model_class, field) == tran_type)
-                elif field == "doc_no":
+                if field.lower() == "tran_type":
+                    if tran_type:  
+                        query_conditions.append(getattr(model_class, field) == tran_type)
+                    else:
+                        return jsonify({
+                    "error": "Bad Request",
+                    "message": f"Missing 'tran_type' for model_type {model_type}."
+                }), 400
+                elif field.lower() == "doc_no":
                     query_conditions.append(getattr(model_class, field) == record_id)
 
         query_conditions.append(func.lower(getattr(model_class, company_code_field)) == company_code.lower())
         query_conditions.append(func.lower(getattr(model_class, year_code_field)) == year_code.lower())
 
+        
+
         # Fetch the record
         record = model_class.query.filter(and_(*query_conditions)).first()
+        print(record)
         if not record:
             return jsonify({
                 "error": "Not Found",

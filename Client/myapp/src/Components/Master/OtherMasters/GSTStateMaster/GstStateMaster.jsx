@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ActionButtonGroup from "../../../../Common/CommonButtons/ActionButtonGroup";
 import NavigationButtons from "../../../../Common/CommonButtons/NavigationButtons";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -32,7 +32,7 @@ const GstStateMaster = () => {
   const location = useLocation();
   const selectedRecord = location.state?.selectedRecord;
   const permissions = location.state?.permissionsData;
-
+  const inputRef = useRef(null)
   const initialFormData = {
     State_Code: "",
     State_Name: "",
@@ -78,6 +78,9 @@ const GstStateMaster = () => {
     setIsEditing(true);
     fetchLastStateCode();
     setFormData(initialFormData);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   //Handle Save or Update record.
@@ -349,7 +352,7 @@ const GstStateMaster = () => {
       </div>
 
       <div>
-        <ToastContainer />
+        <ToastContainer autoClose={500}/>
         <ActionButtonGroup
           handleAddOne={handleAddOne}
           addOneButtonEnabled={addOneButtonEnabled}
@@ -410,6 +413,7 @@ const GstStateMaster = () => {
               id="State_Name"
               name="State_Name"
               value={formData.State_Name}
+              ref={inputRef}
               onChange={handleChange}
               disabled={!isEditing && addOneButtonEnabled}
             />

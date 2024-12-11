@@ -9,10 +9,12 @@ import PdfPreview from "../SaleBill/EWayBillReport/PdfPreview";
 import generateHeader from './Header'
 
 const API_URL = process.env.REACT_APP_API;
-const companyCode = sessionStorage.getItem("Company_Code");
-const Year_Code = sessionStorage.getItem("Year_Code");
+
 
 const SaleBillReport = ({ doc_no, disabledFeild }) => {
+
+const companyCode = sessionStorage.getItem("Company_Code");
+const Year_Code = sessionStorage.getItem("Year_Code");
   const [invoiceData, setInvoiceData] = useState([]);
   const [pdfPreview, setPdfPreview] = useState(null);
   const numberToWords = (num) => {
@@ -147,7 +149,36 @@ const SaleBillReport = ({ doc_no, disabledFeild }) => {
     });
 
     pdf.addImage(qrCodeDataUrl, "PNG", 170, 0, 30, 30);
-    generateHeader(pdf);
+    //generateHeader(pdf);
+
+    const logoImg = new Image();
+    logoImg.src = logo;
+    
+    logoImg.onload = () => {
+        pdf.addImage(logoImg, "PNG", 5, 5, 30, 30);
+        pdf.setFontSize(14);
+        pdf.text(`${allData.Company_Name_E}`, 40, 10);
+        pdf.setFontSize(8);
+        pdf.text(allData.AL1, 40, 15);
+        pdf.text(allData.AL2, 40, 20);
+        pdf.text(allData.AL3, 40, 25);
+        pdf.text(allData.AL4, 40, 30);
+        pdf.text(allData.Other, 40, 35);
+
+        // Add a horizontal line below the header
+        pdf.setFontSize(12);
+        pdf.setLineWidth(0.3);
+        pdf.line(10, 38, 200, 38);
+
+        // Add Tax Invoice title
+        pdf.setFontSize(12);
+        pdf.text("TAX INVOICE", 90, 43);
+
+        // Add another horizontal line after the title
+        pdf.setFontSize(12);
+        pdf.setLineWidth(0.3);
+        pdf.line(10, 45, 200, 45);
+  
 
     const totalAmount = parseFloat(allData.TCS_Net_Payable);
     const totalAmountWords = numberToWords(totalAmount);
@@ -244,13 +275,13 @@ const SaleBillReport = ({ doc_no, disabledFeild }) => {
     pdf.setFontSize(8);
     pdf.setLineWidth(0.3);
     pdf.line(10, 140, 200, 140);
-    pdf.text(`Mill Name:${allData.millname}`, 10, 143);
-    pdf.text(`FSSAI No:${allData.MillFSSAI_No}`, 130, 143);
+    pdf.text(`Mill Name:${allData.millname}`, 10, 144);
+    pdf.text(`FSSAI No:${allData.MillFSSAI_No}`, 130, 144);
     pdf.text(`Refer By,${allData.shiptoshortname}`, 10, 148);
     pdf.text(`Season:${allData.shiptoshortname}`, 70, 148);
-    pdf.text(`Dispatched From:${allData.FROM_STATION}`, 10, 153);
-    pdf.text(`Lorry No:${allData.FROM_STATION}`, 80, 153);
-    pdf.text(`To:${allData.TO_STATION}`, 130, 153);
+    pdf.text(`Dispatched From:${allData.FROM_STATION}`, 10, 152);
+    pdf.text(`Lorry No:${allData.LORRYNO}`, 80, 152);
+    pdf.text(`To:${allData.TO_STATION}`, 130, 152);
 
     pdf.setFontSize(12);
     const particulars = [
@@ -259,7 +290,7 @@ const SaleBillReport = ({ doc_no, disabledFeild }) => {
     ];
 
     pdf.autoTable({
-        startY: pdf.lastAutoTable.finalY + 20,
+        startY: pdf.lastAutoTable.finalY + 22,
         head: [particulars[0]],
         body: particulars.slice(1),
     });
@@ -307,7 +338,7 @@ const SaleBillReport = ({ doc_no, disabledFeild }) => {
     ];
 
     pdf.autoTable({
-        startY: 175,
+        startY: 180,
         margin: { left: pdf.internal.pageSize.width / 2 },
         body: summaryData,
         theme: "plain",
@@ -333,16 +364,17 @@ const SaleBillReport = ({ doc_no, disabledFeild }) => {
     pdf.line(10, lineY + 3, 200, lineY + 4);
 
     pdf.setFontSize(8);
-    pdf.text("Our Tan No: JDHJ01852E", 10, pdf.lastAutoTable.finalY + 20);
-    pdf.text("FSSAI No: 11516035000705", 60, pdf.lastAutoTable.finalY + 20);
-    pdf.text("PAN No: AABHJ9303C", 110, pdf.lastAutoTable.finalY + 20);
+    pdf.text(`Our Tan No: ${allData.companyTIN}`, 10, pdf.lastAutoTable.finalY + 20);
+    pdf.text(`FSSAI No: ${allData.companyFSSAI}`, 60, pdf.lastAutoTable.finalY + 20);
+    pdf.text(`PAN No:  ${allData.companyPan}`, 110, pdf.lastAutoTable.finalY + 20);
+  };
 
     const signImg = new Image();
     signImg.src = Sign;
     signImg.onload = () => {
         pdf.setFontSize(8);
         pdf.addImage(signImg, "PNG", 160, pdf.lastAutoTable.finalY + 25, 30, 20);
-        pdf.text("For, JK Sugars And Commodities Pvt. Ltd", 145, pdf.lastAutoTable.finalY + 50);
+        pdf.text(`For, ${allData.Company_Name_E}`, 145, pdf.lastAutoTable.finalY + 50);
         pdf.text("Authorised Signatory", 160, pdf.lastAutoTable.finalY + 55);
         // pdf.save("JKSaleBill.pdf")
         const pdfData = pdf.output("datauristring");

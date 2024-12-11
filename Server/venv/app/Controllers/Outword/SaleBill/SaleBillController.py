@@ -706,7 +706,9 @@ def generating_saleBill_report():
                          dbo.qrysalehead.billtostatename, dbo.qrysalehead.shiptoshortname, dbo.qrysalehead.shiptomobileno, dbo.qrysalehead.shiptotinno, dbo.qrysalehead.shiptolocallicno, dbo.qrysaledetail.Brand_Code, 
                          dbo.qrysalehead.EwayBillValidDate, dbo.qrysalehead.FSSAI_BillTo, dbo.qrysalehead.FSSAI_ShipTo, dbo.qrysalehead.BillToTanNo, dbo.qrysalehead.ShipToTanNo, dbo.qrysalehead.TDS_Rate, dbo.qrysalehead.TDS_Amt, 
                          dbo.qrysalehead.IsDeleted, dbo.qrysalehead.SBNarration, dbo.qrysalehead.QRCode, dbo.qrysalehead.MillFSSAI_No, dbo.qrysaledetail.Brand_Name, '' AS FreightPerQtl, dbo.company.State_E AS companyStateName, 
-                         dbo.nt_1_companyparameters.GSTStateCode AS companyGSTStateCode, dbo.qrysalehead.grade, dbo.tblvoucherheadaddress.bankdetail, dbo.company.GST AS companyGSTNo, dbo.company.City_E AS companyCity
+                         dbo.nt_1_companyparameters.GSTStateCode AS companyGSTStateCode, dbo.qrysalehead.grade, dbo.tblvoucherheadaddress.bankdetail, dbo.company.GST AS companyGSTNo, dbo.company.City_E AS companyCity, 
+                         dbo.company.FSSAI_No AS companyFSSAI, dbo.company.Pan_No AS companyPan, dbo.company.TIN AS companyTIN, dbo.tblvoucherheadaddress.AL1, dbo.tblvoucherheadaddress.AL2, dbo.tblvoucherheadaddress.AL3, 
+                         dbo.tblvoucherheadaddress.AL4, dbo.tblvoucherheadaddress.Other, dbo.tblvoucherheadaddress.BillFooter, dbo.company.Company_Name_E
 FROM            dbo.qrysaledetail RIGHT OUTER JOIN
                          dbo.nt_1_companyparameters INNER JOIN
                          dbo.tblvoucherheadaddress ON dbo.nt_1_companyparameters.Company_Code = dbo.tblvoucherheadaddress.Company_Code RIGHT OUTER JOIN

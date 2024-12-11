@@ -172,7 +172,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
   );
 
   const validateNumericInput = (e) => {
-    e.target.value = e.target.value.replace(/[^0-9.]/g, "");
+    e.target.value = e.target.value.replace(/[^0-9.-]/g, "");
   };
 
   const handleSelectKeyDown = (event, field) => {
@@ -425,8 +425,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
   };
 
   const calculateTDSAmount = (taxable, tdsRate) => {
-    debugger;
-    return (taxable * tdsRate) / 100;
+    return Math.round((taxable * tdsRate) / 100);
   };
 
   const calculateNetPayable = (billAmount, tcsAmount, hasTCS) => {
@@ -436,215 +435,19 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     return billAmount;
   };
 
-  // const handleKeyDownCalculations = async (event) => {
-  //   if (event.key === "Tab") {
-  //     debugger;
-  //     const { name, value } = event.target;
-  //     let newFormData = { ...formData };
-
-  //     // Check if states match for GST calculations
-  //     const sameState = await checkMatchStatus(
-  //       formData.ac_code,
-  //       companyCode,
-  //       Year_Code
-  //     );
-  //     const parseNumber = (num) => parseFloat(num) || 0;
-  //     if (
-  //       [
-  //         "Frieght_Rate",
-  //         "qntl",
-  //         "sale_rate",
-  //         "texable_amount",
-  //         "mill_rate",
-  //         "resale_commission",
-  //         "BANK_COMMISSION",
-  //         "misc_amount",
-  //         "packing",
-  //         "purc_rate",
-  //       ].includes(name)
-  //     ) {
-  //       const freightRate = parseNumber(formData.Frieght_Rate);
-  //       const qntl = parseNumber(formData.qntl);
-  //       const saleRate = parseNumber(formData.sale_rate);
-  //       const millRate = parseNumber(formData.mill_rate);
-  //       const resaleCommission = parseNumber(formData.resale_commission);
-  //       const bankCommission = parseNumber(formData.BANK_COMMISSION);
-  //       const miscAmount = parseNumber(formData.misc_amount);
-  //       const purcRate = parseNumber(formData.purc_rate);
-        
-
-  //       const rDiffTenderRate = calculateRDiffTenderRate(
-  //         saleRate,
-  //         millRate,
-  //         purcRate
-  //       );
-  //       const tenderDiffRate = calculateTenderDiffRateAmount(
-  //         rDiffTenderRate,
-  //         qntl
-  //       );
-  //       const packing = parseInt(formData.packing) || 0;
-  //       const bag = calculateBags(qntl, packing);
-  //       const freightAmt = calculateFreight(freightRate, qntl);
-  //       const resaleRate = calculateResaleRate(resaleCommission, qntl);
-  //       const subtotal = calculateSubtotal(rDiffTenderRate, qntl, resaleRate);
-  //       const taxable = calculateTaxable(subtotal, freightAmt);
-
-  //       const tdsBase = formData.TDS ? parseNumber(formData.TDS) : taxable; 
-
-  //       const cgstRate = parseNumber(formData.cgst_rate);
-  //       const sgstRate = parseNumber(formData.sgst_rate);
-  //       const igstRate = parseNumber(formData.igst_rate);
-
-  //       const cgstAmount = sameState
-  //         ? calculateCGSTAmount(taxable, cgstRate)
-  //         : 0;
-  //       const sgstAmount = sameState
-  //         ? calculateSGSTAmount(taxable, sgstRate)
-  //         : 0;
-  //       const igstAmount = !sameState
-  //         ? calculateIGSTAmount(taxable, igstRate)
-  //         : 0;
-
-  //       const billAmount = calculateBillAmount(
-  //         taxable,
-  //         cgstAmount,
-  //         sgstAmount,
-  //         igstAmount,
-  //         bankCommission,
-  //         miscAmount
-  //       );
-
-  //       const tcsRate =
-  //         formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
-  //       const tcsAmount =
-  //         formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
-
-  //       const tdsRate =
-  //         formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
-  //       const tdsAmount =
-  //         formData.IsTDS === "Y"
-  //           ? calculateTDSAmount(tdsBase || taxable, tdsRate)
-  //           : 0;
-
-  //       const hasTCS = tcsAmount > 0;
-  //       const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-
-  //       newFormData = {
-  //         ...newFormData,
-  //         bags: bag,
-  //         Frieght_amt: freightAmt,
-  //         commission_amount: tenderDiffRate,
-  //         resale_rate: resaleRate,
-  //         subtotal: subtotal,
-  //         texable_amount: taxable,
-  //         cgst_amount: cgstAmount,
-  //         sgst_amount: sgstAmount,
-  //         igst_amount: igstAmount,
-  //         bill_amount: billAmount,
-  //         TCS_Amt: tcsAmount,
-  //         TDSAmount: tdsAmount,
-  //         TCS_Net_Payable: netPayable,
-  //         TDS: tdsBase,
-  //         sale_rate: purcRate > 0 ? 0 : saleRate,
-  //       };
-  //     }
-
-  //     // Perform GST-specific calculations
-  //     if (
-  //       [
-  //         "cgst_rate",
-  //         "sgst_rate",
-  //         "texable_amount",
-  //         "cgst_amount",
-  //         "sgst_amount",
-  //         "TCS_Rate",
-  //         "bill_amount",
-  //         "TDS_Per",
-  //         "igst_rate",
-  //         "BANK_COMMISSION",
-  //         "misc_amount",
-  //       ].includes(name)
-  //     ) {
-  //       const cgstRate = parseNumber(formData.cgst_rate);
-  //       const sgstRate = parseNumber(formData.sgst_rate);
-  //       const igstRate = parseNumber(formData.igst_rate);
-  //       const taxable = parseNumber(formData.texable_amount);
-  //       const tdsBase = parseNumber(formData.TDS);
-
-  //       const cgstAmount = sameState
-  //         ? calculateCGSTAmount(taxable, cgstRate)
-  //         : 0;
-  //       const sgstAmount = sameState
-  //         ? calculateSGSTAmount(taxable, sgstRate)
-  //         : 0;
-  //       const igstAmount = !sameState
-  //         ? calculateIGSTAmount(taxable, igstRate)
-  //         : 0;
-
-  //       const bankCommission = parseNumber(formData.BANK_COMMISSION);
-  //       const miscAmount = parseNumber(formData.misc_amount);
-
-  //       const billAmount = calculateBillAmount(
-  //         taxable,
-  //         cgstAmount,
-  //         sgstAmount,
-  //         igstAmount,
-  //         bankCommission,
-  //         miscAmount
-  //       );
-
-  //       const tcsRate =
-  //         formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
-  //       const tcsAmount =
-  //         formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
-
-  //       const tdsRate =
-  //         formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
-  //       const tdsAmount =
-  //         formData.IsTDS === "Y"
-  //           ? calculateTDSAmount(tdsBase || taxable, tdsRate)
-  //           : 0;
-
-  //       const hasTCS = tcsAmount > 0;
-  //       const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-
-  //       newFormData = {
-  //         ...newFormData,
-  //         cgst_rate: cgstRate,
-  //         cgst_amount: cgstAmount,
-  //         sgst_rate: sgstRate,
-  //         sgst_amount: sgstAmount,
-  //         igst_rate: igstRate,
-  //         igst_amount: igstAmount,
-  //         bill_amount: billAmount,
-  //         TCS_Amt: tcsAmount,
-  //         TCS_Net_Payable: netPayable,
-  //         TDSAmount: tdsAmount,
-  //         TDS: tdsBase,
-  //       };
-
-  //       await calculateAndSetGSTAmounts(newFormData);
-  //     }
-
-  //     setFormData(newFormData);
-  //   }
-  // };
-
   const handleKeyDownCalculations = async (event) => {
     if (event.key === "Tab") {
+      debugger;
       const { name, value } = event.target;
       let newFormData = { ...formData };
-  
+
       // Check if states match for GST calculations
       const sameState = await checkMatchStatus(
         formData.ac_code,
         companyCode,
         Year_Code
       );
-  
       const parseNumber = (num) => parseFloat(num) || 0;
-  
-      // Recalculate values that might have changed
       if (
         [
           "Frieght_Rate",
@@ -667,34 +470,40 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         const bankCommission = parseNumber(formData.BANK_COMMISSION);
         const miscAmount = parseNumber(formData.misc_amount);
         const purcRate = parseNumber(formData.purc_rate);
-        const packing = parseInt(formData.packing) || 0;
-  
-        // Calculate Bags, Freight, and Rates
+        
+
         const rDiffTenderRate = calculateRDiffTenderRate(
           saleRate,
           millRate,
           purcRate
         );
-        const tenderDiffRate = calculateTenderDiffRateAmount(rDiffTenderRate, qntl);
+        const tenderDiffRate = calculateTenderDiffRateAmount(
+          rDiffTenderRate,
+          qntl
+        );
+        const packing = parseInt(formData.packing) || 0;
         const bag = calculateBags(qntl, packing);
         const freightAmt = calculateFreight(freightRate, qntl);
         const resaleRate = calculateResaleRate(resaleCommission, qntl);
         const subtotal = calculateSubtotal(rDiffTenderRate, qntl, resaleRate);
         const taxable = calculateTaxable(subtotal, freightAmt);
-  
-        // Determine TDS Base
-        const tdsBase = formData.TDS ? parseNumber(formData.TDS) : taxable;
-  
-        // GST Calculations
+
+        const tdsBase = parseNumber(formData.TDS) || taxable; 
+
         const cgstRate = parseNumber(formData.cgst_rate);
         const sgstRate = parseNumber(formData.sgst_rate);
         const igstRate = parseNumber(formData.igst_rate);
-  
-        const cgstAmount = sameState ? calculateCGSTAmount(taxable, cgstRate) : 0;
-        const sgstAmount = sameState ? calculateSGSTAmount(taxable, sgstRate) : 0;
-        const igstAmount = !sameState ? calculateIGSTAmount(taxable, igstRate) : 0;
-  
-        // Calculate Bill Amount
+
+        const cgstAmount = sameState
+          ? calculateCGSTAmount(taxable, cgstRate)
+          : 0;
+        const sgstAmount = sameState
+          ? calculateSGSTAmount(taxable, sgstRate)
+          : 0;
+        const igstAmount = !sameState
+          ? calculateIGSTAmount(taxable, igstRate)
+          : 0;
+
         const billAmount = calculateBillAmount(
           taxable,
           cgstAmount,
@@ -703,20 +512,21 @@ const Year_Code = sessionStorage.getItem("Year_Code");
           bankCommission,
           miscAmount
         );
-  
-        // TCS Calculation
-        const tcsRate = formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
-        const tcsAmount = formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
-  
-        // TDS Calculation
-        const tdsRate = formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
-        const tdsAmount = formData.IsTDS === "Y" ? calculateTDSAmount(tdsBase, tdsRate) : 0;
-  
-        // Net Payable Calculation
+
+        const tcsRate =
+          formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
+        const tcsAmount =
+          formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+        let tdsAmount = 0;
+        const tdsRate =
+          formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
+          if (formData.IsTDS === "Y" && tdsBase > 0 && tdsRate > 0) {
+             tdsAmount = calculateTDSAmount(tdsBase, tdsRate);
+          }
+
         const hasTCS = tcsAmount > 0;
         const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-  
-        // Update newFormData with all recalculated values
+
         newFormData = {
           ...newFormData,
           bags: bag,
@@ -730,13 +540,14 @@ const Year_Code = sessionStorage.getItem("Year_Code");
           igst_amount: igstAmount,
           bill_amount: billAmount,
           TCS_Amt: tcsAmount,
-          TDSAmount: tdsAmount,
           TCS_Net_Payable: netPayable,
+          TDS: tdsBase,
+          TDSAmount: tdsAmount,
           sale_rate: purcRate > 0 ? 0 : saleRate,
         };
       }
-  
-      // Handle GST-specific calculations
+
+      // Perform GST-specific calculations
       if (
         [
           "cgst_rate",
@@ -756,17 +567,22 @@ const Year_Code = sessionStorage.getItem("Year_Code");
         const sgstRate = parseNumber(formData.sgst_rate);
         const igstRate = parseNumber(formData.igst_rate);
         const taxable = parseNumber(formData.texable_amount);
-        const tdsBase = parseNumber(formData.TDS);
-  
-        // Recalculate GST Amounts
-        const cgstAmount = sameState ? calculateCGSTAmount(taxable, cgstRate) : 0;
-        const sgstAmount = sameState ? calculateSGSTAmount(taxable, sgstRate) : 0;
-        const igstAmount = !sameState ? calculateIGSTAmount(taxable, igstRate) : 0;
-  
+        const tdsBase = parseNumber(formData.TDS) || taxable; 
+
+
+        const cgstAmount = sameState
+          ? calculateCGSTAmount(taxable, cgstRate)
+          : 0;
+        const sgstAmount = sameState
+          ? calculateSGSTAmount(taxable, sgstRate)
+          : 0;
+        const igstAmount = !sameState
+          ? calculateIGSTAmount(taxable, igstRate)
+          : 0;
+
         const bankCommission = parseNumber(formData.BANK_COMMISSION);
         const miscAmount = parseNumber(formData.misc_amount);
-  
-        // Recalculate Bill Amount
+
         const billAmount = calculateBillAmount(
           taxable,
           cgstAmount,
@@ -775,18 +591,22 @@ const Year_Code = sessionStorage.getItem("Year_Code");
           bankCommission,
           miscAmount
         );
-  
-        // TCS and TDS Calculation
-        const tcsRate = formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
-        const tcsAmount = formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
-  
-        const tdsRate = formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
-        const tdsAmount = formData.IsTDS === "Y" ? calculateTDSAmount(tdsBase || taxable, tdsRate) : 0;
-  
+
+        const tcsRate =
+          formData.IsTDS === "N" ? parseNumber(formData.TCS_Rate) : 0;
+        const tcsAmount =
+          formData.IsTDS === "N" ? calculateTCSAmount(billAmount, tcsRate) : 0;
+
+          let tdsAmount = 0;
+          const tdsRate =
+            formData.IsTDS === "Y" ? parseNumber(formData.TDS_Per) : 0;
+            if (formData.IsTDS === "Y" && tdsBase > 0 && tdsRate > 0) {
+               tdsAmount = calculateTDSAmount(tdsBase, tdsRate);
+            }
+
         const hasTCS = tcsAmount > 0;
         const netPayable = calculateNetPayable(billAmount, tcsAmount, hasTCS);
-  
-        // Update newFormData with recalculated GST and TDS values
+
         newFormData = {
           ...newFormData,
           cgst_rate: cgstRate,
@@ -798,17 +618,17 @@ const Year_Code = sessionStorage.getItem("Year_Code");
           bill_amount: billAmount,
           TCS_Amt: tcsAmount,
           TCS_Net_Payable: netPayable,
+          TDS: tdsBase,
           TDSAmount: tdsAmount,
+         
         };
-  
+
         await calculateAndSetGSTAmounts(newFormData);
       }
-  
-      // Set updated form data
+
       setFormData(newFormData);
     }
   };
-  
 
   const fetchLastRecord = (tranType) => {
     fetch(
@@ -992,7 +812,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
     debugger
     axios
       .get(
-        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&Tran_Type=${tranType}`
+        `${API_URL}/get-CommissionBillSelectedRecord?Company_Code=${companyCode}&doc_no=${formData.doc_no}&Year_Code=${Year_Code}&Tran_Type=${tranType || selectedVoucherType}`
       )
       .then((response) => {
         const data = response.data;
@@ -1913,7 +1733,7 @@ const Year_Code = sessionStorage.getItem("Year_Code");
               type="text"
               id="TDS"
               name="TDS"
-              value={formData.TDS !== undefined ? formData.TDS : formData.texable_amount}
+              value={formData.TDS}
               onChange={(e) => {
                 validateNumericInput(e);
                 handleChange(e);
